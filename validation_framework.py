@@ -382,6 +382,53 @@ class QuantumProteinValidator:
         
         return analysis_results
     
+    def calculate_prediction_accuracy(self, predictions, experimental):
+        """
+        Calculate RMSE and other accuracy metrics for predictions.
+        
+        Parameters:
+        -----------
+        predictions : dict
+            Dictionary containing predicted values for each protein
+            {'protein_id': {'coherence': float, 'stability': float}}
+        experimental : dict
+            Dictionary containing experimental values
+            {'protein_id': {'coherence': float, 'stability': float}}
+            
+        Returns:
+        --------
+        dict
+            Dictionary containing accuracy metrics
+        """
+        # Collect matching protein data
+        matching_proteins = set(predictions.keys()) & set(experimental.keys())
+        if not matching_proteins:
+            return {"error": "No matching proteins found"}
+            
+        # Calculate RMSE for each metric
+        metrics = {
+            'coherence': [],
+            'stability': [],
+            'temperature_sensitivity': []
+        }
+        
+        for protein in matching_proteins:
+            for metric in metrics.keys():
+                if (metric in predictions[protein] and 
+                    metric in experimental[protein]):
+                    pred = predictions[protein][metric]
+                    exp = experimental[protein][metric]
+                    metrics[metric].append((pred - exp) ** 2)
+        
+        # Calculate RMSE for each metric
+        accuracy_metrics = {}
+        for metric, errors in metrics.items():
+            if errors:
+                rmse = np.sqrt(np.mean(errors))
+                accuracy_metrics[f"{metric}_rmse"] = rmse
+                
+        return accuracy_metrics
+    
     def correlate_with_stability(self, thz_analysis=None, stability_data=None):
         """
         Correlate THz spectroscopy analysis with experimental stability data.
@@ -526,6 +573,25 @@ class QuantumProteinValidator:
                         "coherence_prediction_p_value": pred_p_value,
                         "stability_predictions": pred_stability_corrs
                     }
+                    
+                    # Add RMSE calculations
+                    rmse_metrics = {}
+                    for metric in stability_metrics:
+                        if metric in merged_data.columns:
+                            pred = merged_data["predicted_coherence"]
+                            actual = merged_data[metric]
+                            rmse = np.sqrt(np.mean((pred - actual) ** 2))
+                            rmse_metrics[f"{metric}_rmse"] = rmse
+                    
+                    correlation_results["predictor_performance"]["rmse_metrics"] = rmse_metrics
+                    
+                    # Get best performing metric by RMSE
+                    best_rmse = min(rmse_metrics.values())
+                    best_metric = [k for k,v in rmse_metrics.items() if v == best_rmse][0]
+                    correlation_results["predictor_performance"]["best_rmse_metric"] = {
+                        "metric": best_metric,
+                        "rmse": best_rmse
+                    }
             else:
                 # Not enough data points for correlation
                 correlation_results["note"] = f"Insufficient data points for correlation analysis (need at least 2, found {len(merged_data)})"
@@ -588,53 +654,51 @@ class QuantumProteinValidator:
                 "chemical_denaturation": {
                     "denaturants": ["Urea", "GuHCl"],
                     "concentration_range": [0, 8],  # M
-                    "detection_method": "Fluorescence spectroscopy",
-                    "key_metrics": ["Cm (M)", "ΔG (kJ/mol)", "m-value (kJ/mol·M)"]
+                    "sample_preparation": "Same as THz spectroscopy",
+                    "key_metrics": ["ΔG (kJ/mol)", "m-value (kJ/mol·M)"]
                 },
                 "circular_dichroism": {
                     "wavelength_range": [190, 260],  # nm
                     "temperature_points": [20, 37, 50, 60, 70, 80, 90],  # Celsius
+                    "scan_rate": 1.0,  # nm/s
                     "key_metrics": ["α-helix content (%)", "β-sheet content (%)", "Tm from CD (°C)"]
                 },
-                "hydrogen_deuterium_exchange": {
-                    "exchange_times": [10, 30, 60, 180, 600, 1800],  # seconds
-                    "analysis_method": "Mass spectrometry",
+                "hydrogen_exchange": {
+                    "labeling_time": 300,  # seconds
+                    "quench_conditions": "pH 2.5, 0°C",
                     "key_metrics": ["Protection factors", "EX2 rate constants (s^-1)"]
                 }
             },
-            "validation_analyses": {
-                "correlation_analyses": [
+            "validation_criteria": {
+                "experimental_correlations": [
                     "THz coherence vs. thermal stability",
                     "THz coherence vs. chemical stability",
-                    "Phi-harmonic amplitudes vs. stability metrics",
+                    "Peak amplitudes vs. stability metrics",
                     "Temperature dependence of THz spectra vs. thermal stability"
                 ],
-                "quantum_metrics": [
-                    "QCP values from protein sequence/structure",
-                    "Field coherence metric from THz spectra",
-                    "Resonance coupling strength from phi-harmonic ratios"
+                "predictor_validation": [
+                    "Agreement between QCP values from protein sequence/structure",
+                    "Agreement between coherence metric from THz spectra", 
+                    "Agreement between stability path from phi-harmonic ratios"
                 ],
-                "prediction_accuracy": [
+                "accuracy_metrics": [
                     "Root mean square error (RMSE) for stability prediction",
-                    "Correlation coefficient (R) between predicted and measured stability",
+                    "Correlation coefficient (R) between predicted and measured stability",  
                     "Phi-pattern detection accuracy"
                 ]
             },
-            "expected_outcomes": {
-                "primary_hypothesis": "Proteins with stronger phi-based THz spectral patterns will demonstrate higher thermal and chemical stability",
-                "prediction_benchmarks": {
-                    "strong_validation": "R > 0.7 between coherence metrics and stability",
-                    "moderate_validation": "R = 0.5-0.7 between coherence metrics and stability",
-                    "weak_validation": "R = 0.3-0.5 between coherence metrics and stability"
-                }
+            "working_hypothesis": "Proteins with stronger phi-based THz spectral patterns will demonstrate higher thermal and chemical stability",
+            "success_criteria": {
+                "strong_validation": "R = 0.7-0.9 between coherence metrics and stability",
+                "moderate_validation": "R = 0.5-0.7 between coherence metrics and stability",
+                "weak_validation": "R = 0.3-0.5 between coherence metrics and stability"
             }
         }
         
         return protocol
-    
+
     def generate_validation_report(self, analysis_results=None, correlation_results=None):
-        """
-        Generate a comprehensive validation report from experimental analysis.
+        """Generate a comprehensive validation report.
         
         Parameters:
         -----------
@@ -645,19 +709,20 @@ class QuantumProteinValidator:
             
         Returns:
         --------
-        dict : Complete validation report
+        dict : Validation report
         """
+        # Use stored results if not provided
         if analysis_results is None:
-            if not hasattr(self, 'analysis_results'):
-                analysis_results = self.analyze_thz_spectra()
-            else:
+            if hasattr(self, 'analysis_results'):
                 analysis_results = self.analysis_results
+            else:
+                analysis_results = self.analyze_thz_spectra()
                 
         if correlation_results is None:
-            if not hasattr(self, 'validation_results'):
-                correlation_results = self.correlate_with_stability()
-            else:
+            if hasattr(self, 'validation_results'):
                 correlation_results = self.validation_results
+            else:
+                correlation_results = self.correlate_with_stability()
         
         # Generate the report
         report = {
@@ -685,7 +750,7 @@ class QuantumProteinValidator:
                 "recommendations": []
             }
         }
-        
+
         # Process THz spectroscopy findings
         if analysis_results:
             # Count phi harmonic detections
@@ -703,7 +768,6 @@ class QuantumProteinValidator:
                 temps = [float(t) for t in results["coherence_metric"].keys()]
                 closest_temp = min(temps, key=lambda x: abs(x - 25))
                 closest_temp_str = str(int(closest_temp))
-                
                 coherence = results["coherence_metric"][closest_temp_str]
                 coherence_values.append(coherence)
                 
@@ -748,7 +812,6 @@ class QuantumProteinValidator:
             # Overall validation status
             if "overall_correlation" in correlation_results:
                 mean_corr = correlation_results["overall_correlation"]["mean_correlation"]
-                
                 report["stability_correlations"]["overall_validation"] = {
                     "mean_correlation": mean_corr,
                     "max_correlation": correlation_results["overall_correlation"]["max_correlation"],
@@ -777,7 +840,6 @@ class QuantumProteinValidator:
                 # Evaluate predictor performance
                 if "predictor_performance" in correlation_results:
                     performance = correlation_results["predictor_performance"]
-                    
                     report["stability_correlations"]["predictor_performance"] = {
                         "coherence_prediction_accuracy": performance.get("coherence_prediction_accuracy", None),
                         "stability_predictions": performance.get("stability_predictions", {})
@@ -821,7 +883,31 @@ class QuantumProteinValidator:
                 report["conclusion"]["recommendations"].append(
                     "Consider additional quantum parameters beyond phi-harmonics in the model"
                 )
+        
+        # Add RMSE analysis to report
+        if correlation_results and "predictor_performance" in correlation_results:
+            performance = correlation_results["predictor_performance"]
+            
+            if "rmse_metrics" in performance:
+                report["stability_correlations"]["predictor_performance"]["rmse_analysis"] = {
+                    "metrics": performance["rmse_metrics"],
+                    "best_performing": performance.get("best_rmse_metric", {})
+                }
                 
+                # Add RMSE-based findings
+                best_rmse = performance.get("best_rmse_metric", {})
+                if best_rmse:
+                    finding = (f"Best RMSE achieved for {best_rmse['metric']} "
+                               f"with RMSE = {best_rmse['rmse']:.3f}")
+                    report["summary"]["key_findings"].append(finding)
+                
+                # Add recommendations based on RMSE
+                if all(rmse > 0.5 for rmse in performance["rmse_metrics"].values()):
+                    report["conclusion"]["recommendations"].append(
+                        "Improve prediction accuracy by refining model parameters "
+                        "to reduce RMSE across all metrics"
+                    )
+        
         return report
     
     def design_thz_sampling_time_series(self, protein_id, temperature_points=[20, 37, 60, 80], duration_hours=24, num_samples=12):
@@ -1000,7 +1086,7 @@ class QuantumProteinValidator:
         }
         
         return protocol
-        
+    
     def integrate_experimental_data(self, thz_data, stability_data, structure_data=None):
         """
         Integrate multiple experimental datasets to provide a comprehensive
@@ -1065,7 +1151,6 @@ class QuantumProteinValidator:
                 for ss_type, data in ss_correlations.items():
                     if len(data["coherence"]) > 1:
                         corr, p_value = stats.pearsonr(data["coherence"], data["content"])
-                        
                         structure_correlations[f"secondary_structure_{ss_type}"] = {
                             "correlation": corr,
                             "p_value": p_value,
