@@ -1,0 +1,96 @@
+{
+  "experiment_type": "THz Time-Domain Spectroscopy",
+  "proteins": [
+    "1UBQ",
+    "1LYZ"
+  ],
+  "frequency_range": [
+    0.1,
+    10.0
+  ],
+  "temperature_points": [
+    4,
+    20,
+    37,
+    50,
+    70,
+    90
+  ],
+  "sample_preparation": {
+    "concentration": "20 mg/mL",
+    "buffer": "50 mM phosphate buffer, pH 7.4",
+    "sample_state": "solution phase in quartz cuvette",
+    "control_samples": [
+      "buffer only",
+      "denatured protein (95\u00b0C for 10 min)"
+    ]
+  },
+  "measurement_protocol": {
+    "frequency_resolution": 0.01,
+    "scans_per_sample": 100,
+    "equilibration_time": 600,
+    "key_frequencies_to_monitor": [
+      1.0,
+      1.618033988749895,
+      2.618033988749895,
+      4.23606797749979,
+      6.854101966249686
+    ]
+  },
+  "predicted_peaks": {
+    "1UBQ": [
+      {
+        "frequency": 1.006,
+        "intensity_estimate": 0.5,
+        "associated_with": "\u03c6^0 harmonic"
+      },
+      {
+        "frequency": 1.627,
+        "intensity_estimate": 0.809,
+        "associated_with": "\u03c6^1 harmonic"
+      },
+      {
+        "frequency": 2.633,
+        "intensity_estimate": 1.309,
+        "associated_with": "\u03c6^2 harmonic"
+      },
+      {
+        "frequency": 4.26,
+        "intensity_estimate": 2.118,
+        "associated_with": "\u03c6^3 harmonic"
+      },
+      {
+        "frequency": 6.892,
+        "intensity_estimate": 3.427,
+        "associated_with": "\u03c6^4 harmonic"
+      }
+    ],
+    "1LYZ": [
+      {
+        "frequency": 1.006,
+        "intensity_estimate": 0.5,
+        "associated_with": "\u03c6^0 harmonic"
+      },
+      {
+        "frequency": 1.628,
+        "intensity_estimate": 0.809,
+        "associated_with": "\u03c6^1 harmonic"
+      },
+      {
+        "frequency": 2.634,
+        "intensity_estimate": 1.309,
+        "associated_with": "\u03c6^2 harmonic"
+      },
+      {
+        "frequency": 4.261,
+        "intensity_estimate": 2.118,
+        "associated_with": "\u03c6^3 harmonic"
+      },
+      {
+        "frequency": 6.895,
+        "intensity_estimate": 3.427,
+        "associated_with": "\u03c6^4 harmonic"
+      }
+    ]
+  }
+}
