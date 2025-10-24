@@ -1,19 +1,48 @@
 from dataclasses import dataclass
-from typing import List, Tuple, Dict, Optional
+from typing import List, Tuple, Dict, Optional, Any
 from enum import Enum
-from .interfaces import MoveType
+
+# Handle imports for both package and direct execution
+import sys
+import os
+current_dir = os.path.dirname(__file__)
+parent_dir = os.path.dirname(current_dir)
+if parent_dir not in sys.path:
+    sys.path.insert(0, parent_dir)
+
+try:
+    # Try package-relative imports first
+    from .interfaces import MoveType
+except ImportError:
+    # Fall back to absolute imports from ubf_protein package
+    from ubf_protein.interfaces import MoveType
 
 @dataclass
 class ConformationalMemory:
     """Memory of a significant conformational state"""
-    conformation_id: str
-    coordinates: List[Tuple[float, float, float]]  # 3D atom positions
-    energy: float
-    rmsd_to_native: float
-    timestamp: int
+    memory_id: str
+    move_type: str  # String representation of MoveType enum
     significance: float  # 0.0-1.0
-    emotional_impact: float  # -1.0 to +1.0
-    decay_factor: float  # 0.0-1.0
+    energy_change: float
+    rmsd_change: float
+    success: bool
+    timestamp: int
+    consciousness_state: ConsciousnessCoordinates
+    behavioral_state: BehavioralStateData
+
+    def get_influence_weight(self) -> float:
+        """Calculate influence weight based on significance and recency"""
+        import time
+        current_time = int(time.time() * 1000)
+        time_diff_hours = (current_time - self.timestamp) / (1000 * 60 * 60)
+
+        # Exponential decay: more recent = higher weight
+        recency_weight = max(0.1, 1.0 / (1.0 + time_diff_hours / 24.0))  # Half-life of 24 hours
+
+        # Success bonus
+        success_bonus = 1.2 if self.success else 0.8
+
+        return self.significance * recency_weight * success_bonus
 
 # ============================================================================
 # Consciousness & Behavioral State Data
@@ -74,7 +103,7 @@ class Conformation:
 
     # Capability metadata (enables mappless matching)
     available_move_types: List[str]  # What moves are feasible from this state
-    structural_constraints: Dict[str, any]  # Constraints limiting moves
+    structural_constraints: Dict[str, Any]  # Constraints limiting moves
 
     def get_capabilities(self) -> Dict[str, bool]:
         """Return capability flags for mappless move matching"""
@@ -119,7 +148,7 @@ class Conformation:
 class ConformationalMove:
     """A potential conformational change (mappless - no path, just transition)"""
     move_id: str
-    move_type: 'MoveType'
+    move_type: MoveType
     target_residues: List[int]
     estimated_energy_change: float
     estimated_rmsd_change: float
@@ -271,14 +300,6 @@ class ConformationSnapshot:
     consciousness_state: ConsciousnessCoordinates
     behavioral_state: BehavioralStateData
 
-@dataclass
-class EnergyLandscape:
-    """2D projection of explored conformational space"""
-    projection_method: str  # 'PCA' or 't-SNE'
-    coordinates_2d: List[Tuple[float, float]]  # 2D coordinates for each conformation
-    energy_values: List[float]
-    rmsd_values: List[float]
-
 # ============================================================================
 # Checkpoint & Resume
 # ============================================================================
@@ -290,11 +311,11 @@ class SystemCheckpoint:
     iteration: int
     protein_sequence: str
     agent_count: int
-    configuration: Dict[str, any]
-    agent_states: List[Dict[str, any]]  # Serialized agent states
+    configuration: Dict[str, Any]
+    agent_states: List[Dict[str, Any]]  # Serialized agent states
     shared_memory_pool: List[ConformationalMemory]
     best_conformation: Optional[Conformation]
-    metadata: Dict[str, any]
+    metadata: Dict[str, Any]
 
 # ============================================================================
 # Adaptive Configuration
@@ -331,27 +352,3 @@ class AdaptiveConfig:
     # Performance parameters
     max_iterations: int
     checkpoint_interval: int
-
-# ============================================================================
-# Memory System
-# ============================================================================
-
-@dataclass
-class ConformationalMemory:
-    """Memory of a significant conformational transition"""
-    memory_id: str
-    move_type: str  # Type of move that led to this outcome
-    significance: float  # 0.0-1.0 based on outcome impact
-    energy_change: float  # Energy delta from move
-    rmsd_change: float  # RMSD delta from move
-    success: bool  # Whether energy decreased
-    timestamp: int  # When memory was created
-    consciousness_state: ConsciousnessCoordinates  # State when move was made
-    behavioral_state: BehavioralStateData  # Behavioral preferences at time
-
-    def get_influence_weight(self) -> float:
-        """Calculate influence weight for similar future moves"""
-        # Higher significance = stronger influence
-        # Recent memories have slightly higher weight
-        time_factor = min(1.0, (current_time_ms() - self.timestamp) / 3600000.0)  # 1 hour decay
-        return self.significance * (1.0 - time_factor * 0.1)

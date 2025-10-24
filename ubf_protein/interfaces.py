@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import List, Dict, Tuple, Optional, TYPE_CHECKING
+from typing import List, Dict, Tuple, Optional, TYPE_CHECKING, Any
 from dataclasses import dataclass
 from enum import Enum
 
@@ -91,15 +91,6 @@ class MoveType(Enum):
     DISULFIDE_BOND = "disulfide_bond"
     ENERGY_MINIMIZATION = "energy_minimization"
     LARGE_CONFORMATIONAL_JUMP = "large_jump"
-
-@dataclass
-class ConformationalMove:
-    """Represents a potential conformational change"""
-    move_id: str
-    move_type: MoveType  # 'backbone_rotation', 'sidechain_adjust', 'helix_formation', etc.
-    target_residues: List[int]
-    estimated_energy_change: float
-    structural_requirements: Dict[str, any]  # Capabilities needed
 
 class IMoveGenerator(ABC):
     """Interface for generating available conformational moves"""
@@ -264,7 +255,7 @@ class ICheckpointManager(ABC):
                        agents: List[IProteinAgent],
                        shared_pool: ISharedMemoryPool,
                        iteration: int,
-                       metadata: Dict[str, any]) -> str:
+                       metadata: Dict[str, Any]) -> str:
         """Save complete system state, returns checkpoint file path"""
         pass
 

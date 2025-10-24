@@ -1,0 +1,24 @@
+{
+    "include": [
+        "ubf_protein"
+    ],
+    "exclude": [
+        "**/__pycache__",
+        "**/.pytest_cache",
+        "**/node_modules"
+    ],
+    "reportMissingImports": "warning",
+    "reportMissingTypeStubs": "warning",
+    "pythonVersion": "3.14",
+    "pythonPlatform": "Windows",
+    "executionEnvironments": [
+        {
+            "root": ".",
+            "python": "./myvenv/Scripts/python",
+            "extraPaths": [
+                "."
+            ]
+        }
+    ],
+    "typeCheckingMode": "basic"
+}

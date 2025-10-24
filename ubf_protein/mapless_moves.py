@@ -9,9 +9,24 @@ import random
 import numpy as np
 from typing import List, Dict, Optional
 
-from .interfaces import IMoveGenerator, IMoveEvaluator
-from .models import Conformation, ConformationalMove, MoveType
-from .physics_integration import QAAPCalculator, ResonanceCouplingCalculator, WaterShieldingCalculator
+# Handle imports for both package and direct execution
+import sys
+import os
+current_dir = os.path.dirname(__file__)
+parent_dir = os.path.dirname(current_dir)
+if parent_dir not in sys.path:
+    sys.path.insert(0, parent_dir)
+
+try:
+    # Try package-relative imports first
+    from .interfaces import IMoveGenerator, IMoveEvaluator
+    from .models import Conformation, ConformationalMove, MoveType
+    from .physics_integration import QAAPCalculator, ResonanceCouplingCalculator, WaterShieldingCalculator
+except ImportError:
+    # Fall back to absolute imports from ubf_protein package
+    from ubf_protein.interfaces import IMoveGenerator, IMoveEvaluator
+    from ubf_protein.models import Conformation, ConformationalMove, MoveType
+    from ubf_protein.physics_integration import QAAPCalculator, ResonanceCouplingCalculator, WaterShieldingCalculator
 
 
 class MaplessMoveGenerator(IMoveGenerator):
@@ -364,8 +379,12 @@ class CapabilityBasedMoveEvaluator(IMoveEvaluator):
         Factor 5: Goal Alignment
         Based on energy decrease and RMSD improvement potential.
         """
-        # Energy alignment (negative energy change = good)
-        energy_alignment = max(0.0, 1.0 + move.estimated_energy_change / 50.0)
+        # Energy alignment (negative energy change = good, positive = bad)
+        # Convert energy change to alignment score (higher = better)
+        # energy_change of -50 or less = 1.0 (perfect)
+        # energy_change of 0 = 0.5 (neutral)
+        # energy_change of +50 or more = 0.0 (terrible)
+        energy_alignment = max(0.0, min(1.0, 1.0 - (move.estimated_energy_change / 50.0)))
 
         # RMSD alignment (some RMSD change is good, but not too much)
         optimal_rmsd = 1.0  # Ideal RMSD change

@@ -1,4 +1,7 @@
 {
     "kiroAgent.configureMCP": "Disabled",
-    "python-envs.pythonProjects": []
+    "python-envs.pythonProjects": [],
+    "python.defaultInterpreterPath": "./myvenv/Scripts/python",
+    "python.terminal.activateEnvironment": true,
+    "python.analysis.typeCheckingMode": "basic"
 }

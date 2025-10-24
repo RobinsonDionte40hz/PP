@@ -8,8 +8,22 @@ physics modules to implement the standardized interfaces.
 import numpy as np
 from typing import Optional
 
-from .interfaces import IQAAPCalculator, IResonanceCoupling, IWaterShielding
-from .models import Conformation
+# Handle imports for both package and direct execution
+import sys
+import os
+current_dir = os.path.dirname(__file__)
+parent_dir = os.path.dirname(current_dir)
+if parent_dir not in sys.path:
+    sys.path.insert(0, parent_dir)
+
+try:
+    # Try package-relative imports first
+    from .interfaces import IQAAPCalculator, IResonanceCoupling, IWaterShielding
+    from .models import Conformation
+except ImportError:
+    # Fall back to absolute imports from ubf_protein package
+    from ubf_protein.interfaces import IQAAPCalculator, IResonanceCoupling, IWaterShielding
+    from ubf_protein.models import Conformation
 
 
 class QAAPCalculator(IQAAPCalculator):
