@@ -9,9 +9,10 @@ import uuid
 from typing import List, Dict
 from collections import defaultdict
 
-from .interfaces import IMemorySystem
+from .interfaces import IMemorySystem, ISharedMemoryPool
 from .models import ConformationalMemory, ConformationalOutcome, ConsciousnessCoordinates, BehavioralStateData
 from .config import MEMORY_SIGNIFICANCE_THRESHOLD, MAX_MEMORIES_PER_AGENT, MEMORY_INFLUENCE_MIN, MEMORY_INFLUENCE_MAX
+from .config import SHARED_MEMORY_SIGNIFICANCE_THRESHOLD, MAX_SHARED_MEMORY_POOL_SIZE
 
 
 class MemorySystem(IMemorySystem):
@@ -127,7 +128,7 @@ class MemorySystem(IMemorySystem):
             energy_change=outcome.energy_change,
             rmsd_change=outcome.rmsd_change,
             success=outcome.success,
-            timestamp=outcome.move_executed.move_id.split('_')[1] if '_' in outcome.move_executed.move_id else 0,  # Extract timestamp from move_id
+            timestamp=int(outcome.move_executed.move_id.split('_')[1]) if '_' in outcome.move_executed.move_id and outcome.move_executed.move_id.split('_')[1].isdigit() else 0,  # Extract timestamp from move_id
             consciousness_state=consciousness_state,
             behavioral_state=behavioral_state
         )
@@ -200,3 +201,108 @@ class MemorySystem(IMemorySystem):
                 if memory in self._memories[move_type]:
                     self._memories[move_type].remove(memory)
                     self._memory_count -= 1
+
+
+class SharedMemoryPool(ISharedMemoryPool):
+    """
+    Implementation of shared memory pool across all agents.
+
+    Stores high-significance memories that can be shared between agents
+    to accelerate collective learning and avoid redundant exploration.
+    """
+
+    def __init__(self):
+        """
+        Initialize empty shared memory pool.
+        """
+        self._shared_memories: List[ConformationalMemory] = []
+        self._memory_count = 0
+
+    def share_memory(self, memory: ConformationalMemory) -> None:
+        """
+        Share high-significance memory (>= 0.7) with all agents.
+
+        Args:
+            memory: The memory to potentially share
+        """
+        if memory.significance >= SHARED_MEMORY_SIGNIFICANCE_THRESHOLD:
+            self._shared_memories.append(memory)
+            self._memory_count += 1
+
+            # Auto-prune if we exceed the limit
+            if self._memory_count > MAX_SHARED_MEMORY_POOL_SIZE:
+                self.prune_pool()
+
+    def retrieve_shared_memories(self, move_type: str, max_count: int = 10) -> List[ConformationalMemory]:
+        """
+        Retrieve relevant shared memories for move evaluation.
+
+        Returns most significant shared memories for the given move type,
+        sorted by influence weight.
+
+        Args:
+            move_type: Type of move to get memories for
+            max_count: Maximum number of memories to return
+
+        Returns:
+            List of relevant shared memories, sorted by influence weight
+        """
+        # Filter memories by move type
+        relevant_memories = [
+            memory for memory in self._shared_memories
+            if memory.move_type == move_type
+        ]
+
+        # Sort by influence weight (descending)
+        sorted_memories = sorted(
+            relevant_memories,
+            key=lambda m: m.get_influence_weight(),
+            reverse=True
+        )
+
+        return sorted_memories[:max_count]
+
+    def prune_pool(self, max_size: int = MAX_SHARED_MEMORY_POOL_SIZE) -> None:
+        """
+        Prune pool to maintain max size by weighted significance.
+
+        Removes least influential memories first.
+
+        Args:
+            max_size: Maximum size to prune to
+        """
+        if self._memory_count <= max_size:
+            return
+
+        # Sort all memories by influence weight (ascending - least influential first)
+        sorted_memories = sorted(
+            self._shared_memories,
+            key=lambda m: m.get_influence_weight()
+        )
+
+        # Keep only the most influential memories
+        excess_count = self._memory_count - max_size
+        self._shared_memories = sorted_memories[excess_count:]
+        self._memory_count = len(self._shared_memories)
+
+    def get_pool_stats(self) -> Dict[str, int]:
+        """
+        Get statistics about the shared memory pool.
+
+        Returns:
+            Dictionary with memory counts by move type
+        """
+        stats = {}
+        for memory in self._shared_memories:
+            move_type = memory.move_type
+            stats[move_type] = stats.get(move_type, 0) + 1
+        return stats
+
+    def get_total_memories(self) -> int:
+        """
+        Get total number of memories in the pool.
+
+        Returns:
+            Total memory count
+        """
+        return self._memory_count

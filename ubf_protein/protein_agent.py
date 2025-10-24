@@ -7,7 +7,8 @@ conformational exploration.
 """
 
 import time
-from typing import Optional
+import random
+from typing import Optional, Dict
 
 from .interfaces import IProteinAgent
 from .models import (
@@ -85,60 +86,75 @@ class ProteinAgent(IProteinAgent):
         """
         Execute one exploration step using mapless design.
 
-        This is a simplified implementation that will be enhanced with
-        proper move generation and evaluation in later tasks.
+        Generates available moves, evaluates them using capability-based evaluation,
+        selects the best move, executes it, and updates all systems.
 
         Returns:
             ConformationalOutcome from the exploration step
         """
         start_time = time.time()
 
-        # TODO: Implement proper mapless move generation and evaluation
-        # For now, create a placeholder outcome that simulates exploration
+        # Generate available moves using mapless generator
+        from .mapless_moves import MaplessMoveGenerator, CapabilityBasedMoveEvaluator
+        move_generator = MaplessMoveGenerator()
+        move_evaluator = CapabilityBasedMoveEvaluator()
 
-        # Simulate a small conformational change
-        energy_change = self._simulate_energy_change()
-        rmsd_change = abs(energy_change) * 0.1  # RMSD roughly correlates with energy
+        available_moves = move_generator.generate_moves(self._current_conformation)
 
-        # Create placeholder move (will be replaced with real move generation)
-        from .models import ConformationalMove, MoveType
-        move = ConformationalMove(
-            move_id=f"explore_{self._iterations_completed}_{int(time.time() * 1000)}",
-            move_type=MoveType.BACKBONE_ROTATION,  # Placeholder
-            target_residues=[1, 2, 3],  # Placeholder
-            estimated_energy_change=energy_change,
-            estimated_rmsd_change=rmsd_change,
-            required_capabilities={"can_large_rotation": True},
-            energy_barrier=5.0,
-            structural_feasibility=0.8
-        )
+        if not available_moves:
+            # No moves available - create a minimal outcome
+            outcome = ConformationalOutcome(
+                move_executed=None,  # type: ignore
+                new_conformation=self._current_conformation,
+                energy_change=0.0,
+                rmsd_change=0.0,
+                success=False,
+                significance=0.0
+            )
+        else:
+            # Evaluate all moves
+            move_weights = []
+            for move in available_moves:
+                # Get memory influence for this move type
+                memory_influence = self._memory.calculate_memory_influence(move.move_type.value)
 
-        # Create new conformation (simplified - just update energy)
-        new_conformation = Conformation(
-            conformation_id=f"conf_{self._iterations_completed + 1}",
-            sequence=self._protein_sequence,
-            atom_coordinates=self._current_conformation.atom_coordinates,  # Unchanged for now
-            energy=self._current_conformation.energy + energy_change,
-            rmsd_to_native=self._current_conformation.rmsd_to_native,
-            secondary_structure=self._current_conformation.secondary_structure,
-            phi_angles=self._current_conformation.phi_angles,
-            psi_angles=self._current_conformation.psi_angles,
-            available_move_types=self._current_conformation.available_move_types,
-            structural_constraints=self._current_conformation.structural_constraints
-        )
+                # Calculate physics factors (placeholder for now)
+                physics_factors = self._get_physics_factors(move)
 
-        # Determine success (energy decreased)
-        success = energy_change < 0
+                # Evaluate move
+                weight = move_evaluator.evaluate_move(
+                    move,
+                    self._behavioral,
+                    memory_influence,
+                    physics_factors
+                )
+                move_weights.append((move, weight))
 
-        # Create outcome
-        outcome = ConformationalOutcome(
-            move_executed=move,
-            new_conformation=new_conformation,
-            energy_change=energy_change,
-            rmsd_change=rmsd_change,
-            success=success,
-            significance=0.5  # Placeholder significance
-        )
+            # Select best move (highest weight)
+            best_move, best_weight = max(move_weights, key=lambda x: x[1])
+
+            # Execute the move (simulate conformational change)
+            new_conformation = self._execute_move(best_move)
+
+            # Calculate actual changes
+            energy_change = new_conformation.energy - self._current_conformation.energy
+            rmsd_change = abs(energy_change) * 0.1  # Simplified RMSD estimation
+
+            # Determine success (energy decreased or RMSD improved)
+            success = energy_change < 0
+
+            # Calculate significance (simplified)
+            significance = self._calculate_outcome_significance(energy_change, rmsd_change, success)
+
+            # Create outcome
+            outcome = ConformationalOutcome(
+                move_executed=best_move,
+                new_conformation=new_conformation,
+                energy_change=energy_change,
+                rmsd_change=rmsd_change,
+                success=success,
+                significance=significance
+            )
 
         # Update consciousness based on outcome
         self._consciousness.update_from_outcome(outcome)
@@ -161,14 +177,16 @@ class ProteinAgent(IProteinAgent):
             self._memories_created += 1
 
         # Update current conformation
-        self._current_conformation = new_conformation
-        self._conformations_explored += 1
+        if outcome.new_conformation != self._current_conformation:
+            self._current_conformation = outcome.new_conformation
+            self._conformations_explored += 1
 
         # Update best metrics
-        if new_conformation.energy < self._best_energy:
-            self._best_energy = new_conformation.energy
-        if new_conformation.rmsd_to_native and new_conformation.rmsd_to_native < self._best_rmsd:
-            self._best_rmsd = new_conformation.rmsd_to_native
+        if outcome.new_conformation.energy < self._best_energy:
+            self._best_energy = outcome.new_conformation.energy
+        if (outcome.new_conformation.rmsd_to_native and
+            outcome.new_conformation.rmsd_to_native < self._best_rmsd):
+            self._best_rmsd = outcome.new_conformation.rmsd_to_native
 
         # Update metrics
         self._iterations_completed += 1
@@ -260,3 +278,103 @@ class ProteinAgent(IProteinAgent):
         total_change *= memory_influence
 
         return total_change
+
+    def _get_physics_factors(self, move) -> Dict[str, float]:
+        """
+        Get physics factors for move evaluation.
+
+        This is a placeholder implementation. In the full system,
+        this would calculate actual QAAP, resonance, and water shielding.
+
+        Args:
+            move: The move to evaluate
+
+        Returns:
+            Dictionary with physics factors
+        """
+        # Placeholder values - in real implementation would calculate from conformation
+        return {
+            'qaap': 0.5,  # 0-1 scale
+            'resonance': 0.5,  # 0-1 scale
+            'water_shielding': 0.5  # 0-1 scale
+        }
+
+    def _execute_move(self, move) -> Conformation:
+        """
+        Execute a conformational move and return new conformation.
+
+        This is a simplified simulation. In the full system,
+        this would perform actual structural calculations.
+
+        Args:
+            move: The move to execute
+
+        Returns:
+            New conformation after move execution
+        """
+        # Calculate actual energy change (may differ from estimate)
+        actual_energy_change = move.estimated_energy_change * (0.8 + random.random() * 0.4)  # ±20% variation
+
+        # Create new conformation
+        new_conformation = Conformation(
+            conformation_id=f"conf_{self._iterations_completed + 1}_{move.move_id}",
+            sequence=self._protein_sequence,
+            atom_coordinates=self._current_conformation.atom_coordinates,  # Unchanged for now
+            energy=self._current_conformation.energy + actual_energy_change,
+            rmsd_to_native=self._current_conformation.rmsd_to_native,
+            secondary_structure=self._current_conformation.secondary_structure,
+            phi_angles=self._current_conformation.phi_angles,
+            psi_angles=self._current_conformation.psi_angles,
+            available_move_types=self._current_conformation.available_move_types,
+            structural_constraints=self._current_conformation.structural_constraints
+        )
+
+        # Update secondary structure if move creates structure
+        if move.move_type.value in ['helix_formation', 'sheet_formation']:
+            # Simulate secondary structure change
+            start_idx = move.target_residues[0]
+            end_idx = move.target_residues[-1] + 1
+            new_ss = list(self._current_conformation.secondary_structure)
+
+            ss_type = 'H' if move.move_type.value == 'helix_formation' else 'E'
+            for i in range(start_idx, min(end_idx, len(new_ss))):
+                new_ss[i] = ss_type
+
+            new_conformation.secondary_structure = new_ss
+
+        return new_conformation
+
+    def _calculate_outcome_significance(self, energy_change: float,
+                                      rmsd_change: float,
+                                      success: bool) -> float:
+        """
+        Calculate significance of an exploration outcome.
+
+        Uses simplified 3-factor approach: energy_change, structural_novelty, rmsd_improvement.
+
+        Args:
+            energy_change: Change in energy
+            rmsd_change: Change in RMSD
+            success: Whether the move was successful
+
+        Returns:
+            Significance score (0.0-1.0)
+        """
+        # Factor 1: Energy change impact (0.5 weight)
+        # Large negative changes are highly significant
+        energy_significance = min(1.0, max(0.0, -energy_change / 50.0))  # -50 kJ/mol = max significance
+
+        # Factor 2: Structural novelty (0.3 weight)
+        # For now, assume some novelty if successful
+        structural_novelty = 0.5 if success else 0.1
+
+        # Factor 3: RMSD improvement (0.2 weight)
+        # RMSD decrease is good
+        rmsd_significance = min(1.0, max(0.0, -rmsd_change / 2.0))  # -2 Å = max significance
+
+        # Combine factors
+        significance = (0.5 * energy_significance +
+                       0.3 * structural_novelty +
+                       0.2 * rmsd_significance)
+
+        return min(1.0, significance)

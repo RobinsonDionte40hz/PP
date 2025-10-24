@@ -181,6 +181,11 @@ class IProteinAgent(ABC):
         """Get current protein conformation"""
         pass
 
+    @abstractmethod
+    def get_exploration_metrics(self) -> Dict[str, float]:
+        """Get current exploration metrics"""
+        pass
+
 # ============================================================================
 # Multi-Agent Coordination
 # ============================================================================
@@ -201,6 +206,11 @@ class ISharedMemoryPool(ABC):
     @abstractmethod
     def prune_pool(self, max_size: int = 10000) -> None:
         """Prune pool to max size by weighted significance"""
+        pass
+
+    @abstractmethod
+    def get_total_memories(self) -> int:
+        """Get total number of memories in the pool"""
         pass
 
 class IMultiAgentCoordinator(ABC):

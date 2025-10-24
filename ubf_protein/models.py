@@ -221,6 +221,7 @@ class AgentProfile:
 # ============================================================================
 
 @dataclass
+@dataclass
 class ExplorationMetrics:
     """Metrics for tracking agent performance"""
     agent_id: str
@@ -239,7 +240,7 @@ class ExplorationResults:
     """Results from multi-agent exploration"""
     total_iterations: int
     total_conformations_explored: int
-    best_conformation: Conformation
+    best_conformation: Optional[Conformation]
     best_energy: float
     best_rmsd: float
     agent_metrics: List[ExplorationMetrics]
