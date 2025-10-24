@@ -7,6 +7,7 @@ protein agents working together to explore conformational space.
 
 import time
 import random
+import logging
 from typing import List, Tuple, Optional
 
 from .interfaces import IMultiAgentCoordinator, IProteinAgent, ISharedMemoryPool, IAdaptiveConfigurator
@@ -15,6 +16,9 @@ from .protein_agent import ProteinAgent
 from .memory_system import SharedMemoryPool
 from .adaptive_config import get_default_configurator, AdaptiveConfigurator
 from .config import AGENT_DIVERSITY_PROFILES, AGENT_PROFILE_CAUTIOUS_RATIO, AGENT_PROFILE_BALANCED_RATIO, AGENT_PROFILE_AGGRESSIVE_RATIO
+from .checkpoint import CheckpointManager
+
+logger = logging.getLogger(__name__)
 
 
 class MultiAgentCoordinator(IMultiAgentCoordinator):
@@ -29,7 +33,9 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
     def __init__(self, 
                  protein_sequence: str,
                  adaptive_configurator: Optional[AdaptiveConfigurator] = None,
-                 adaptive_config: Optional[AdaptiveConfig] = None):
+                 adaptive_config: Optional[AdaptiveConfig] = None,
+                 enable_checkpointing: bool = True,
+                 checkpoint_dir: str = "checkpoints"):
         """
         Initialize multi-agent coordinator with protein sequence.
 
@@ -37,6 +43,8 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
             protein_sequence: Amino acid sequence for all agents
             adaptive_configurator: Optional configurator for auto-configuration
             adaptive_config: Optional pre-configured AdaptiveConfig (overrides auto-config)
+            enable_checkpointing: Whether to enable automatic checkpointing
+            checkpoint_dir: Directory for checkpoint files
         """
         self._protein_sequence = protein_sequence
         self._agents: List[IProteinAgent] = []
@@ -50,6 +58,12 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
             self._adaptive_config = adaptive_config
         else:
             self._adaptive_config = self._configurator.get_config_for_protein(protein_sequence)
+
+        # Checkpointing
+        self._enable_checkpointing = enable_checkpointing
+        self._checkpoint_manager = CheckpointManager(checkpoint_dir=checkpoint_dir) if enable_checkpointing else None
+        if self._checkpoint_manager and hasattr(self._adaptive_config, 'checkpoint_interval'):
+            self._checkpoint_manager.set_auto_save_interval(self._adaptive_config.checkpoint_interval)
 
         # Exploration state
         self._total_iterations = 0
@@ -167,6 +181,26 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
 
             total_conformations_explored += iteration_conformations
 
+            # Auto-save checkpoint if enabled
+            if self._enable_checkpointing and self._checkpoint_manager:
+                try:
+                    checkpoint_file = self._checkpoint_manager.auto_save(
+                        agents=self._agents,
+                        shared_pool=self._shared_memory_pool,
+                        iteration=self._total_iterations,
+                        metadata={
+                            "protein_sequence": self._protein_sequence,
+                            "agent_count": len(self._agents),
+                            "best_energy": self._best_energy,
+                            "best_rmsd": self._best_rmsd
+                        }
+                    )
+                    if checkpoint_file:
+                        logger.info(f"Auto-saved checkpoint: {checkpoint_file}")
+                except Exception as e:
+                    # Log but don't crash - checkpointing is non-critical
+                    logger.warning(f"Checkpoint auto-save failed: {e}")
+
             # Optional: Log progress every 10 iterations
             if (iteration + 1) % 10 == 0:
                 print(f"Completed iteration {iteration + 1}/{iterations}")
@@ -210,6 +244,99 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
             total_runtime_seconds=total_runtime,
             shared_memories_created=self._shared_memory_pool.get_total_memories()
         )
+
+    def resume_from_checkpoint(self, checkpoint_file: str) -> int:
+        """
+        Resume exploration from a checkpoint file.
+        
+        Args:
+            checkpoint_file: Path to checkpoint file
+            
+        Returns:
+            Iteration number to resume from
+            
+        Raises:
+            ValueError: If checkpoint loading fails or checkpointing is disabled
+        """
+        if not self._enable_checkpointing or not self._checkpoint_manager:
+            raise ValueError("Checkpointing is not enabled")
+        
+        try:
+            # Load checkpoint data
+            checkpoint_data = self._checkpoint_manager.load_checkpoint(checkpoint_file)
+            
+            # Restore agents and shared pool
+            self._agents, self._shared_memory_pool, iteration = self._checkpoint_manager.restore_agents(
+                checkpoint_data,
+                ProteinAgent
+            )
+            
+            # Restore exploration state
+            self._total_iterations = iteration
+            
+            # Recalculate best conformation from restored agents
+            self._best_energy = float('inf')
+            self._best_rmsd = float('inf')
+            self._best_conformation = None
+            
+            for agent in self._agents:
+                current_conf = agent.get_current_conformation()
+                if current_conf.energy < self._best_energy:
+                    self._best_energy = current_conf.energy
+                    self._best_conformation = current_conf
+                
+                if (current_conf.rmsd_to_native and
+                    current_conf.rmsd_to_native < self._best_rmsd):
+                    self._best_rmsd = current_conf.rmsd_to_native
+            
+            logger.info(
+                f"Resumed from checkpoint: {len(self._agents)} agents, "
+                f"iteration {iteration}, best energy {self._best_energy:.2f}"
+            )
+            
+            return iteration
+            
+        except Exception as e:
+            logger.error(f"Failed to resume from checkpoint: {e}")
+            raise
+
+    def save_checkpoint(self, checkpoint_name: Optional[str] = None) -> str:
+        """
+        Manually save a checkpoint.
+        
+        Args:
+            checkpoint_name: Optional custom checkpoint name
+            
+        Returns:
+            Path to saved checkpoint file
+            
+        Raises:
+            ValueError: If checkpointing is disabled
+        """
+        if not self._enable_checkpointing or not self._checkpoint_manager:
+            raise ValueError("Checkpointing is not enabled")
+        
+        try:
+            checkpoint_file = self._checkpoint_manager.save_checkpoint(
+                agents=self._agents,
+                shared_pool=self._shared_memory_pool,
+                iteration=self._total_iterations,
+                metadata={
+                    "protein_sequence": self._protein_sequence,
+                    "agent_count": len(self._agents),
+                    "best_energy": self._best_energy,
+                    "best_rmsd": self._best_rmsd,
+                    "manual_save": True,
+                    "checkpoint_name": checkpoint_name
+                }
+            )
+            
+            logger.info(f"Manual checkpoint saved: {checkpoint_file}")
+            return checkpoint_file
+            
+        except Exception as e:
+            logger.error(f"Failed to save checkpoint: {e}")
+            raise
 
     def get_best_conformation(self) -> Tuple[Conformation, float, float]:
         """
