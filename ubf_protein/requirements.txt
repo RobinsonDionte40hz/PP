@@ -1,0 +1,6 @@
+# PyPy-compatible dependencies (pure Python only)
+# No NumPy, SciPy, or C-extensions for optimal JIT performance
+
+pytest>=7.0.0  # For unit and integration testing
+dataclasses>=0.6  # For Python < 3.7 compatibility (though we target 3.8+)
+typing>=3.7.4  # Enhanced typing support
