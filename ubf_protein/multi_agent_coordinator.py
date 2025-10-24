@@ -9,10 +9,11 @@ import time
 import random
 from typing import List, Tuple, Optional
 
-from .interfaces import IMultiAgentCoordinator, IProteinAgent, ISharedMemoryPool
+from .interfaces import IMultiAgentCoordinator, IProteinAgent, ISharedMemoryPool, IAdaptiveConfigurator
 from .models import ExplorationResults, ExplorationMetrics, Conformation, AdaptiveConfig, ProteinSizeClass
 from .protein_agent import ProteinAgent
 from .memory_system import SharedMemoryPool
+from .adaptive_config import get_default_configurator, AdaptiveConfigurator
 from .config import AGENT_DIVERSITY_PROFILES, AGENT_PROFILE_CAUTIOUS_RATIO, AGENT_PROFILE_BALANCED_RATIO, AGENT_PROFILE_AGGRESSIVE_RATIO
 
 
@@ -25,16 +26,30 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
     and shared memory exchange.
     """
 
-    def __init__(self, protein_sequence: str):
+    def __init__(self, 
+                 protein_sequence: str,
+                 adaptive_configurator: Optional[AdaptiveConfigurator] = None,
+                 adaptive_config: Optional[AdaptiveConfig] = None):
         """
         Initialize multi-agent coordinator with protein sequence.
 
         Args:
             protein_sequence: Amino acid sequence for all agents
+            adaptive_configurator: Optional configurator for auto-configuration
+            adaptive_config: Optional pre-configured AdaptiveConfig (overrides auto-config)
         """
         self._protein_sequence = protein_sequence
         self._agents: List[IProteinAgent] = []
         self._shared_memory_pool: ISharedMemoryPool = SharedMemoryPool()
+
+        # Adaptive configuration
+        self._configurator = adaptive_configurator or get_default_configurator()
+        
+        # Use provided config or generate one automatically
+        if adaptive_config is not None:
+            self._adaptive_config = adaptive_config
+        else:
+            self._adaptive_config = self._configurator.get_config_for_protein(protein_sequence)
 
         # Exploration state
         self._total_iterations = 0
@@ -90,36 +105,12 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
                     profile['coherence_range'][1]
                 )
 
-                # Create adaptive config based on protein size and agent profile
-                residue_count = len(self._protein_sequence)
-                if residue_count < 50:
-                    size_class = ProteinSizeClass.SMALL
-                elif residue_count <= 150:
-                    size_class = ProteinSizeClass.MEDIUM
-                else:
-                    size_class = ProteinSizeClass.LARGE
-
-                adaptive_config = AdaptiveConfig(
-                    size_class=size_class,
-                    residue_count=residue_count,
-                    initial_frequency_range=profile['frequency_range'],
-                    initial_coherence_range=profile['coherence_range'],
-                    stuck_detection_window=10,  # Default window
-                    stuck_detection_threshold=5.0,  # Default threshold
-                    memory_significance_threshold=0.3,
-                    max_memories_per_agent=50,
-                    convergence_energy_threshold=10.0,
-                    convergence_rmsd_threshold=2.0,
-                    max_iterations=1000,
-                    checkpoint_interval=100
-                )
-
-                # Create agent with adaptive config and sampled coordinates
+                # Create agent with adaptive configuration
                 agent = ProteinAgent(
                     protein_sequence=self._protein_sequence,
                     initial_frequency=frequency,
                     initial_coherence=coherence,
-                    adaptive_config=adaptive_config
+                    adaptive_config=self._adaptive_config
                 )
 
                 self._agents.append(agent)
@@ -316,5 +307,23 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
         # Write to file
         with open(output_file, 'w') as f:
             json.dump(export_data, f, indent=2)
+
+    def get_adaptive_config(self) -> AdaptiveConfig:
+        """
+        Get the adaptive configuration used by this coordinator.
+        
+        Returns:
+            AdaptiveConfig instance
+        """
+        return self._adaptive_config
+    
+    def get_configuration_summary(self) -> str:
+        """
+        Get human-readable summary of the adaptive configuration.
+        
+        Returns:
+            Formatted configuration summary string
+        """
+        return self._configurator.get_config_summary(self._adaptive_config)
 
         print(f"Results exported to {output_file}")

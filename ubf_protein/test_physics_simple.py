@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """
 Simple test script to verify physics integration works.
+Pure Python implementation - no NumPy required for PyPy compatibility.
 """
 
 import sys
 import os
-import numpy as np
+import math
 
 # Add the ubf_protein directory to the path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
@@ -19,7 +20,7 @@ def test_physics_integration():
         # Manually define the classes for testing (without interface dependencies)
         class QAAPCalculator:
             def __init__(self):
-                self.phi = (1 + np.sqrt(5)) / 2  # Golden ratio
+                self.phi = (1 + math.sqrt(5)) / 2  # Golden ratio
                 self.base_energy = 4.0
 
             def calculate_qaap_potential(self, atom_coords, ss_structure):
@@ -42,21 +43,22 @@ def test_physics_integration():
                     neighbors = 0
                     for j, other_coord in enumerate(atom_coords):
                         if i != j:
-                            dist = np.linalg.norm(np.array(coord) - np.array(other_coord))
+                            # Calculate Euclidean distance using pure Python
+                            dist = math.sqrt(sum((c1 - c2)**2 for c1, c2 in zip(coord, other_coord)))
                             if dist < 8.0:  # Within 8Å
                                 neighbors += 1
 
                     l = min(max(1, neighbors // 3), 3)  # Scale to 1-3
 
                     # Calculate hydrophobicity factor (m) - simplified
-                    hydrophobicity_scale = np.sin(i * 0.5)  # Pseudo-random between -1 and 1
+                    hydrophobicity_scale = math.sin(i * 0.5)  # Pseudo-random between -1 and 1
                     m = hydrophobicity_scale
 
                     # Calculate QCP for this residue
                     qcp = self.base_energy + (2**n * (self.phi**l) * m)
                     qcp_values.append(qcp)
 
-                return np.mean(qcp_values) if qcp_values else 0.0
+                return sum(qcp_values) / len(qcp_values) if qcp_values else 0.0
 
         class ResonanceCouplingCalculator:
             def __init__(self, gamma_frequency_hz: float = 40.0):
@@ -69,15 +71,15 @@ def test_physics_integration():
                 if not atom_coords1 or not atom_coords2:
                     return 0.0
 
-                # Simplified energy approximation
-                energy1 = np.linalg.norm(atom_coords1)
-                energy2 = np.linalg.norm(atom_coords2)
+                # Simplified energy approximation using pure Python
+                energy1 = math.sqrt(sum(c**2 for c in atom_coords1))
+                energy2 = math.sqrt(sum(c**2 for c in atom_coords2))
 
                 return self._resonance_coupling(energy1, energy2)
 
             def _resonance_coupling(self, energy1: float, energy2: float) -> float:
                 energy_diff = abs(energy1 - energy2)
-                coupling = np.exp(-(energy_diff - self.h_gamma)**2 / (2 * self.h_gamma))
+                coupling = math.exp(-(energy_diff - self.h_gamma)**2 / (2 * self.h_gamma))
                 return max(0.0, min(1.0, coupling))
 
         class WaterShieldingCalculator:
@@ -97,7 +99,8 @@ def test_physics_integration():
                     nearby_count = 0
                     for j, other_coord in enumerate(atom_coords):
                         if i != j:
-                            dist = np.linalg.norm(np.array(coord) - np.array(other_coord))
+                            # Calculate Euclidean distance using pure Python
+                            dist = math.sqrt(sum((c1 - c2)**2 for c1, c2 in zip(coord, other_coord)))
                             if dist < 8.0:
                                 nearby_count += 1
 
@@ -105,7 +108,7 @@ def test_physics_integration():
                     total_shielding += local_shielding
 
                 avg_shielding = total_shielding / n_residues if n_residues > 0 else 0.0
-                coherence_factor = np.exp(-self.coherence_time_fs / 1000.0)
+                coherence_factor = math.exp(-self.coherence_time_fs / 1000.0)
                 shielding_effect = avg_shielding * coherence_factor * (self.shielding_factor / 10.0)
 
                 return max(0.0, min(1.0, shielding_effect))

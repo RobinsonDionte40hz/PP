@@ -6,12 +6,24 @@ Measures key performance metrics:
 - Memory retrieval time
 - Agent memory footprint
 - Multi-agent throughput
+- Optional CPython vs PyPy comparison
 """
 
 import time
 import sys
+import os
 import tracemalloc
-from typing import Dict, List
+import argparse
+import json
+import platform
+from pathlib import Path
+from typing import Dict, List, Optional, Any
+
+# Add parent directory to path for imports
+current_dir = Path(__file__).parent
+parent_dir = current_dir.parent
+if str(parent_dir) not in sys.path:
+    sys.path.insert(0, str(parent_dir))
 
 from ubf_protein.models import AdaptiveConfig, ProteinSizeClass
 from ubf_protein.protein_agent import ProteinAgent
@@ -253,6 +265,205 @@ class PerformanceBenchmark:
         return self.results
 
 
-if __name__ == "__main__":
+def export_benchmark_results(results: Dict[str, float], output_file: str) -> None:
+    """
+    Export benchmark results to JSON file.
+    
+    Args:
+        results: Dictionary of benchmark results
+        output_file: Path to save JSON results
+    """
+    output_data = {
+        'metadata': {
+            'python_version': sys.version,
+            'python_implementation': platform.python_implementation(),
+            'platform': platform.platform(),
+            'timestamp': time.strftime('%Y-%m-%d %H:%M:%S')
+        },
+        'results': results,
+        'pass_fail': {
+            'move_evaluation_latency': results.get('move_evaluation_latency_ms', 999) < 2.0,
+            'memory_retrieval': results.get('memory_retrieval_us', 999) < 10.0,
+            'agent_memory_footprint': results.get('agent_memory_mb', 999) < 50.0,
+            'throughput': results.get('throughput_conf_per_sec', 0) >= 5000
+        }
+    }
+    
+    with open(output_file, 'w') as f:
+        json.dump(output_data, f, indent=2)
+    
+    print(f"\nBenchmark results exported to: {output_file}")
+
+
+def compare_cpython_pypy() -> Dict[str, Any]:
+    """
+    Compare performance between CPython and PyPy.
+    
+    Note: This function detects which implementation is currently running
+    and provides comparison guidance.
+    
+    Returns:
+        Dictionary with implementation info and performance notes
+    """
+    implementation = platform.python_implementation()
+    
+    comparison = {
+        'current_implementation': implementation,
+        'python_version': sys.version,
+        'speedup_target': 2.0,
+        'notes': []
+    }
+    
+    if implementation == 'PyPy':
+        comparison['notes'].append("Running on PyPy - JIT compilation enabled")
+        comparison['notes'].append("Expected 2x+ speedup over CPython for long-running operations")
+        comparison['notes'].append("To compare with CPython, run this script with: python benchmark.py")
+    elif implementation == 'CPython':
+        comparison['notes'].append("Running on CPython - standard Python interpreter")
+        comparison['notes'].append("To compare with PyPy, run this script with: pypy3 benchmark.py")
+        comparison['notes'].append("PyPy should show ~2x speedup for computational workloads")
+    else:
+        comparison['notes'].append(f"Running on {implementation} - unknown implementation")
+    
+    return comparison
+
+
+def main():
+    """Main entry point for benchmark script with CLI support."""
+    parser = argparse.ArgumentParser(
+        description='Benchmark UBF protein system performance',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Run all benchmarks with default parameters
+  python benchmark.py
+
+  # Run with custom parameters
+  python benchmark.py --agents 20 --iterations 200
+
+  # Run and export results to JSON
+  python benchmark.py --output results.json
+
+  # Show CPython vs PyPy comparison info
+  python benchmark.py --compare-cpython
+
+  # Run on PyPy for comparison
+  pypy3 benchmark.py --output pypy_results.json
+        """
+    )
+
+    parser.add_argument('--agents',
+                       type=int,
+                       default=10,
+                       help='Number of agents for throughput test (default: 10)')
+    parser.add_argument('--iterations',
+                       type=int,
+                       default=100,
+                       help='Iterations per agent for throughput test (default: 100)')
+    parser.add_argument('--output', '-o',
+                       help='Output file path for benchmark results (JSON)')
+    parser.add_argument('--compare-cpython',
+                       action='store_true',
+                       help='Show CPython vs PyPy comparison information')
+    parser.add_argument('--skip-memory',
+                       action='store_true',
+                       help='Skip memory footprint test (faster but incomplete)')
+    parser.add_argument('--skip-throughput',
+                       action='store_true',
+                       help='Skip throughput test (faster but incomplete)')
+
+    args = parser.parse_args()
+
+    print("=" * 60)
+    print("UBF Protein System Performance Benchmark")
+    print(f"Python: {sys.version}")
+    print(f"Implementation: {platform.python_implementation()}")
+    print(f"Platform: {platform.platform()}")
+    print("=" * 60)
+
+    # Show comparison info if requested
+    if args.compare_cpython:
+        print("\n" + "=" * 60)
+        print("CPython vs PyPy Comparison")
+        print("=" * 60)
+        comparison = compare_cpython_pypy()
+        print(f"Current Implementation: {comparison['current_implementation']}")
+        print(f"Speedup Target: {comparison['speedup_target']}x")
+        print("\nNotes:")
+        for note in comparison['notes']:
+            print(f"  - {note}")
+        print("=" * 60)
+
+    # Run benchmarks
     benchmark = PerformanceBenchmark()
-    results = benchmark.run_all_benchmarks()
+    
+    # Always run core benchmarks
+    benchmark.benchmark_move_evaluation_latency()
+    benchmark.benchmark_memory_retrieval()
+    
+    # Optional benchmarks
+    if not args.skip_memory:
+        benchmark.benchmark_agent_memory_footprint()
+    else:
+        print("\n=== Agent Memory Footprint Benchmark ===")
+        print("SKIPPED (--skip-memory flag)")
+    
+    if not args.skip_throughput:
+        benchmark.benchmark_multi_agent_throughput(
+            num_agents=args.agents,
+            iterations=args.iterations
+        )
+    else:
+        print("\n=== Multi-Agent Throughput Benchmark ===")
+        print("SKIPPED (--skip-throughput flag)")
+
+    # Print summary
+    print("\n" + "=" * 60)
+    print("Summary")
+    print("=" * 60)
+    for metric, value in benchmark.results.items():
+        print(f"{metric}: {value:.3f}")
+    
+    # Calculate overall pass/fail
+    passes = 0
+    total = 0
+    
+    if 'move_evaluation_latency_ms' in benchmark.results:
+        total += 1
+        if benchmark.results['move_evaluation_latency_ms'] < 2.0:
+            passes += 1
+    
+    if 'memory_retrieval_us' in benchmark.results:
+        total += 1
+        if benchmark.results['memory_retrieval_us'] < 10.0:
+            passes += 1
+    
+    if 'agent_memory_mb' in benchmark.results:
+        total += 1
+        if benchmark.results['agent_memory_mb'] < 50.0:
+            passes += 1
+    
+    if 'throughput_conf_per_sec' in benchmark.results:
+        total += 1
+        if benchmark.results['throughput_conf_per_sec'] >= 5000:
+            passes += 1
+    
+    print(f"\nOverall: {passes}/{total} benchmarks passed")
+    print("=" * 60)
+
+    # Export results if requested
+    if args.output:
+        export_benchmark_results(benchmark.results, args.output)
+
+    # Exit with appropriate code
+    sys.exit(0 if passes == total else 1)
+
+
+if __name__ == "__main__":
+    if len(sys.argv) > 1:
+        # CLI mode with arguments
+        main()
+    else:
+        # Legacy mode for backward compatibility
+        benchmark = PerformanceBenchmark()
+        results = benchmark.run_all_benchmarks()
