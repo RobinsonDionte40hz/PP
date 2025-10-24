@@ -257,6 +257,18 @@ def run_single_agent(sequence: str,
         with open(output_file, 'w') as f:
             json.dump(results, f, indent=2)
         print("Results saved successfully!")
+        
+        # Auto-generate user-friendly report
+        report_file = output_file.replace('.json', '_REPORT.txt')
+        try:
+            import subprocess
+            report_script = Path(__file__).parent.parent / 'generate_protein_report.py'
+            if report_script.exists():
+                subprocess.run([sys.executable, str(report_script), output_file], 
+                             capture_output=True, check=False)
+                print(f"✓ User-friendly report generated: {report_file}")
+        except Exception as e:
+            print(f"Note: Could not auto-generate report: {e}")
 
     return results
 

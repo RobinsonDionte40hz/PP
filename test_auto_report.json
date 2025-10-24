@@ -1,0 +1,41 @@
+{
+  "metadata": {
+    "sequence": "ACDEFGHIKLMNPQRSTVWY",
+    "sequence_length": 20,
+    "protein_size_class": "small",
+    "iterations_performed": 50,
+    "total_runtime_seconds": 0.011276483535766602,
+    "avg_time_per_iteration_ms": 0.22552967071533203,
+    "initial_consciousness": {
+      "frequency": 9.0,
+      "coherence": 0.6
+    }
+  },
+  "best_results": {
+    "best_energy": 555.2285528686401,
+    "best_rmsd": Infinity,
+    "best_iteration": 49
+  },
+  "agent_metrics": {
+    "total_iterations": 50,
+    "conformations_explored": 51,
+    "memories_created": 31,
+    "stuck_count": 0,
+    "escape_count": 0,
+    "avg_decision_time_ms": 0.2199411392211914,
+    "learning_improvement_percent": 0.0
+  },
+  "final_state": {
+    "consciousness": {
+      "frequency": 15.0,
+      "coherence": 1.0
+    },
+    "behavioral": {
+      "exploration_energy": 1.0,
+      "structural_focus": 1.0,
+      "hydrophobic_drive": 1.0,
+      "risk_tolerance": 1.0,
+      "native_state_ambition": 1.5
+    }
+  }
+}
