@@ -56,7 +56,24 @@ Use `QCProteinPipeline.run_validation_pipeline()` with experimental data from `e
 ## Dependencies & Environment
 - Core: numpy, scipy, biopython, pandas, matplotlib, scikit-learn
 - Install: `pip install -e .`
-- Python ≥3.8 required
+- Python ≥3.8 required (≤3.12 recommended for pre-built BioPython wheels)
+
+### Windows-Specific Setup
+BioPython requires compilation on Windows for Python 3.13+. Two options:
+1. **Use Python 3.12 or earlier** (recommended - has pre-built wheels)
+2. **Install C++ Build Tools** from https://visualstudio.microsoft.com/visual-cpp-build-tools/
+   - Select "Desktop development with C++" workload
+   - **IMPORTANT**: After installation, restart VS Code or use "Developer Command Prompt for VS" to ensure compiler is in PATH
+   - Then run: `pip install biopython`
+
+### Alternative: Use Conda (Windows)
+If compilation issues persist:
+```bash
+conda create -n protein_env python=3.12
+conda activate protein_env
+conda install -c conda-forge biopython numpy scipy matplotlib pandas scikit-learn
+pip install -e .
+```
 
 ## Common Pitfalls
 - Always check `res.has_id('CA')` before accessing CA coordinates
