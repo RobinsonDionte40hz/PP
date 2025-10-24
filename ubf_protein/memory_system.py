@@ -6,6 +6,7 @@ significant conformational transitions to guide future exploration.
 """
 
 import uuid
+import logging
 from typing import List, Dict
 from collections import defaultdict
 
@@ -13,6 +14,9 @@ from .interfaces import IMemorySystem, ISharedMemoryPool
 from .models import ConformationalMemory, ConformationalOutcome, ConsciousnessCoordinates, BehavioralStateData
 from .config import MEMORY_SIGNIFICANCE_THRESHOLD, MAX_MEMORIES_PER_AGENT, MEMORY_INFLUENCE_MIN, MEMORY_INFLUENCE_MAX
 from .config import SHARED_MEMORY_SIGNIFICANCE_THRESHOLD, MAX_SHARED_MEMORY_POOL_SIZE
+
+# Set up logging
+logger = logging.getLogger(__name__)
 
 
 class MemorySystem(IMemorySystem):
@@ -38,13 +42,22 @@ class MemorySystem(IMemorySystem):
         Args:
             memory: The conformational memory to potentially store
         """
-        if memory.significance >= MEMORY_SIGNIFICANCE_THRESHOLD:
-            self._memories[memory.move_type].append(memory)
-            self._memory_count += 1
+        try:
+            # Validate memory data
+            if not hasattr(memory, 'significance') or not hasattr(memory, 'move_type'):
+                logger.warning(f"Invalid memory object, missing required attributes")
+                return
+            
+            if memory.significance >= MEMORY_SIGNIFICANCE_THRESHOLD:
+                self._memories[memory.move_type].append(memory)
+                self._memory_count += 1
 
-            # Auto-prune if we exceed the limit
-            if self._memory_count > MAX_MEMORIES_PER_AGENT:
-                self._prune_memories()
+                # Auto-prune if we exceed the limit
+                if self._memory_count > MAX_MEMORIES_PER_AGENT:
+                    self._prune_memories()
+        except Exception as e:
+            logger.error(f"Error storing memory: {e}")
+            # Continue execution - memory storage is non-critical
 
     def retrieve_relevant_memories(self, move_type: str, max_count: int = 10) -> List[ConformationalMemory]:
         """
@@ -60,16 +73,28 @@ class MemorySystem(IMemorySystem):
         Returns:
             List of relevant memories, sorted by influence weight
         """
-        memories = self._memories.get(move_type, [])
+        try:
+            # Type hint for PyPy JIT optimization
+            memories: List[ConformationalMemory] = self._memories.get(move_type, [])
+            
+            if not memories:
+                return []
 
-        # Sort by influence weight (descending)
-        sorted_memories = sorted(
-            memories,
-            key=lambda m: m.get_influence_weight(),
-            reverse=True
-        )
+            # Sort by influence weight (descending)
+            # Cache weights to avoid recalculation during sort
+            memory_weights: List[tuple] = []
+            for m in memories:
+                memory_weights.append((m, m.get_influence_weight()))
+            
+            memory_weights.sort(key=lambda x: x[1], reverse=True)
+            
+            sorted_memories: List[ConformationalMemory] = [m for m, _ in memory_weights[:max_count]]
 
-        return sorted_memories[:max_count]
+            return sorted_memories
+        except Exception as e:
+            logger.error(f"Error retrieving memories for {move_type}: {e}")
+            # Return empty list on error - allows execution to continue
+            return []
 
     def calculate_memory_influence(self, move_type: str) -> float:
         """
@@ -85,21 +110,23 @@ class MemorySystem(IMemorySystem):
         Returns:
             Influence multiplier between MEMORY_INFLUENCE_MIN and MEMORY_INFLUENCE_MAX
         """
-        memories = self._memories.get(move_type, [])
+        # Type hints for PyPy JIT optimization
+        memories: List[ConformationalMemory] = self._memories.get(move_type, [])
+        memory_count: int = len(memories)
 
-        if not memories:
+        if memory_count == 0:
             # No memories = neutral influence
             return 1.0
 
-        # Calculate success rate
-        successful_memories = [m for m in memories if m.success]
-        success_rate = len(successful_memories) / len(memories)
+        # Calculate success rate with explicit types
+        success_count: int = sum(1 for m in memories if m.success)
+        success_rate: float = success_count / memory_count
 
         # Map success rate to influence range
         # High success (1.0) -> high influence (1.5) = more conservative
         # Low success (0.0) -> low influence (0.8) = more exploratory
-        influence_range = MEMORY_INFLUENCE_MAX - MEMORY_INFLUENCE_MIN
-        influence = MEMORY_INFLUENCE_MIN + (success_rate * influence_range)
+        influence_range: float = MEMORY_INFLUENCE_MAX - MEMORY_INFLUENCE_MIN
+        influence: float = MEMORY_INFLUENCE_MIN + (success_rate * influence_range)
 
         return influence
 

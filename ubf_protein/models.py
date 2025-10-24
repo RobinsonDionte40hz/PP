@@ -29,11 +29,20 @@ class ConformationalMemory:
     timestamp: int
     consciousness_state: ConsciousnessCoordinates
     behavioral_state: BehavioralStateData
+    _cached_weight: Optional[float] = None  # Cached influence weight
+    _weight_calc_time: Optional[int] = None  # Time when weight was calculated
 
     def get_influence_weight(self) -> float:
-        """Calculate influence weight based on significance and recency"""
+        """Calculate influence weight based on significance and recency (cached for 1 hour)"""
         import time
         current_time = int(time.time() * 1000)
+        
+        # Cache for 1 hour (3600000 ms) to avoid recalculation
+        if (self._cached_weight is not None and 
+            self._weight_calc_time is not None and
+            (current_time - self._weight_calc_time) < 3600000):
+            return self._cached_weight
+        
         time_diff_hours = (current_time - self.timestamp) / (1000 * 60 * 60)
 
         # Exponential decay: more recent = higher weight
@@ -42,7 +51,13 @@ class ConformationalMemory:
         # Success bonus
         success_bonus = 1.2 if self.success else 0.8
 
-        return self.significance * recency_weight * success_bonus
+        weight = self.significance * recency_weight * success_bonus
+        
+        # Cache the result
+        self._cached_weight = weight
+        self._weight_calc_time = current_time
+        
+        return weight
 
 # ============================================================================
 # Consciousness & Behavioral State Data

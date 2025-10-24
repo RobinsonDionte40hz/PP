@@ -6,7 +6,7 @@ including move generation, evaluation, and physics integration.
 """
 
 import random
-import numpy as np
+import math
 from typing import List, Dict, Optional
 
 # Handle imports for both package and direct execution
@@ -264,6 +264,14 @@ class CapabilityBasedMoveEvaluator(IMoveEvaluator):
         Returns:
             Move weight (higher = more desirable)
         """
+        # Type hints for PyPy JIT optimization
+        physical_feasibility: float
+        quantum_alignment: float
+        behavioral_preference: float
+        historical_success: float
+        goal_alignment: float
+        total_weight: float
+        
         # Factor 1: Physical Feasibility (0.2 weight)
         physical_feasibility = self._calculate_physical_feasibility(move)
 
@@ -279,12 +287,14 @@ class CapabilityBasedMoveEvaluator(IMoveEvaluator):
         # Factor 5: Goal Alignment (0.2 weight)
         goal_alignment = self._calculate_goal_alignment(move)
 
-        # Combine factors with weights
-        weights = [0.2, 0.25, 0.2, 0.15, 0.2]
-        factors = [physical_feasibility, quantum_alignment, behavioral_preference,
-                  historical_success, goal_alignment]
-
-        total_weight = sum(w * f for w, f in zip(weights, factors))
+        # Combine factors with weights - explicit calculation for JIT optimization
+        total_weight = (
+            0.2 * physical_feasibility +
+            0.25 * quantum_alignment +
+            0.2 * behavioral_preference +
+            0.15 * historical_success +
+            0.2 * goal_alignment
+        )
 
         return total_weight
 
@@ -293,15 +303,19 @@ class CapabilityBasedMoveEvaluator(IMoveEvaluator):
         Factor 1: Physical Feasibility
         Combines structural feasibility and energy barrier.
         """
-        # Structural feasibility is already 0.0-1.0
-        structural = move.structural_feasibility
+        # Type hints for PyPy JIT optimization
+        structural: float = move.structural_feasibility
+        barrier_feasibility: float
+        result: float
 
         # Convert energy barrier to feasibility (lower barrier = higher feasibility)
         # Barriers > 50 kJ/mol are very unlikely
         barrier_feasibility = max(0.0, 1.0 - (move.energy_barrier / 50.0))
 
-        # Combine (weighted average)
-        return 0.7 * structural + 0.3 * barrier_feasibility
+        # Combine (weighted average) - explicit calculation for JIT
+        result = 0.7 * structural + 0.3 * barrier_feasibility
+        
+        return result
 
     def _calculate_quantum_alignment(self, move: ConformationalMove,
                                    physics_factors: Optional[Dict[str, float]]) -> float:

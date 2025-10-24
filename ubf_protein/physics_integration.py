@@ -5,8 +5,8 @@ This module provides physics calculator adapters that wrap existing
 physics modules to implement the standardized interfaces.
 """
 
-import numpy as np
-from typing import Optional
+import math
+from typing import Optional, List
 
 # Handle imports for both package and direct execution
 import sys
@@ -26,6 +26,49 @@ except ImportError:
     from ubf_protein.models import Conformation
 
 
+def _euclidean_distance(coord1: tuple, coord2: tuple) -> float:
+    """
+    Calculate Euclidean distance between two 3D coordinates.
+    
+    Args:
+        coord1: First coordinate (x, y, z)
+        coord2: Second coordinate (x, y, z)
+    
+    Returns:
+        Distance
+    """
+    dx = coord2[0] - coord1[0]
+    dy = coord2[1] - coord1[1]
+    dz = coord2[2] - coord1[2]
+    return math.sqrt(dx * dx + dy * dy + dz * dz)
+
+
+def _vector_norm(coord: tuple) -> float:
+    """
+    Calculate the Euclidean norm of a vector/coordinate.
+    
+    Args:
+        coord: Coordinate (x, y, z)
+    
+    Returns:
+        Norm (magnitude) of the vector
+    """
+    return math.sqrt(coord[0]**2 + coord[1]**2 + coord[2]**2)
+
+
+def _mean(values: list) -> float:
+    """
+    Calculate the mean of a list of values.
+    
+    Args:
+        values: List of numerical values
+    
+    Returns:
+        Mean value
+    """
+    return sum(values) / len(values) if values else 0.0
+
+
 class QAAPCalculator(IQAAPCalculator):
     """
     Adapter for Quantum Amino Acid Potential (QAAP) calculator.
@@ -35,7 +78,7 @@ class QAAPCalculator(IQAAPCalculator):
 
     def __init__(self):
         """Initialize QAAP calculator."""
-        self.phi = (1 + np.sqrt(5)) / 2  # Golden ratio
+        self.phi = (1 + math.sqrt(5)) / 2  # Golden ratio
         self.base_energy = 4.0
 
     def calculate(self, conformation: Conformation) -> float:
@@ -57,7 +100,14 @@ class QAAPCalculator(IQAAPCalculator):
         if not conformation.atom_coordinates:
             return 0.0
 
-        qcp_values = []
+        # Type hints for PyPy JIT optimization
+        qcp_values: List[float] = []
+        n: int
+        neighbors: int
+        l: int
+        m: float
+        qcp: float
+        dist: float
 
         for i, (coord, ss_type) in enumerate(zip(conformation.atom_coordinates,
                                                 conformation.secondary_structure)):
@@ -73,7 +123,7 @@ class QAAPCalculator(IQAAPCalculator):
             neighbors = 0
             for j, other_coord in enumerate(conformation.atom_coordinates):
                 if i != j:
-                    dist = np.linalg.norm(np.array(coord) - np.array(other_coord))
+                    dist = _euclidean_distance(coord, other_coord)
                     if dist < 8.0:  # Within 8Å
                         neighbors += 1
 
@@ -82,7 +132,7 @@ class QAAPCalculator(IQAAPCalculator):
             # Calculate hydrophobicity factor (m) - simplified
             # This would normally use residue-specific hydrophobicity
             # For now, use a simple approximation based on position
-            hydrophobicity_scale = np.sin(i * 0.5)  # Pseudo-random between -1 and 1
+            hydrophobicity_scale: float = math.sin(i * 0.5)  # Pseudo-random between -1 and 1
             m = hydrophobicity_scale
 
             # Calculate QCP for this residue
@@ -90,7 +140,7 @@ class QAAPCalculator(IQAAPCalculator):
             qcp_values.append(qcp)
 
         # Return average QAAP potential
-        return np.mean(qcp_values) if qcp_values else 0.0
+        return _mean(qcp_values)
 
 
 class ResonanceCouplingCalculator(IResonanceCoupling):
@@ -134,8 +184,8 @@ class ResonanceCouplingCalculator(IResonanceCoupling):
 
         # For now, use simplified energy approximation
         # In a real implementation, this would use actual energy calculations
-        energy1 = np.linalg.norm(conformation.atom_coordinates[residue1])
-        energy2 = np.linalg.norm(conformation.atom_coordinates[residue2])
+        energy1 = _vector_norm(conformation.atom_coordinates[residue1])
+        energy2 = _vector_norm(conformation.atom_coordinates[residue2])
 
         return self._resonance_coupling(energy1, energy2)
 
@@ -153,7 +203,7 @@ class ResonanceCouplingCalculator(IResonanceCoupling):
             Coupling strength (0-1)
         """
         energy_diff = abs(energy1 - energy2)
-        coupling = np.exp(-(energy_diff - self.h_gamma)**2 / (2 * self.h_gamma))
+        coupling = math.exp(-(energy_diff - self.h_gamma)**2 / (2 * self.h_gamma))
 
         # Ensure result is in [0, 1] range
         return max(0.0, min(1.0, coupling))
@@ -188,7 +238,7 @@ class ResonanceCouplingCalculator(IResonanceCoupling):
             if pairs_checked >= sample_size:
                 break
 
-        return np.mean(couplings) if couplings else 0.0
+        return _mean(couplings)
 
 
 class WaterShieldingCalculator(IWaterShielding):
@@ -240,7 +290,7 @@ class WaterShieldingCalculator(IWaterShielding):
             nearby_count = 0
             for j, other_coord in enumerate(conformation.atom_coordinates):
                 if i != j:
-                    dist = np.linalg.norm(np.array(coord) - np.array(other_coord))
+                    dist = _euclidean_distance(coord, other_coord)
                     if dist < 8.0:  # Within 8Å
                         nearby_count += 1
 
@@ -253,7 +303,7 @@ class WaterShieldingCalculator(IWaterShielding):
 
         # Apply coherence time and shielding factor
         # This is a simplified model - real implementation would be more complex
-        coherence_factor = np.exp(-self.coherence_time_fs / 1000.0)  # Decay with time
+        coherence_factor = math.exp(-self.coherence_time_fs / 1000.0)  # Decay with time
         shielding_effect = avg_shielding * coherence_factor * (self.shielding_factor / 10.0)
 
         # Ensure result is in [0, 1] range

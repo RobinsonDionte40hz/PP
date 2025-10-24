@@ -6,7 +6,7 @@ into the capability-based move evaluator.
 """
 
 import pytest
-import numpy as np
+import math
 from unittest.mock import Mock, patch
 
 from ubf_protein.mapless_moves import CapabilityBasedMoveEvaluator

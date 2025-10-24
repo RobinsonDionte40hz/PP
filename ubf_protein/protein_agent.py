@@ -8,6 +8,7 @@ conformational exploration.
 
 import time
 import random
+import logging
 from typing import Optional, Dict
 
 from .interfaces import IProteinAgent
@@ -19,7 +20,11 @@ from .consciousness import ConsciousnessState
 from .behavioral_state import BehavioralState
 from .memory_system import MemorySystem
 from .local_minima_detector import LocalMinimaDetector
+from .structural_validation import StructuralValidation
 from .config import BASE_STUCK_DETECTION_WINDOW, BASE_STUCK_DETECTION_THRESHOLD
+
+# Set up logging
+logger = logging.getLogger(__name__)
 
 
 class ProteinAgent(IProteinAgent):
@@ -62,6 +67,9 @@ class ProteinAgent(IProteinAgent):
         # Initialize local minima detector
         self._local_minima_detector = LocalMinimaDetector(adaptive_config)
 
+        # Initialize structural validator
+        self._validator = StructuralValidation()
+
         # Store protein sequence and config
         self._protein_sequence = protein_sequence
         self._adaptive_config = adaptive_config
@@ -81,6 +89,9 @@ class ProteinAgent(IProteinAgent):
         self._total_decision_time_ms = 0.0
         self._stuck_in_minima_count = 0
         self._successful_escapes = 0
+        self._validation_failures = 0
+        self._repair_attempts = 0
+        self._repair_successes = 0
 
     def get_consciousness_state(self) -> ConsciousnessState:
         """Get current consciousness coordinates."""
@@ -96,25 +107,118 @@ class ProteinAgent(IProteinAgent):
 
     def explore_step(self) -> ConformationalOutcome:
         """
-        Execute one exploration step using mapless design.
+        Execute one exploration step using mapless design with error handling.
 
         Generates available moves, evaluates them using capability-based evaluation,
-        selects the best move, executes it, and updates all systems.
+        selects the best move, executes it, validates the result, and updates all systems.
 
         Returns:
             ConformationalOutcome from the exploration step
         """
         start_time = time.time()
 
-        # Generate available moves using mapless generator
-        from .mapless_moves import MaplessMoveGenerator, CapabilityBasedMoveEvaluator
-        move_generator = MaplessMoveGenerator()
-        move_evaluator = CapabilityBasedMoveEvaluator()
+        try:
+            # Generate available moves using mapless generator
+            from .mapless_moves import MaplessMoveGenerator, CapabilityBasedMoveEvaluator
+            move_generator = MaplessMoveGenerator()
+            move_evaluator = CapabilityBasedMoveEvaluator()
 
-        available_moves = move_generator.generate_moves(self._current_conformation)
+            available_moves = move_generator.generate_moves(self._current_conformation)
 
-        if not available_moves:
-            # No moves available - create a minimal outcome
+            if not available_moves:
+                # No moves available - create a minimal outcome
+                outcome = ConformationalOutcome(
+                    move_executed=None,  # type: ignore
+                    new_conformation=self._current_conformation,
+                    energy_change=0.0,
+                    rmsd_change=0.0,
+                    success=False,
+                    significance=0.0
+                )
+            else:
+                # Evaluate all moves
+                move_weights = []
+                for move in available_moves:
+                    try:
+                        # Get memory influence for this move type
+                        memory_influence = self._memory.calculate_memory_influence(move.move_type.value)
+
+                        # Calculate physics factors (placeholder for now)
+                        physics_factors = self._get_physics_factors(move)
+
+                        # Evaluate move
+                        weight = move_evaluator.evaluate_move(
+                            move,
+                            self._behavioral,
+                            memory_influence,
+                            physics_factors
+                        )
+                        move_weights.append((move, weight))
+                    except Exception as e:
+                        logger.warning(f"Error evaluating move {move.move_id}: {e}")
+                        # Skip this move and continue with others
+                        continue
+
+                if not move_weights:
+                    # All moves failed evaluation - return minimal outcome
+                    outcome = ConformationalOutcome(
+                        move_executed=None,  # type: ignore
+                        new_conformation=self._current_conformation,
+                        energy_change=0.0,
+                        rmsd_change=0.0,
+                        success=False,
+                        significance=0.0
+                    )
+                else:
+                    # Select best move (highest weight)
+                    best_move, best_weight = max(move_weights, key=lambda x: x[1])
+
+                    # Execute the move (simulate conformational change)
+                    new_conformation = self._execute_move(best_move)
+
+                    # Validate the new conformation
+                    validation_result = self._validator.validate_conformation(new_conformation)
+                    
+                    if not validation_result.is_valid:
+                        self._validation_failures += 1
+                        logger.warning(f"Invalid conformation detected: {validation_result.issues[:3]}")
+                        
+                        # Attempt repair
+                        self._repair_attempts += 1
+                        repaired_conf, repair_success = self._validator.repair_conformation(new_conformation)
+                        
+                        if repair_success:
+                            self._repair_successes += 1
+                            new_conformation = repaired_conf
+                            logger.info(f"Successfully repaired conformation")
+                        else:
+                            # Repair failed - use current conformation instead
+                            logger.warning(f"Repair failed, reverting to current conformation")
+                            new_conformation = self._current_conformation
+
+                    # Calculate actual changes
+                    energy_change = new_conformation.energy - self._current_conformation.energy
+                    rmsd_change = abs(energy_change) * 0.1  # Simplified RMSD estimation
+
+                    # Determine success (energy decreased or RMSD improved)
+                    success = energy_change < 0
+
+                    # Calculate significance (simplified)
+                    significance = self._calculate_outcome_significance(energy_change, rmsd_change, success)
+
+                    # Create outcome
+                    outcome = ConformationalOutcome(
+                        move_executed=best_move,
+                        new_conformation=new_conformation,
+                        energy_change=energy_change,
+                        rmsd_change=rmsd_change,
+                        success=success,
+                        significance=significance
+                    )
+
+        except Exception as e:
+            logger.error(f"Critical error in explore_step: {e}", exc_info=True)
+            # Return minimal outcome to continue execution
             outcome = ConformationalOutcome(
                 move_executed=None,  # type: ignore
                 new_conformation=self._current_conformation,
@@ -123,53 +227,12 @@ class ProteinAgent(IProteinAgent):
                 success=False,
                 significance=0.0
             )
-        else:
-            # Evaluate all moves
-            move_weights = []
-            for move in available_moves:
-                # Get memory influence for this move type
-                memory_influence = self._memory.calculate_memory_influence(move.move_type.value)
-
-                # Calculate physics factors (placeholder for now)
-                physics_factors = self._get_physics_factors(move)
-
-                # Evaluate move
-                weight = move_evaluator.evaluate_move(
-                    move,
-                    self._behavioral,
-                    memory_influence,
-                    physics_factors
-                )
-                move_weights.append((move, weight))
-
-            # Select best move (highest weight)
-            best_move, best_weight = max(move_weights, key=lambda x: x[1])
-
-            # Execute the move (simulate conformational change)
-            new_conformation = self._execute_move(best_move)
-
-            # Calculate actual changes
-            energy_change = new_conformation.energy - self._current_conformation.energy
-            rmsd_change = abs(energy_change) * 0.1  # Simplified RMSD estimation
-
-            # Determine success (energy decreased or RMSD improved)
-            success = energy_change < 0
-
-            # Calculate significance (simplified)
-            significance = self._calculate_outcome_significance(energy_change, rmsd_change, success)
-
-            # Create outcome
-            outcome = ConformationalOutcome(
-                move_executed=best_move,
-                new_conformation=new_conformation,
-                energy_change=energy_change,
-                rmsd_change=rmsd_change,
-                success=success,
-                significance=significance
-            )
 
         # Update consciousness based on outcome
-        self._consciousness.update_from_outcome(outcome)
+        try:
+            self._consciousness.update_from_outcome(outcome)
+        except Exception as e:
+            logger.error(f"Error updating consciousness: {e}")
 
         # Check for local minima and apply escape strategies if needed
         is_stuck = self._local_minima_detector.update(outcome.new_conformation.energy, self._iterations_completed)
@@ -209,21 +272,28 @@ class ProteinAgent(IProteinAgent):
                 self._memories_created += 1
 
         # Check if behavioral state needs regeneration
-        regenerated_behavioral = self._behavioral.regenerate_if_needed(
-            self._consciousness.get_coordinates()
-        )
-        if regenerated_behavioral is not None:
-            self._behavioral = regenerated_behavioral
+        try:
+            regenerated_behavioral = self._behavioral.regenerate_if_needed(
+                self._consciousness.get_coordinates()
+            )
+            if regenerated_behavioral is not None:
+                self._behavioral = regenerated_behavioral
+        except Exception as e:
+            logger.error(f"Error regenerating behavioral state: {e}")
 
         # Create and store memory if significant
-        memory = self._memory.create_memory_from_outcome(
-            outcome,
-            self._consciousness.get_coordinates(),
-            self._behavioral.get_behavioral_data()
-        )
-        self._memory.store_memory(memory)
-        if memory.significance >= 0.3:  # Same threshold as memory system
-            self._memories_created += 1
+        try:
+            memory = self._memory.create_memory_from_outcome(
+                outcome,
+                self._consciousness.get_coordinates(),
+                self._behavioral.get_behavioral_data()
+            )
+            self._memory.store_memory(memory)
+            if memory.significance >= 0.3:  # Same threshold as memory system
+                self._memories_created += 1
+        except Exception as e:
+            logger.warning(f"Error creating/storing memory: {e}")
+            # Continue execution - memory is non-critical
 
         # Update current conformation
         if outcome.new_conformation != self._current_conformation:
@@ -429,5 +499,8 @@ class ProteinAgent(IProteinAgent):
                 self._total_decision_time_ms / max(1, self._iterations_completed)
             ),
             "stuck_in_minima_count": self._stuck_in_minima_count,
-            "successful_escapes": self._successful_escapes
+            "successful_escapes": self._successful_escapes,
+            "validation_failures": self._validation_failures,
+            "repair_attempts": self._repair_attempts,
+            "repair_successes": self._repair_successes
         }
