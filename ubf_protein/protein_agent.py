@@ -92,6 +92,9 @@ class ProteinAgent(IProteinAgent):
         self._validation_failures = 0
         self._repair_attempts = 0
         self._repair_successes = 0
+        
+        # Learning improvement tracking
+        self._rmsd_history = [self._best_rmsd] if self._best_rmsd != float('inf') else []
 
     def get_consciousness_state(self) -> ConsciousnessState:
         """Get current consciousness coordinates."""
@@ -306,6 +309,8 @@ class ProteinAgent(IProteinAgent):
         if (outcome.new_conformation.rmsd_to_native and
             outcome.new_conformation.rmsd_to_native < self._best_rmsd):
             self._best_rmsd = outcome.new_conformation.rmsd_to_native
+            # Track RMSD improvement for learning calculation
+            self._rmsd_history.append(self._best_rmsd)
 
         # Update metrics
         self._iterations_completed += 1
@@ -502,5 +507,27 @@ class ProteinAgent(IProteinAgent):
             "successful_escapes": self._successful_escapes,
             "validation_failures": self._validation_failures,
             "repair_attempts": self._repair_attempts,
-            "repair_successes": self._repair_successes
+            "repair_successes": self._repair_successes,
+            "learning_improvement": self._calculate_learning_improvement()
         }
+
+    def _calculate_learning_improvement(self) -> float:
+        """
+        Calculate learning improvement as percentage RMSD improvement over time.
+
+        Returns:
+            Learning improvement percentage (0.0-100.0)
+        """
+        if len(self._rmsd_history) < 2:
+            return 0.0  # Not enough data for improvement calculation
+
+        # Calculate improvement as reduction from initial to best RMSD
+        initial_rmsd = self._rmsd_history[0]
+        best_rmsd = min(self._rmsd_history)
+
+        if initial_rmsd == 0 or best_rmsd >= initial_rmsd:
+            return 0.0  # No improvement or invalid data
+
+        # Percentage improvement
+        improvement = ((initial_rmsd - best_rmsd) / initial_rmsd) * 100.0
+        return min(100.0, max(0.0, improvement))  # Clamp to 0-100%
