@@ -9,12 +9,13 @@ conformational exploration.
 import time
 import random
 import logging
-from typing import Optional, Dict
+from typing import Optional, Dict, List
 
 from .interfaces import IProteinAgent
 from .models import (
     Conformation, ConformationalOutcome, ConformationalMemory,
-    ConsciousnessCoordinates, BehavioralStateData, AdaptiveConfig, ProteinSizeClass
+    ConsciousnessCoordinates, BehavioralStateData, AdaptiveConfig, ProteinSizeClass,
+    ConformationSnapshot
 )
 from .consciousness import ConsciousnessState
 from .behavioral_state import BehavioralState
@@ -40,7 +41,9 @@ class ProteinAgent(IProteinAgent):
                  initial_frequency: float = 9.0,
                  initial_coherence: float = 0.6,
                  initial_conformation: Optional[Conformation] = None,
-                 adaptive_config: Optional[AdaptiveConfig] = None):
+                 adaptive_config: Optional[AdaptiveConfig] = None,
+                 enable_visualization: bool = False,
+                 max_snapshots: int = 1000):
         """
         Initialize protein agent with consciousness coordinates and protein sequence.
 
@@ -50,6 +53,8 @@ class ProteinAgent(IProteinAgent):
             initial_coherence: Initial consciousness coherence (0.2-1.0)
             initial_conformation: Starting conformation (generated if None)
             adaptive_config: Adaptive configuration (created automatically if None)
+            enable_visualization: Enable trajectory snapshot recording
+            max_snapshots: Maximum snapshots to store (prevents memory overflow)
         """
         # Create adaptive config if not provided
         if adaptive_config is None:
@@ -73,6 +78,12 @@ class ProteinAgent(IProteinAgent):
         # Store protein sequence and config
         self._protein_sequence = protein_sequence
         self._adaptive_config = adaptive_config
+        
+        # Visualization settings
+        self._enable_visualization = enable_visualization
+        self._max_snapshots = max_snapshots
+        self._trajectory_snapshots: List[ConformationSnapshot] = []
+        self._agent_id = f"agent_{id(self)}"  # Unique ID based on object identity
 
         # Initialize current conformation
         if initial_conformation is None:
@@ -95,6 +106,10 @@ class ProteinAgent(IProteinAgent):
         
         # Learning improvement tracking
         self._rmsd_history = [self._best_rmsd] if self._best_rmsd != float('inf') else []
+        
+        # Create initial snapshot if visualization enabled
+        if self._enable_visualization:
+            self._capture_snapshot(iteration=0)
 
     def get_consciousness_state(self) -> ConsciousnessState:
         """Get current consciousness coordinates."""
@@ -317,6 +332,9 @@ class ProteinAgent(IProteinAgent):
         decision_time_ms = (time.time() - start_time) * 1000
         self._total_decision_time_ms += decision_time_ms
 
+        # Capture visualization snapshot if enabled
+        self._capture_snapshot(self._iterations_completed)
+
         return outcome
 
     def _create_default_adaptive_config(self, protein_sequence: str) -> AdaptiveConfig:
@@ -531,3 +549,86 @@ class ProteinAgent(IProteinAgent):
         # Percentage improvement
         improvement = ((initial_rmsd - best_rmsd) / initial_rmsd) * 100.0
         return min(100.0, max(0.0, improvement))  # Clamp to 0-100%
+
+    def _capture_snapshot(self, iteration: int) -> None:
+        """
+        Capture current state as a ConformationSnapshot.
+        
+        Args:
+            iteration: Current iteration number
+        """
+        if not self._enable_visualization:
+            return
+        
+        # Create snapshot
+        snapshot = ConformationSnapshot(
+            iteration=iteration,
+            timestamp=time.time(),
+            conformation=self._current_conformation,
+            agent_id=self._agent_id,
+            consciousness_state=self._consciousness.get_coordinates(),
+            behavioral_state=self._behavioral.get_behavioral_data()
+        )
+        
+        self._trajectory_snapshots.append(snapshot)
+        
+        # Downsample if we exceed max_snapshots
+        if len(self._trajectory_snapshots) > self._max_snapshots:
+            # Keep first 20%, last 20%, sample 60% middle at 50% rate
+            keep_start = max(1, int(self._max_snapshots * 0.2))
+            keep_end = max(1, int(self._max_snapshots * 0.2))
+            middle_start = keep_start
+            middle_end = len(self._trajectory_snapshots) - keep_end
+            
+            # Downsample middle by keeping every other snapshot
+            downsampled = (
+                self._trajectory_snapshots[:keep_start] +
+                self._trajectory_snapshots[middle_start:middle_end:2] +
+                self._trajectory_snapshots[-keep_end:]
+            )
+            self._trajectory_snapshots = downsampled
+
+    def get_trajectory_snapshots(self) -> List[ConformationSnapshot]:
+        """
+        Get all trajectory snapshots for this agent.
+        
+        Returns:
+            List of ConformationSnapshots
+        """
+        return self._trajectory_snapshots.copy()
+
+    def get_agent_id(self) -> str:
+        """
+        Get unique agent identifier.
+        
+        Returns:
+            Agent ID string
+        """
+        return self._agent_id
+
+    def set_agent_id(self, agent_id: str) -> None:
+        """
+        Set custom agent identifier.
+        
+        Args:
+            agent_id: New agent ID
+        """
+        self._agent_id = agent_id
+
+    def enable_visualization(self, enable: bool = True, max_snapshots: int = 1000) -> None:
+        """
+        Enable or disable visualization snapshot recording.
+        
+        Args:
+            enable: Whether to enable visualization
+            max_snapshots: Maximum snapshots to store
+        """
+        self._enable_visualization = enable
+        self._max_snapshots = max_snapshots
+        
+        if not enable:
+            self._trajectory_snapshots.clear()
+
+    def clear_trajectory_snapshots(self) -> None:
+        """Clear all stored trajectory snapshots to free memory."""
+        self._trajectory_snapshots.clear()
