@@ -10,7 +10,7 @@ import random
 from typing import List, Tuple, Optional
 
 from .interfaces import IMultiAgentCoordinator, IProteinAgent, ISharedMemoryPool
-from .models import ExplorationResults, ExplorationMetrics, Conformation
+from .models import ExplorationResults, ExplorationMetrics, Conformation, AdaptiveConfig, ProteinSizeClass
 from .protein_agent import ProteinAgent
 from .memory_system import SharedMemoryPool
 from .config import AGENT_DIVERSITY_PROFILES, AGENT_PROFILE_CAUTIOUS_RATIO, AGENT_PROFILE_BALANCED_RATIO, AGENT_PROFILE_AGGRESSIVE_RATIO
@@ -90,11 +90,36 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
                     profile['coherence_range'][1]
                 )
 
-                # Create agent with sampled coordinates
+                # Create adaptive config based on protein size and agent profile
+                residue_count = len(self._protein_sequence)
+                if residue_count < 50:
+                    size_class = ProteinSizeClass.SMALL
+                elif residue_count <= 150:
+                    size_class = ProteinSizeClass.MEDIUM
+                else:
+                    size_class = ProteinSizeClass.LARGE
+
+                adaptive_config = AdaptiveConfig(
+                    size_class=size_class,
+                    residue_count=residue_count,
+                    initial_frequency_range=profile['frequency_range'],
+                    initial_coherence_range=profile['coherence_range'],
+                    stuck_detection_window=10,  # Default window
+                    stuck_detection_threshold=5.0,  # Default threshold
+                    memory_significance_threshold=0.3,
+                    max_memories_per_agent=50,
+                    convergence_energy_threshold=10.0,
+                    convergence_rmsd_threshold=2.0,
+                    max_iterations=1000,
+                    checkpoint_interval=100
+                )
+
+                # Create agent with adaptive config and sampled coordinates
                 agent = ProteinAgent(
                     protein_sequence=self._protein_sequence,
                     initial_frequency=frequency,
-                    initial_coherence=coherence
+                    initial_coherence=coherence,
+                    adaptive_config=adaptive_config
                 )
 
                 self._agents.append(agent)

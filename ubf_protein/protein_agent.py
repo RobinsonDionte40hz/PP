@@ -13,11 +13,13 @@ from typing import Optional, Dict
 from .interfaces import IProteinAgent
 from .models import (
     Conformation, ConformationalOutcome, ConformationalMemory,
-    ConsciousnessCoordinates, BehavioralStateData
+    ConsciousnessCoordinates, BehavioralStateData, AdaptiveConfig, ProteinSizeClass
 )
 from .consciousness import ConsciousnessState
 from .behavioral_state import BehavioralState
 from .memory_system import MemorySystem
+from .local_minima_detector import LocalMinimaDetector
+from .config import BASE_STUCK_DETECTION_WINDOW, BASE_STUCK_DETECTION_THRESHOLD
 
 
 class ProteinAgent(IProteinAgent):
@@ -32,7 +34,8 @@ class ProteinAgent(IProteinAgent):
                  protein_sequence: str,
                  initial_frequency: float = 9.0,
                  initial_coherence: float = 0.6,
-                 initial_conformation: Optional[Conformation] = None):
+                 initial_conformation: Optional[Conformation] = None,
+                 adaptive_config: Optional[AdaptiveConfig] = None):
         """
         Initialize protein agent with consciousness coordinates and protein sequence.
 
@@ -41,7 +44,12 @@ class ProteinAgent(IProteinAgent):
             initial_frequency: Initial consciousness frequency (3-15 Hz)
             initial_coherence: Initial consciousness coherence (0.2-1.0)
             initial_conformation: Starting conformation (generated if None)
+            adaptive_config: Adaptive configuration (created automatically if None)
         """
+        # Create adaptive config if not provided
+        if adaptive_config is None:
+            adaptive_config = self._create_default_adaptive_config(protein_sequence)
+
         # Initialize consciousness system
         self._consciousness = ConsciousnessState(initial_frequency, initial_coherence)
 
@@ -51,8 +59,12 @@ class ProteinAgent(IProteinAgent):
         # Initialize memory system
         self._memory = MemorySystem()
 
-        # Store protein sequence
+        # Initialize local minima detector
+        self._local_minima_detector = LocalMinimaDetector(adaptive_config)
+
+        # Store protein sequence and config
         self._protein_sequence = protein_sequence
+        self._adaptive_config = adaptive_config
 
         # Initialize current conformation
         if initial_conformation is None:
@@ -159,6 +171,43 @@ class ProteinAgent(IProteinAgent):
         # Update consciousness based on outcome
         self._consciousness.update_from_outcome(outcome)
 
+        # Check for local minima and apply escape strategies if needed
+        is_stuck = self._local_minima_detector.update(outcome.new_conformation.energy, self._iterations_completed)
+        if is_stuck:
+            # Apply escape strategy
+            current_coords = self._consciousness.get_coordinates()
+            escape_strategy = self._local_minima_detector.get_escape_strategy(
+                current_coords.frequency, current_coords.coherence
+            )
+
+            # Apply escape adjustment to consciousness coordinates
+            new_frequency = max(3.0, min(15.0, current_coords.frequency + escape_strategy['frequency_adjustment']))
+            new_coherence = max(0.2, min(1.0, current_coords.coherence + escape_strategy['coherence_adjustment']))
+
+            # Directly update coordinates (since ConsciousnessState doesn't have set_coordinates)
+            self._consciousness._coordinates.frequency = new_frequency
+            self._consciousness._coordinates.coherence = new_coherence
+
+            # Track escape attempt
+            self._stuck_in_minima_count += 1
+
+            # Check if escape was successful (energy improved)
+            if outcome.new_conformation.energy < self._current_conformation.energy:
+                self._successful_escapes += 1
+                self._local_minima_detector.record_escape_success(self._iterations_completed)
+
+                # Create high-significance memory for successful escape
+                # Manually create memory with high significance
+                escape_memory = self._memory.create_memory_from_outcome(
+                    outcome,
+                    self._consciousness.get_coordinates(),
+                    self._behavioral.get_behavioral_data()
+                )
+                # Override significance for successful escape
+                escape_memory.significance = 0.8
+                self._memory.store_memory(escape_memory)
+                self._memories_created += 1
+
         # Check if behavioral state needs regeneration
         regenerated_behavioral = self._behavioral.regenerate_if_needed(
             self._consciousness.get_coordinates()
@@ -195,24 +244,39 @@ class ProteinAgent(IProteinAgent):
 
         return outcome
 
-    def get_current_conformation(self) -> Conformation:
-        """Get current protein conformation."""
-        return self._current_conformation
+    def _create_default_adaptive_config(self, protein_sequence: str) -> AdaptiveConfig:
+        """
+        Create a default adaptive configuration based on protein size.
 
-    def get_exploration_metrics(self) -> dict:
-        """Get current exploration metrics."""
-        return {
-            "iterations_completed": self._iterations_completed,
-            "conformations_explored": self._conformations_explored,
-            "memories_created": self._memories_created,
-            "best_energy": self._best_energy,
-            "best_rmsd": self._best_rmsd,
-            "avg_decision_time_ms": (
-                self._total_decision_time_ms / max(1, self._iterations_completed)
-            ),
-            "stuck_in_minima_count": self._stuck_in_minima_count,
-            "successful_escapes": self._successful_escapes
-        }
+        Args:
+            protein_sequence: Amino acid sequence
+
+        Returns:
+            Default AdaptiveConfig for the protein size
+        """
+        residue_count = len(protein_sequence)
+
+        if residue_count < 50:
+            size_class = ProteinSizeClass.SMALL
+        elif residue_count <= 150:
+            size_class = ProteinSizeClass.MEDIUM
+        else:
+            size_class = ProteinSizeClass.LARGE
+
+        return AdaptiveConfig(
+            size_class=size_class,
+            residue_count=residue_count,
+            initial_frequency_range=(3.0, 15.0),
+            initial_coherence_range=(0.2, 1.0),
+            stuck_detection_window=BASE_STUCK_DETECTION_WINDOW,
+            stuck_detection_threshold=BASE_STUCK_DETECTION_THRESHOLD,
+            memory_significance_threshold=0.3,
+            max_memories_per_agent=50,
+            convergence_energy_threshold=10.0,
+            convergence_rmsd_threshold=2.0,
+            max_iterations=1000,
+            checkpoint_interval=100
+        )
 
     def _generate_initial_conformation(self) -> Conformation:
         """
@@ -248,36 +312,6 @@ class ProteinAgent(IProteinAgent):
             available_move_types=["backbone_rotation", "sidechain_adjust"],
             structural_constraints={}
         )
-
-    def _simulate_energy_change(self) -> float:
-        """
-        Simulate energy change based on current behavioral state.
-
-        This is a simplified simulation that will be replaced with
-        actual physics calculations in later tasks.
-        """
-        # Get behavioral preferences
-        exploration_energy = self._behavioral.get_exploration_energy()
-        risk_tolerance = self._behavioral.get_risk_tolerance()
-        hydrophobic_drive = self._behavioral.get_hydrophobic_drive()
-
-        # Simple simulation: higher exploration energy and risk tolerance
-        # tend to find better moves, but with more variance
-        base_change = (exploration_energy - 0.5) * 100  # -50 to +50
-        risk_factor = (risk_tolerance - 0.5) * 50       # -25 to +25
-        hydrophobic_factor = (hydrophobic_drive - 0.5) * 30  # -15 to +15
-
-        # Add some randomness
-        import random
-        noise = random.gauss(0, 20)
-
-        total_change = base_change + risk_factor + hydrophobic_factor + noise
-
-        # Memory influence (if available)
-        memory_influence = self._memory.calculate_memory_influence("backbone_rotation")
-        total_change *= memory_influence
-
-        return total_change
 
     def _get_physics_factors(self, move) -> Dict[str, float]:
         """
@@ -378,3 +412,22 @@ class ProteinAgent(IProteinAgent):
                        0.2 * rmsd_significance)
 
         return min(1.0, significance)
+
+    def get_current_conformation(self) -> Conformation:
+        """Get current protein conformation."""
+        return self._current_conformation
+
+    def get_exploration_metrics(self) -> Dict[str, float]:
+        """Get current exploration metrics."""
+        return {
+            "iterations_completed": self._iterations_completed,
+            "conformations_explored": self._conformations_explored,
+            "memories_created": self._memories_created,
+            "best_energy": self._best_energy,
+            "best_rmsd": self._best_rmsd,
+            "avg_decision_time_ms": (
+                self._total_decision_time_ms / max(1, self._iterations_completed)
+            ),
+            "stuck_in_minima_count": self._stuck_in_minima_count,
+            "successful_escapes": self._successful_escapes
+        }
