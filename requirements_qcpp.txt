@@ -1,0 +1,8 @@
+# QCPP System Requirements
+numpy>=1.20.0
+scipy>=1.7.0
+matplotlib>=3.4.0
+biopython>=1.79
+pandas>=1.2.0
+scikit-learn>=0.24.0
+statsmodels>=0.13.0
