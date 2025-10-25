@@ -1,8 +1,9 @@
-protein_id,melting_temp_C,delta_G_unfolding_kcal_mol,reference
+PDB_ID,Melting_Temperature_C,DeltaG_kcal_mol,Reference
 1UBQ,85.4,6.7,PMC2242557
 1LYZ,74.0,10.5,Protein Stable PDF
 1TIM,56.2,5.4,PMC2242557
 1PRN,60.5,9.8,MDPI
 3SSI,98.7,11.2,PMC2242557
-2LZM,64.2,8.3,NSF PAR1UBQ,85.4,7.4,Makhatadze et al. 1995
+2LZM,64.2,8.3,NSF PAR1
+1UBQ,85.4,7.4,Makhatadze et al. 1995
 1LYZ,74.0,10.5,Takano et al. 1999
