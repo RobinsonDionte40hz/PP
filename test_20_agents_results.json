@@ -1,0 +1,39 @@
+{
+  "experiment_info": {
+    "protein": "1ubq",
+    "num_agents": 20,
+    "iterations_per_agent": 200,
+    "total_conformations": 4000,
+    "timestamp": "2025-10-25T13:50:47.096459"
+  },
+  "exploration_results": {
+    "best_energy": -281.59575560919944,
+    "best_rmsd_to_native": Infinity,
+    "estimated_rmsd": 7.14414855367802,
+    "exploration_time_s": 10.778497219085693,
+    "throughput_conf_per_s": 371.1092482277699
+  },
+  "qcpp_integration": {
+    "total_analyses": 683,
+    "cache_hits": 200,
+    "cache_hit_rate": 29.282576866764277,
+    "avg_calculation_time_ms": 34.82598616123897
+  },
+  "qcpp_prediction": {
+    "avg_qcp": 3.745486962432387,
+    "stability_score": 0.7490973924864774,
+    "predicted_temperature": 79.9638956994591,
+    "predicted_deltaG": 5.9927791398918195
+  },
+  "rmse_validation": {
+    "temperature_rmse": 5.436104300540904,
+    "deltaG_rmse": 0.7072208601081806,
+    "temperature_error_percent": 12.642103024513732,
+    "deltaG_error_percent": 12.193463105313459,
+    "quality": "GOOD"
+  },
+  "experimental_data": {
+    "melting_temperature": 85.4,
+    "deltaG": 6.7
+  }
+}

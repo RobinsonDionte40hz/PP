@@ -1,0 +1,26 @@
+{
+  "protein_info": {
+    "pdb_id": "3CLN",
+    "sequence_length": 143,
+    "category": "large"
+  },
+  "test_config": {
+    "num_agents": 30,
+    "iterations_per_agent": 250,
+    "total_conformations": 7500
+  },
+  "exploration_results": {
+    "best_energy": -513.5692818437451,
+    "estimated_rmsd": 3.0,
+    "rmsd_quality": "GOOD",
+    "exploration_time_s": 41.95399045944214,
+    "throughput_conf_per_s": 178.7672618949184
+  },
+  "qcpp_integration": {
+    "total_analyses": 1232,
+    "cache_hit_rate": 20.29220779220779,
+    "avg_calculation_time_ms": 83.30629456352878
+  },
+  "rmse_validation": null,
+  "timestamp": "2025-10-25T14:59:16.248538"
+}

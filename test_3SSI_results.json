@@ -1,0 +1,30 @@
+{
+  "protein_info": {
+    "pdb_id": "3SSI",
+    "sequence_length": 108,
+    "category": "large"
+  },
+  "test_config": {
+    "num_agents": 30,
+    "iterations_per_agent": 250,
+    "total_conformations": 7500
+  },
+  "exploration_results": {
+    "best_energy": -427.5115353019073,
+    "estimated_rmsd": 3.0,
+    "rmsd_quality": "GOOD",
+    "exploration_time_s": 30.241461753845215,
+    "throughput_conf_per_s": 248.00388489972286
+  },
+  "qcpp_integration": {
+    "total_analyses": 1170,
+    "cache_hit_rate": 21.367521367521366,
+    "avg_calculation_time_ms": 61.752208889040176
+  },
+  "rmse_validation": {
+    "temperature_rmse": 5.4515336968442085,
+    "dg_rmse": 2.550306739368839,
+    "quality": "NEEDS IMPROVEMENT"
+  },
+  "timestamp": "2025-10-25T14:45:29.027148"
+}

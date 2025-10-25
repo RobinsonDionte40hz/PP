@@ -1,0 +1,26 @@
+{
+  "protein_info": {
+    "pdb_id": "2MR9",
+    "sequence_length": 44,
+    "category": "small"
+  },
+  "test_config": {
+    "num_agents": 15,
+    "iterations_per_agent": 300,
+    "total_conformations": 4500
+  },
+  "exploration_results": {
+    "best_energy": -202.06796637221336,
+    "estimated_rmsd": 9.927621176972533,
+    "rmsd_quality": "NEEDS IMPROVEMENT",
+    "exploration_time_s": 7.713288068771362,
+    "throughput_conf_per_s": 583.4087823348724
+  },
+  "qcpp_integration": {
+    "total_analyses": 627,
+    "cache_hit_rate": 47.84688995215311,
+    "avg_calculation_time_ms": 13.895344696166603
+  },
+  "rmse_validation": null,
+  "timestamp": "2025-10-25T14:08:25.367644"
+}

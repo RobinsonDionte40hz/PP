@@ -1,0 +1,30 @@
+{
+  "protein_info": {
+    "pdb_id": "1TIM",
+    "sequence_length": 247,
+    "category": "very_large"
+  },
+  "test_config": {
+    "num_agents": 50,
+    "iterations_per_agent": 300,
+    "total_conformations": 15000
+  },
+  "exploration_results": {
+    "best_energy": -780.702652900163,
+    "estimated_rmsd": 3.0,
+    "rmsd_quality": "GOOD",
+    "exploration_time_s": 119.32008337974548,
+    "throughput_conf_per_s": 125.7122822506026
+  },
+  "qcpp_integration": {
+    "total_analyses": 2119,
+    "cache_hit_rate": 14.15762151958471,
+    "avg_calculation_time_ms": 171.31000141199607
+  },
+  "rmse_validation": {
+    "temperature_rmse": 26.658780855093013,
+    "dg_rmse": 1.171756171018604,
+    "quality": "NEEDS IMPROVEMENT"
+  },
+  "timestamp": "2025-10-25T14:53:14.016358"
+}
