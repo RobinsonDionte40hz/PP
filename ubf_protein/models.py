@@ -119,6 +119,9 @@ class Conformation:
     # Capability metadata (enables mappless matching)
     available_move_types: List[str]  # What moves are feasible from this state
     structural_constraints: Dict[str, Any]  # Constraints limiting moves
+    
+    # Energy components (for debugging and analysis)
+    energy_components: Optional[Dict[str, float]] = None  # Bond, angle, dihedral, VDW, etc.
 
     def get_capabilities(self) -> Dict[str, bool]:
         """Return capability flags for mappless move matching"""

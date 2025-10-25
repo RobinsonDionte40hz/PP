@@ -11,7 +11,7 @@ import random
 import logging
 from typing import Optional, Dict, List
 
-from .interfaces import IProteinAgent
+from .interfaces import IProteinAgent, IPhysicsCalculator
 from .models import (
     Conformation, ConformationalOutcome, ConformationalMemory,
     ConsciousnessCoordinates, BehavioralStateData, AdaptiveConfig, ProteinSizeClass,
@@ -22,7 +22,11 @@ from .behavioral_state import BehavioralState
 from .memory_system import MemorySystem
 from .local_minima_detector import LocalMinimaDetector
 from .structural_validation import StructuralValidation
-from .config import BASE_STUCK_DETECTION_WINDOW, BASE_STUCK_DETECTION_THRESHOLD
+from .config import (
+    BASE_STUCK_DETECTION_WINDOW, BASE_STUCK_DETECTION_THRESHOLD,
+    ENERGY_VALIDATION_THRESHOLD
+)
+from . import config as config_module
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -74,6 +78,20 @@ class ProteinAgent(IProteinAgent):
 
         # Initialize structural validator
         self._validator = StructuralValidation()
+        
+        # Initialize energy calculator (if enabled)
+        self._energy_calculator: Optional[IPhysicsCalculator] = None
+        if config_module.USE_MOLECULAR_MECHANICS_ENERGY:
+            try:
+                from .energy_function import MolecularMechanicsEnergy
+                self._energy_calculator = MolecularMechanicsEnergy()
+                logger.info("MolecularMechanicsEnergy calculator initialized")
+            except ImportError as e:
+                logger.warning(f"Failed to import MolecularMechanicsEnergy: {e}")
+                logger.warning("Falling back to simplified energy calculation")
+            except Exception as e:
+                logger.error(f"Error initializing MolecularMechanicsEnergy: {e}")
+                logger.warning("Falling back to simplified energy calculation")
 
         # Store protein sequence and config
         self._protein_sequence = protein_sequence
@@ -442,7 +460,7 @@ class ProteinAgent(IProteinAgent):
         # Calculate actual energy change (may differ from estimate)
         actual_energy_change = move.estimated_energy_change * (0.8 + random.random() * 0.4)  # ±20% variation
 
-        # Create new conformation
+        # Create new conformation with preliminary energy
         new_conformation = Conformation(
             conformation_id=f"conf_{self._iterations_completed + 1}_{move.move_id}",
             sequence=self._protein_sequence,
@@ -453,8 +471,43 @@ class ProteinAgent(IProteinAgent):
             phi_angles=self._current_conformation.phi_angles,
             psi_angles=self._current_conformation.psi_angles,
             available_move_types=self._current_conformation.available_move_types,
-            structural_constraints=self._current_conformation.structural_constraints
+            structural_constraints=self._current_conformation.structural_constraints,
+            energy_components=None  # Will be populated if MM energy is calculated
         )
+
+        # Recalculate energy using molecular mechanics if available
+        if self._energy_calculator is not None:
+            try:
+                # Use calculate_with_components to get both total and breakdown
+                if hasattr(self._energy_calculator, 'calculate_with_components'):
+                    energy_dict = self._energy_calculator.calculate_with_components(new_conformation)  # type: ignore
+                    new_conformation.energy = energy_dict['total']
+                    # Store components with consistent naming
+                    new_conformation.energy_components = {
+                        'total_energy': energy_dict['total'],
+                        'bond_energy': energy_dict['bond'],
+                        'angle_energy': energy_dict['angle'],
+                        'dihedral_energy': energy_dict['dihedral'],
+                        'vdw_energy': energy_dict['vdw'],
+                        'electrostatic_energy': energy_dict['electrostatic'],
+                        'hbond_energy': energy_dict['hbond'],
+                        'compactness_bonus': energy_dict['compactness']
+                    }
+                else:
+                    # Fall back to basic calculate method
+                    new_conformation.energy = self._energy_calculator.calculate(new_conformation)
+                
+                # Validate energy is physically reasonable
+                if abs(new_conformation.energy) > ENERGY_VALIDATION_THRESHOLD:
+                    logger.warning(
+                        f"Unrealistic energy detected: {new_conformation.energy:.2f} kcal/mol "
+                        f"(threshold: {ENERGY_VALIDATION_THRESHOLD})"
+                    )
+                    
+            except Exception as e:
+                logger.warning(f"Error calculating molecular mechanics energy: {e}")
+                logger.debug(f"Falling back to estimated energy for this conformation")
+                # Keep the estimated energy if MM calculation fails
 
         # Update secondary structure if move creates structure
         if move.move_type.value in ['helix_formation', 'sheet_formation']:
