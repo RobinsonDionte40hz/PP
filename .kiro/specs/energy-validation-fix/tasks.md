@@ -20,7 +20,7 @@
   - Test total energy is positive/high for extended chain
   - _Requirements: 5.1, 5.5_
 
-- [ ] 2. Integrate Energy Function with UBF System
+- [x] 2. Integrate Energy Function with UBF System
   - Update `protein_agent.py` to use `MolecularMechanicsEnergy` calculator
   - Modify `_execute_move` method to calculate energy using new function
   - Update `Conformation` model to include `energy_components` field for debugging
@@ -29,7 +29,7 @@
   - Add energy validation checks (warn if |energy| > 10000 kcal/mol)
   - _Requirements: 1.7, 6.1, 6.2, 6.4, 6.5_
 
-- [ ] 2.1 Write integration tests for energy function
+- [x] 2.1 Write integration tests for energy function
   - Test energy calculation integrates correctly with agent exploration
   - Test energy decreases during successful moves
   - Test energy validation catches unrealistic values
@@ -46,7 +46,7 @@
   - Add performance optimization to complete in <100ms for 500 residues
   - _Requirements: 2.1, 2.2, 2.3, 2.6, 2.7_
 
-- [ ] 3.1 Write unit tests for RMSD calculator
+- [x] 3.1 Write unit tests for RMSD calculator
   - Test RMSD = 0 for identical structures
   - Test RMSD ≈ 0 after translation (with alignment)
   - Test RMSD ≈ 0 after rotation (with alignment)
@@ -66,7 +66,7 @@
   - Add clear error messages for loading failures
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7_
 
-- [ ] 4.1 Write unit tests for PDB loader
+- [x] 4.1 Write unit tests for PDB loader
   - Test loading local PDB file
   - Test extracting Cα coordinates
   - Test extracting sequence information
@@ -83,7 +83,7 @@
   - Implement graceful error handling for RMSD calculation failures
   - _Requirements: 2.4, 2.5, 6.4_
 
-- [ ] 5.1 Write integration tests for RMSD validation
+- [x] 5.1 Write integration tests for RMSD validation
   - Test RMSD calculation integrates with agent exploration
   - Test RMSD improves during exploration toward native
   - Test RMSD calculation handles missing native structure gracefully
@@ -100,14 +100,14 @@
   - Implement baseline comparison (random sampling, Monte Carlo)
   - _Requirements: 1.6, 4.1, 4.2, 4.3, 4.4_
 
-- [ ] 6.1 Write tests for validation suite
+- [x] 6.1 Write tests for validation suite
   - Test validation runs successfully on test proteins
   - Test validation report includes all required metrics
   - Test quality assessment logic
   - Test baseline comparison
   - _Requirements: 5.2_
 
-- [ ] 7. Update Reporting and Documentation
+- [x] 7. Update Reporting and Documentation
   - Update `run_multi_agent.py` to include RMSD and energy validation in output
   - Modify test report format to show energy components breakdown
   - Add quality flags (high/moderate/poor) to reports based on RMSD
@@ -118,7 +118,7 @@
   - Create example script demonstrating validation usage
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 4.8_
 
-- [ ] 8. Performance Optimization
+- [x] 8. Performance Optimization
   - Implement neighbor list for non-bonded interactions (VDW, electrostatics)
   - Add caching for force field parameter lookups
   - Profile energy calculation and optimize hot paths
@@ -127,14 +127,14 @@
   - Verify agent decision latency remains <2ms
   - _Requirements: 2.7, 5.4_
 
-- [ ] 8.1 Write performance tests
+- [x] 8.1 Write performance tests
   - Benchmark energy calculation speed
   - Benchmark RMSD calculation speed
   - Benchmark overall agent decision latency
   - Test performance with various protein sizes
   - _Requirements: 5.4_
 
-- [ ] 9. Validation and Testing
+- [x] 9. Validation and Testing
   - Run validation suite on all 5 test proteins
   - Verify ubiquitin (1UBQ) energy is between -120 and -80 kcal/mol
   - Verify all folded proteins have negative energy

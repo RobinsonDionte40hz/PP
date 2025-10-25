@@ -277,6 +277,207 @@ class TestPerformance(unittest.TestCase):
                        f"Consciousness update too slow: {avg_time_us:.3f}μs")
 
 
+class TestEnergyPerformance(unittest.TestCase):
+    """Performance tests for molecular mechanics energy calculation (Task 8.1)."""
+    
+    def test_energy_100_residues_target(self):
+        """Test energy calculation for 100-residue protein (REQUIREMENT: <50ms)."""
+        from ubf_protein.energy_function import MolecularMechanicsEnergy
+        from ubf_protein.models import Conformation
+        
+        # Create test protein
+        num_residues = 100
+        sequence = "A" * num_residues
+        atom_coords = [(i * 3.8, 0.0, 0.0) for i in range(num_residues)]
+        phi_angles = [-60.0] * num_residues
+        psi_angles = [-45.0] * num_residues
+        
+        conformation = Conformation(
+            sequence=sequence,
+            conformation_id="energy_perf_test",
+            atom_coordinates=atom_coords,
+            phi_angles=phi_angles,
+            psi_angles=psi_angles,
+            energy=0.0,
+            rmsd_to_native=None,
+            secondary_structure=["C"] * num_residues,
+            available_move_types=[],
+            structural_constraints={}
+        )
+        
+        energy_calc = MolecularMechanicsEnergy()
+        
+        # Warmup
+        for _ in range(5):
+            energy_calc.calculate(conformation)
+        
+        # Benchmark
+        iterations = 100
+        times = []
+        for _ in range(iterations):
+            start = time.perf_counter()
+            energy = energy_calc.calculate(conformation)
+            elapsed = (time.perf_counter() - start) * 1000
+            times.append(elapsed)
+        
+        avg_time = sum(times) / len(times)
+        min_time = min(times)
+        max_time = max(times)
+        
+        print(f"\n[Energy 100-res] Average: {avg_time:.2f}ms, Min: {min_time:.2f}ms, Max: {max_time:.2f}ms")
+        print(f"[Energy 100-res] Target: <50ms")
+        print(f"[Energy 100-res] Status: {'✅ PASS' if avg_time < 50.0 else '❌ FAIL'}")
+        
+        # CRITICAL REQUIREMENT
+        self.assertLess(avg_time, 50.0, 
+                       f"Energy calculation FAILED target: {avg_time:.2f}ms > 50ms")
+    
+    def test_energy_200_residues(self):
+        """Test energy calculation for 200-residue protein."""
+        from ubf_protein.energy_function import MolecularMechanicsEnergy
+        from ubf_protein.models import Conformation
+        
+        # Create test protein
+        num_residues = 200
+        sequence = "A" * num_residues
+        atom_coords = [(i * 3.8, 0.0, 0.0) for i in range(num_residues)]
+        phi_angles = [-60.0] * num_residues
+        psi_angles = [-45.0] * num_residues
+        
+        conformation = Conformation(
+            sequence=sequence,
+            conformation_id="energy_perf_test_200",
+            atom_coordinates=atom_coords,
+            phi_angles=phi_angles,
+            psi_angles=psi_angles,
+            energy=0.0,
+            rmsd_to_native=None,
+            secondary_structure=["C"] * num_residues,
+            available_move_types=[],
+            structural_constraints={}
+        )
+        
+        energy_calc = MolecularMechanicsEnergy()
+        
+        # Warmup
+        for _ in range(5):
+            energy_calc.calculate(conformation)
+        
+        # Benchmark
+        iterations = 50
+        times = []
+        for _ in range(iterations):
+            start = time.perf_counter()
+            energy = energy_calc.calculate(conformation)
+            elapsed = (time.perf_counter() - start) * 1000
+            times.append(elapsed)
+        
+        avg_time = sum(times) / len(times)
+        
+        print(f"\n[Energy 200-res] Average: {avg_time:.2f}ms")
+        print(f"[Energy 200-res] Target: <100ms")
+        print(f"[Energy 200-res] Status: {'✅ PASS' if avg_time < 100.0 else '❌ FAIL'}")
+        
+        self.assertLess(avg_time, 100.0,
+                       f"Energy calculation too slow: {avg_time:.2f}ms")
+
+
+class TestRMSDPerformance(unittest.TestCase):
+    """Performance tests for RMSD calculation (Task 8.1)."""
+    
+    def test_rmsd_500_residues_target(self):
+        """Test RMSD calculation for 500-residue protein (REQUIREMENT: <100ms)."""
+        from ubf_protein.rmsd_calculator import RMSDCalculator
+        import math
+        
+        # Create test structures
+        num_residues = 500
+        
+        # Structure 1: extended
+        coords1 = [(i * 3.8, 0.0, 0.0) for i in range(num_residues)]
+        
+        # Structure 2: helical
+        coords2 = []
+        for i in range(num_residues):
+            angle = math.radians(100 * i)
+            radius = 2.3
+            x = radius * math.cos(angle)
+            y = radius * math.sin(angle)
+            z = i * 1.5
+            coords2.append((x, y, z))
+        
+        calculator = RMSDCalculator(align_structures=True)
+        
+        # Warmup
+        for _ in range(5):
+            calculator.calculate_rmsd(coords1, coords2, calculate_metrics=True)
+        
+        # Benchmark
+        iterations = 50
+        times = []
+        for _ in range(iterations):
+            start = time.perf_counter()
+            result = calculator.calculate_rmsd(coords1, coords2, calculate_metrics=True)
+            elapsed = (time.perf_counter() - start) * 1000
+            times.append(elapsed)
+        
+        avg_time = sum(times) / len(times)
+        min_time = min(times)
+        max_time = max(times)
+        
+        print(f"\n[RMSD 500-res] Average: {avg_time:.2f}ms, Min: {min_time:.2f}ms, Max: {max_time:.2f}ms")
+        print(f"[RMSD 500-res] Target: <100ms")
+        print(f"[RMSD 500-res] Status: {'✅ PASS' if avg_time < 100.0 else '❌ FAIL'}")
+        
+        # CRITICAL REQUIREMENT
+        self.assertLess(avg_time, 100.0,
+                       f"RMSD calculation FAILED target: {avg_time:.2f}ms > 100ms")
+    
+    def test_rmsd_250_residues(self):
+        """Test RMSD calculation for 250-residue protein."""
+        from ubf_protein.rmsd_calculator import RMSDCalculator
+        import math
+        
+        # Create test structures
+        num_residues = 250
+        
+        coords1 = [(i * 3.8, 0.0, 0.0) for i in range(num_residues)]
+        
+        coords2 = []
+        for i in range(num_residues):
+            angle = math.radians(100 * i)
+            radius = 2.3
+            x = radius * math.cos(angle)
+            y = radius * math.sin(angle)
+            z = i * 1.5
+            coords2.append((x, y, z))
+        
+        calculator = RMSDCalculator(align_structures=True)
+        
+        # Warmup
+        for _ in range(5):
+            calculator.calculate_rmsd(coords1, coords2)
+        
+        # Benchmark
+        iterations = 50
+        times = []
+        for _ in range(iterations):
+            start = time.perf_counter()
+            result = calculator.calculate_rmsd(coords1, coords2)
+            elapsed = (time.perf_counter() - start) * 1000
+            times.append(elapsed)
+        
+        avg_time = sum(times) / len(times)
+        
+        print(f"\n[RMSD 250-res] Average: {avg_time:.2f}ms")
+        print(f"[RMSD 250-res] Target: <50ms")
+        print(f"[RMSD 250-res] Status: {'✅ PASS' if avg_time < 50.0 else '❌ FAIL'}")
+        
+        self.assertLess(avg_time, 50.0,
+                       f"RMSD calculation too slow: {avg_time:.2f}ms")
+
+
 if __name__ == '__main__':
     # Run with verbose output to see performance metrics
     unittest.main(verbosity=2)
+

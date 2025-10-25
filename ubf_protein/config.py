@@ -8,7 +8,7 @@ COHERENCE_MAX = 1.0
 BEHAVIORAL_STATE_REGEN_THRESHOLD = 0.3
 
 # Memory parameters (base values, can be overridden by AdaptiveConfig)
-MEMORY_SIGNIFICANCE_THRESHOLD = 0.3
+MEMORY_SIGNIFICANCE_THRESHOLD = 0.15  # Lowered to enable more learning
 MAX_MEMORIES_PER_AGENT = 50
 MEMORY_INFLUENCE_MIN = 0.8
 MEMORY_INFLUENCE_MAX = 1.5
@@ -31,6 +31,12 @@ ESCAPE_COHERENCE_REDUCTION = 0.1
 # Energy calculation
 USE_MOLECULAR_MECHANICS_ENERGY = True  # Use MolecularMechanicsEnergy calculator
 ENERGY_VALIDATION_THRESHOLD = 10000.0  # kcal/mol - warn if |energy| exceeds this
+
+# Move acceptance parameters
+INITIAL_TEMPERATURE = 300.0  # Kelvin - starting temperature for MC acceptance
+TEMPERATURE_DECAY_RATE = 0.9995  # Temperature decay per iteration (simulated annealing)
+MIN_TEMPERATURE = 50.0  # Minimum temperature (don't cool below this)
+BOLTZMANN_CONSTANT = 0.001987  # kcal/(mol·K) - for MC acceptance probability
 
 # Performance targets
 TARGET_DECISION_LATENCY_MS = 2.0

@@ -158,8 +158,8 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
                 outcome = agent.explore_step()
                 iteration_conformations += 1
 
-                # Share significant memories with the pool
-                if outcome.significance >= 0.7:  # Same threshold as shared pool
+                # Share significant memories with the pool (lowered threshold)
+                if outcome.significance >= 0.3:  # Lowered from 0.7 to enable more sharing
                     from .memory_system import MemorySystem
                     memory_system = agent.get_memory_system()
                     # Get the most recent memory (should be the one from this outcome)
@@ -204,6 +204,10 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
             # Optional: Log progress every 10 iterations
             if (iteration + 1) % 10 == 0:
                 print(f"Completed iteration {iteration + 1}/{iterations}")
+            
+            # Sync shared memories to agents every 20 iterations
+            if (iteration + 1) % 20 == 0:
+                self._sync_shared_memories_to_agents()
 
         # Collect final agent metrics
         for i, agent in enumerate(self._agents):
@@ -444,6 +448,45 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
         """
         return self._adaptive_config
     
+    def _sync_shared_memories_to_agents(self) -> None:
+        """
+        Sync shared memories from the pool to individual agents.
+        
+        Allows agents to learn from each other's experiences by
+        importing high-value memories from the shared pool.
+        """
+        try:
+            # Get shared memories for different move types
+            move_types = ["backbone_rotation", "sidechain_adjust", "helix_formation", 
+                         "sheet_formation", "hydrophobic_collapse"]
+            
+            shared_memories = []
+            for move_type in move_types:
+                memories = self._shared_memory_pool.retrieve_shared_memories(move_type, max_count=2)
+                shared_memories.extend(memories)
+            
+            if not shared_memories:
+                return
+            
+            # Distribute top memories to each agent
+            for agent in self._agents:
+                memory_system = agent.get_memory_system()
+                
+                # Import shared memories (top 5 per agent to avoid overwhelming)
+                for memory in shared_memories[:5]:
+                    try:
+                        # Store memory in agent's memory system
+                        memory_system.store_memory(memory)
+                    except Exception as e:
+                        # Ignore individual memory import failures
+                        pass
+            
+            logger.debug(f"Synced {len(shared_memories)} shared memories to {len(self._agents)} agents")
+        
+        except Exception as e:
+            # Non-critical operation - log and continue
+            logger.warning(f"Error syncing shared memories: {e}")
+
     def get_configuration_summary(self) -> str:
         """
         Get human-readable summary of the adaptive configuration.

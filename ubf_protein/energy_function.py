@@ -295,15 +295,78 @@ class MolecularMechanicsEnergy(IPhysicsCalculator):
         return math.acos(cos_angle)
     
     def _build_neighbor_list(self, coords: List[Tuple[float, float, float]]) -> None:
-        """Build neighbor list for performance."""
+        """
+        Build neighbor list using cell-based spatial partitioning.
+        
+        This reduces the complexity from O(N²) to approximately O(N) by dividing
+        space into cells and only checking atoms in nearby cells.
+        """
         self._neighbor_list_cache = {}
         cutoff = max(self.params.VDW_CUTOFF, self.params.ELEC_CUTOFF)
+        n = len(coords)
         
-        for i in range(len(coords)):
+        # For small proteins, use simple O(N²) approach (it's fast enough)
+        if n < 50:
+            for i in range(n):
+                neighbors = []
+                for j in range(n):
+                    if i != j and self._distance(coords[i], coords[j]) <= cutoff:
+                        neighbors.append(j)
+                self._neighbor_list_cache[i] = neighbors
+            self._cache_valid = True
+            return
+        
+        # For larger proteins, use cell-based partitioning
+        # Cell size = cutoff distance for efficient neighbor finding
+        cell_size = cutoff
+        
+        # Find bounding box
+        if n == 0:
+            self._cache_valid = True
+            return
+        
+        min_coords = [min(coords[i][dim] for i in range(n)) for dim in range(3)]
+        max_coords = [max(coords[i][dim] for i in range(n)) for dim in range(3)]
+        
+        # Create cell grid dictionary
+        cells: Dict[Tuple[int, int, int], List[int]] = {}
+        
+        # Assign atoms to cells
+        for i in range(n):
+            cx = int((coords[i][0] - min_coords[0]) / cell_size)
+            cy = int((coords[i][1] - min_coords[1]) / cell_size)
+            cz = int((coords[i][2] - min_coords[2]) / cell_size)
+            cell_idx = (cx, cy, cz)
+            
+            if cell_idx not in cells:
+                cells[cell_idx] = []
+            cells[cell_idx].append(i)
+        
+        # Build neighbor list by checking neighboring cells
+        for i in range(n):
             neighbors = []
-            for j in range(len(coords)):
-                if i != j and self._distance(coords[i], coords[j]) <= cutoff:
-                    neighbors.append(j)
+            
+            # Get cell indices for atom i
+            cx = int((coords[i][0] - min_coords[0]) / cell_size)
+            cy = int((coords[i][1] - min_coords[1]) / cell_size)
+            cz = int((coords[i][2] - min_coords[2]) / cell_size)
+            cell_idx = (cx, cy, cz)
+            
+            # Check all 27 neighboring cells (3x3x3 cube)
+            for dx in [-1, 0, 1]:
+                for dy in [-1, 0, 1]:
+                    for dz in [-1, 0, 1]:
+                        neighbor_cell = (
+                            cell_idx[0] + dx,
+                            cell_idx[1] + dy,
+                            cell_idx[2] + dz
+                        )
+                        
+                        if neighbor_cell in cells:
+                            for j in cells[neighbor_cell]:
+                                if i != j and self._distance(coords[i], coords[j]) <= cutoff:
+                                    neighbors.append(j)
+            
             self._neighbor_list_cache[i] = neighbors
         
         self._cache_valid = True

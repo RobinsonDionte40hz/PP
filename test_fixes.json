@@ -1,0 +1,89 @@
+{
+  "metadata": {
+    "sequence": "ACDEFGH",
+    "sequence_length": 7,
+    "num_agents": 3,
+    "iterations_per_agent": 50,
+    "total_iterations": 50,
+    "diversity_profile": "balanced",
+    "total_runtime_seconds": 0.07488679885864258,
+    "avg_time_per_iteration_ms": 1.4977359771728516,
+    "native_structure": null
+  },
+  "best_results": {
+    "best_energy": -20.810560893028487,
+    "energy_is_negative": true,
+    "best_rmsd": Infinity,
+    "total_conformations_explored": 150,
+    "best_gdt_ts": null,
+    "best_tm_score": null,
+    "validation_quality": null
+  },
+  "energy_components": {
+    "total_energy": -20.810560893028487,
+    "bond_energy": -29.4321166930278,
+    "angle_energy": 9.209462646089627,
+    "dihedral_energy": -0.6262453705427884,
+    "vdw_energy": -0.040025805293459935,
+    "electrostatic_energy": 0.07836432974593699,
+    "hbond_energy": 0.0,
+    "compactness_bonus": -0.0
+  },
+  "collective_learning": {
+    "collective_learning_benefit": 0.0,
+    "shared_memories_created": 0,
+    "avg_learning_improvement": 0.0
+  },
+  "agent_summary": {
+    "total_agents": 3,
+    "avg_conformations_per_agent": 50.0,
+    "avg_memories_per_agent": 50.0,
+    "avg_decision_time_ms": 0.15561739603678384,
+    "total_stuck_events": 114,
+    "total_escapes": 0
+  },
+  "per_agent_metrics": [
+    {
+      "agent_id": "agent_0",
+      "iterations": 50,
+      "conformations": 51,
+      "memories": 50,
+      "best_energy": -7.90376057323326,
+      "best_rmsd": Infinity,
+      "best_gdt_ts": null,
+      "best_tm_score": null,
+      "learning_improvement": 0.0,
+      "decision_time_ms": 0.1817178726196289,
+      "stuck_count": 38,
+      "escape_count": 0
+    },
+    {
+      "agent_id": "agent_1",
+      "iterations": 50,
+      "conformations": 51,
+      "memories": 50,
+      "best_energy": -16.079091041019062,
+      "best_rmsd": Infinity,
+      "best_gdt_ts": null,
+      "best_tm_score": null,
+      "learning_improvement": 0.0,
+      "decision_time_ms": 0.14206409454345703,
+      "stuck_count": 38,
+      "escape_count": 0
+    },
+    {
+      "agent_id": "agent_2",
+      "iterations": 50,
+      "conformations": 51,
+      "memories": 50,
+      "best_energy": -20.810560893028487,
+      "best_rmsd": Infinity,
+      "best_gdt_ts": null,
+      "best_tm_score": null,
+      "learning_improvement": 0.0,
+      "decision_time_ms": 0.14307022094726562,
+      "stuck_count": 38,
+      "escape_count": 0
+    }
+  ]
+}

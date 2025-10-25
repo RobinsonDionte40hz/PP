@@ -8,6 +8,7 @@ conformational exploration.
 
 import time
 import random
+import math
 import logging
 from typing import Optional, Dict, List
 
@@ -24,7 +25,9 @@ from .local_minima_detector import LocalMinimaDetector
 from .structural_validation import StructuralValidation
 from .config import (
     BASE_STUCK_DETECTION_WINDOW, BASE_STUCK_DETECTION_THRESHOLD,
-    ENERGY_VALIDATION_THRESHOLD
+    ENERGY_VALIDATION_THRESHOLD,
+    INITIAL_TEMPERATURE, TEMPERATURE_DECAY_RATE, MIN_TEMPERATURE, BOLTZMANN_CONSTANT,
+    MEMORY_SIGNIFICANCE_THRESHOLD
 )
 from . import config as config_module
 
@@ -150,6 +153,11 @@ class ProteinAgent(IProteinAgent):
         # Learning improvement tracking
         self._rmsd_history = [self._best_rmsd] if self._best_rmsd != float('inf') else []
         
+        # Simulated annealing temperature for move acceptance
+        self._temperature = INITIAL_TEMPERATURE
+        self._moves_accepted = 0
+        self._moves_rejected = 0
+        
         # Create initial snapshot if visualization enabled
         if self._enable_visualization:
             self._capture_snapshot(iteration=0)
@@ -261,8 +269,20 @@ class ProteinAgent(IProteinAgent):
                     energy_change = new_conformation.energy - self._current_conformation.energy
                     rmsd_change = abs(energy_change) * 0.1  # Simplified RMSD estimation
 
-                    # Determine success (energy decreased or RMSD improved)
-                    success = energy_change < 0
+                    # Determine success using Metropolis-Hastings acceptance criterion
+                    # Accept if energy decreases OR with probability based on temperature
+                    accept_move = self._metropolis_accept(energy_change)
+                    
+                    if accept_move:
+                        self._moves_accepted += 1
+                        success = True
+                    else:
+                        self._moves_rejected += 1
+                        success = False
+                        # Revert to current conformation if not accepted
+                        new_conformation = self._current_conformation
+                        energy_change = 0.0
+                        rmsd_change = 0.0
 
                     # Calculate significance (simplified)
                     significance = self._calculate_outcome_significance(energy_change, rmsd_change, success)
@@ -312,35 +332,31 @@ class ProteinAgent(IProteinAgent):
             self._consciousness._coordinates.frequency = new_frequency
             self._consciousness._coordinates.coherence = new_coherence
 
+            # Boost temperature temporarily to enable uphill moves (escape)
+            temp_boost = 1.5  # 50% temperature increase
+            self._temperature = min(INITIAL_TEMPERATURE, self._temperature * temp_boost)
+            
             # Track escape attempt
             self._stuck_in_minima_count += 1
+            
+            # Force behavioral state regeneration during escape
+            try:
+                regenerated_behavioral = BehavioralState(self._consciousness.get_coordinates())
+                if regenerated_behavioral is not None:
+                    self._behavioral = regenerated_behavioral
+            except Exception as e:
+                logger.error(f"Error regenerating behavioral state during escape: {e}")
 
-            # Check if escape was successful (energy improved)
-            if outcome.new_conformation.energy < self._current_conformation.energy:
-                self._successful_escapes += 1
-                self._local_minima_detector.record_escape_success(self._iterations_completed)
-
-                # Create high-significance memory for successful escape
-                # Manually create memory with high significance
-                escape_memory = self._memory.create_memory_from_outcome(
-                    outcome,
-                    self._consciousness.get_coordinates(),
-                    self._behavioral.get_behavioral_data()
+        # Check if behavioral state needs regeneration (normal case)
+        if not is_stuck:
+            try:
+                regenerated_behavioral = self._behavioral.regenerate_if_needed(
+                    self._consciousness.get_coordinates()
                 )
-                # Override significance for successful escape
-                escape_memory.significance = 0.8
-                self._memory.store_memory(escape_memory)
-                self._memories_created += 1
-
-        # Check if behavioral state needs regeneration
-        try:
-            regenerated_behavioral = self._behavioral.regenerate_if_needed(
-                self._consciousness.get_coordinates()
-            )
-            if regenerated_behavioral is not None:
-                self._behavioral = regenerated_behavioral
-        except Exception as e:
-            logger.error(f"Error regenerating behavioral state: {e}")
+                if regenerated_behavioral is not None:
+                    self._behavioral = regenerated_behavioral
+            except Exception as e:
+                logger.error(f"Error regenerating behavioral state: {e}")
 
         # Create and store memory if significant
         try:
@@ -350,16 +366,34 @@ class ProteinAgent(IProteinAgent):
                 self._behavioral.get_behavioral_data()
             )
             self._memory.store_memory(memory)
-            if memory.significance >= 0.3:  # Same threshold as memory system
+            if memory.significance >= MEMORY_SIGNIFICANCE_THRESHOLD:
                 self._memories_created += 1
         except Exception as e:
             logger.warning(f"Error creating/storing memory: {e}")
             # Continue execution - memory is non-critical
 
         # Update current conformation
+        previous_energy = self._current_conformation.energy
         if outcome.new_conformation != self._current_conformation:
             self._current_conformation = outcome.new_conformation
             self._conformations_explored += 1
+        
+        # Check if escape was successful (after conformation update)
+        if is_stuck and outcome.new_conformation.energy < previous_energy:
+            self._successful_escapes += 1
+            self._local_minima_detector.record_escape_success(self._iterations_completed)
+
+            # Create high-significance memory for successful escape
+            escape_memory = self._memory.create_memory_from_outcome(
+                outcome,
+                self._consciousness.get_coordinates(),
+                self._behavioral.get_behavioral_data()
+            )
+            # Override significance for successful escape
+            escape_memory.significance = 0.8
+            self._memory.store_memory(escape_memory)
+            self._memories_created += 1
+            logger.info(f"Successful escape at iteration {self._iterations_completed}! Energy: {previous_energy:.2f} -> {outcome.new_conformation.energy:.2f}")
 
         # Update best metrics
         if outcome.new_conformation.energy < self._best_energy:
@@ -382,6 +416,9 @@ class ProteinAgent(IProteinAgent):
         self._iterations_completed += 1
         decision_time_ms = (time.time() - start_time) * 1000
         self._total_decision_time_ms += decision_time_ms
+        
+        # Update temperature (simulated annealing)
+        self._update_temperature()
 
         # Capture visualization snapshot if enabled
         self._capture_snapshot(self._iterations_completed)
@@ -424,31 +461,36 @@ class ProteinAgent(IProteinAgent):
 
     def _generate_initial_conformation(self) -> Conformation:
         """
-        Generate initial extended conformation.
+        Generate initial extended conformation with randomization.
 
-        This is a simplified placeholder. In a real implementation,
-        this would generate a proper 3D structure.
+        Each agent gets a slightly different starting conformation
+        to enable diverse exploration.
         """
-        # Create placeholder 3D coordinates (extended chain)
+        # Create placeholder 3D coordinates (extended chain with noise)
         num_residues = len(self._protein_sequence)
         atom_coordinates = []
         for i in range(num_residues):
-            # Simple extended chain: each residue 3.8 Å apart along x-axis
-            x = i * 3.8
-            atom_coordinates.append((x, 0.0, 0.0))  # CA atoms only for simplicity
+            # Simple extended chain with random perturbations
+            x = i * 3.8 + random.uniform(-0.5, 0.5)  # ±0.5 Å noise
+            y = random.uniform(-0.5, 0.5)  # ±0.5 Å noise
+            z = random.uniform(-0.5, 0.5)  # ±0.5 Å noise
+            atom_coordinates.append((x, y, z))
 
         # Placeholder secondary structure (all coil)
         secondary_structure = ['C'] * num_residues
 
-        # Placeholder angles
-        phi_angles = [-60.0] * num_residues  # Alpha helix phi
-        psi_angles = [-40.0] * num_residues  # Alpha helix psi
+        # Randomized angles (±20° from alpha helix)
+        phi_angles = [-60.0 + random.uniform(-20, 20) for _ in range(num_residues)]
+        psi_angles = [-40.0 + random.uniform(-20, 20) for _ in range(num_residues)]
+        
+        # Randomize initial energy slightly (reduces likelihood of all agents finding same minimum)
+        initial_energy = random.uniform(950.0, 1050.0)
 
         return Conformation(
             conformation_id="initial",
             sequence=self._protein_sequence,
             atom_coordinates=atom_coordinates,
-            energy=1000.0,  # High initial energy
+            energy=initial_energy,
             rmsd_to_native=None,  # No native structure known
             secondary_structure=secondary_structure,
             phi_angles=phi_angles,
@@ -493,16 +535,42 @@ class ProteinAgent(IProteinAgent):
         # Calculate actual energy change (may differ from estimate)
         actual_energy_change = move.estimated_energy_change * (0.8 + random.random() * 0.4)  # ±20% variation
 
+        # Apply structural changes to coordinates (more substantial moves)
+        new_coords = []
+        for i, (x, y, z) in enumerate(self._current_conformation.atom_coordinates):
+            if i in move.target_residues:
+                # Apply moderate random perturbations to move residues
+                move_scale = 0.8 if self._stuck_in_minima_count > 10 else 0.5  # Moderate moves
+                dx = random.uniform(-1.0, 1.0) * move_scale
+                dy = random.uniform(-1.0, 1.0) * move_scale
+                dz = random.uniform(-1.0, 1.0) * move_scale
+                new_coords.append((x + dx, y + dy, z + dz))
+            else:
+                # Keep non-target residues with small perturbations
+                new_coords.append((
+                    x + random.uniform(-0.1, 0.1),
+                    y + random.uniform(-0.1, 0.1),
+                    z + random.uniform(-0.1, 0.1)
+                ))
+        
+        # Update phi/psi angles for target residues (moderate changes)
+        new_phi = list(self._current_conformation.phi_angles)
+        new_psi = list(self._current_conformation.psi_angles)
+        for i in move.target_residues:
+            if i < len(new_phi):
+                new_phi[i] += random.uniform(-15, 15)  # ±15° change (reduced from ±30°)
+                new_psi[i] += random.uniform(-15, 15)
+
         # Create new conformation with preliminary energy
         new_conformation = Conformation(
             conformation_id=f"conf_{self._iterations_completed + 1}_{move.move_id}",
             sequence=self._protein_sequence,
-            atom_coordinates=self._current_conformation.atom_coordinates,  # Unchanged for now
+            atom_coordinates=new_coords,  # Updated coordinates
             energy=self._current_conformation.energy + actual_energy_change,
             rmsd_to_native=self._current_conformation.rmsd_to_native,
             secondary_structure=self._current_conformation.secondary_structure,
-            phi_angles=self._current_conformation.phi_angles,
-            psi_angles=self._current_conformation.psi_angles,
+            phi_angles=new_phi,  # Updated angles
+            psi_angles=new_psi,  # Updated angles
             available_move_types=self._current_conformation.available_move_types,
             structural_constraints=self._current_conformation.structural_constraints,
             energy_components=None  # Will be populated if MM energy is calculated
@@ -686,6 +754,40 @@ class ProteinAgent(IProteinAgent):
         # Percentage improvement
         improvement = ((initial_rmsd - best_rmsd) / initial_rmsd) * 100.0
         return min(100.0, max(0.0, improvement))  # Clamp to 0-100%
+
+    def _metropolis_accept(self, energy_change: float) -> bool:
+        """
+        Metropolis-Hastings acceptance criterion for moves.
+        
+        Always accept if energy decreases (energy_change < 0).
+        Accept uphill moves with probability exp(-ΔE / kT).
+        
+        Args:
+            energy_change: Energy change (new - current) in kcal/mol
+            
+        Returns:
+            True if move should be accepted, False otherwise
+        """
+        # Always accept downhill moves
+        if energy_change < 0:
+            return True
+        
+        # For uphill moves, accept with Boltzmann probability
+        # P = exp(-ΔE / kT) where k is Boltzmann constant
+        try:
+            acceptance_probability = math.exp(-energy_change / (BOLTZMANN_CONSTANT * self._temperature))
+            return random.random() < acceptance_probability
+        except OverflowError:
+            # Energy change is too large, reject move
+            return False
+    
+    def _update_temperature(self) -> None:
+        """
+        Update temperature using simulated annealing schedule.
+        
+        Decreases temperature gradually to focus search over time.
+        """
+        self._temperature = max(MIN_TEMPERATURE, self._temperature * TEMPERATURE_DECAY_RATE)
 
     def _capture_snapshot(self, iteration: int) -> None:
         """
