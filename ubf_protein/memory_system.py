@@ -7,11 +7,11 @@ significant conformational transitions to guide future exploration.
 
 import uuid
 import logging
-from typing import List, Dict
+from typing import List, Dict, Optional, Any
 from collections import defaultdict
 
 from .interfaces import IMemorySystem, ISharedMemoryPool
-from .models import ConformationalMemory, ConformationalOutcome, ConsciousnessCoordinates, BehavioralStateData
+from .models import ConformationalMemory, QCPPValidatedMemory, ConformationalOutcome, ConsciousnessCoordinates, BehavioralStateData
 from .config import MEMORY_SIGNIFICANCE_THRESHOLD, MAX_MEMORIES_PER_AGENT, MEMORY_INFLUENCE_MIN, MEMORY_INFLUENCE_MAX
 from .config import SHARED_MEMORY_SIGNIFICANCE_THRESHOLD, MAX_SHARED_MEMORY_POOL_SIZE
 
@@ -133,32 +133,66 @@ class MemorySystem(IMemorySystem):
     def create_memory_from_outcome(self,
                                  outcome: ConformationalOutcome,
                                  consciousness_state: ConsciousnessCoordinates,
-                                 behavioral_state: BehavioralStateData) -> ConformationalMemory:
+                                 behavioral_state: BehavioralStateData,
+                                 qcpp_metrics: Optional[Any] = None) -> ConformationalMemory:
         """
         Create a memory from a conformational outcome.
+        
+        If qcpp_metrics is provided, creates a QCPPValidatedMemory with
+        enhanced significance calculation including QCPP stability.
 
         Args:
             outcome: The outcome to create memory from
             consciousness_state: Consciousness state when outcome occurred
             behavioral_state: Behavioral state when outcome occurred
+            qcpp_metrics: Optional QCPP metrics for validation (QCPPMetrics instance)
 
         Returns:
-            New ConformationalMemory instance
+            New ConformationalMemory or QCPPValidatedMemory instance
         """
-        # Calculate significance based on outcome impact
-        significance = self._calculate_significance(outcome)
-
-        return ConformationalMemory(
-            memory_id=str(uuid.uuid4()),
-            move_type=outcome.move_executed.move_type.value,  # Convert enum to string
-            significance=significance,
-            energy_change=outcome.energy_change,
-            rmsd_change=outcome.rmsd_change,
-            success=outcome.success,
-            timestamp=int(outcome.move_executed.move_id.split('_')[1]) if '_' in outcome.move_executed.move_id and outcome.move_executed.move_id.split('_')[1].isdigit() else 0,  # Extract timestamp from move_id
-            consciousness_state=consciousness_state,
-            behavioral_state=behavioral_state
-        )
+        # Calculate base significance based on outcome impact
+        base_significance = self._calculate_significance(outcome)
+        
+        # Extract timestamp from move_id if possible
+        timestamp = 0
+        if '_' in outcome.move_executed.move_id:
+            parts = outcome.move_executed.move_id.split('_')
+            if len(parts) > 1 and parts[1].isdigit():
+                timestamp = int(parts[1])
+        
+        # Create QCPP-validated memory if metrics provided
+        if qcpp_metrics is not None:
+            qcpp_significance = self._calculate_qcpp_significance(qcpp_metrics, outcome)
+            
+            # Combine base and QCPP significance (weighted: 70% base, 30% QCPP)
+            total_significance = min(1.0, base_significance * 0.7 + qcpp_significance * 0.3)
+            
+            return QCPPValidatedMemory(
+                memory_id=str(uuid.uuid4()),
+                move_type=outcome.move_executed.move_type.value,
+                significance=total_significance,
+                energy_change=outcome.energy_change,
+                rmsd_change=outcome.rmsd_change,
+                success=outcome.success,
+                timestamp=timestamp,
+                consciousness_state=consciousness_state,
+                behavioral_state=behavioral_state,
+                qcpp_metrics=qcpp_metrics,
+                qcpp_significance=qcpp_significance
+            )
+        else:
+            # Create standard memory without QCPP validation
+            return ConformationalMemory(
+                memory_id=str(uuid.uuid4()),
+                move_type=outcome.move_executed.move_type.value,
+                significance=base_significance,
+                energy_change=outcome.energy_change,
+                rmsd_change=outcome.rmsd_change,
+                success=outcome.success,
+                timestamp=timestamp,
+                consciousness_state=consciousness_state,
+                behavioral_state=behavioral_state
+            )
 
     def get_memory_stats(self) -> Dict[str, int]:
         """
@@ -201,6 +235,41 @@ class MemorySystem(IMemorySystem):
         )
 
         return min(1.0, significance)
+    
+    def _calculate_qcpp_significance(self, qcpp_metrics: Any, outcome: ConformationalOutcome) -> float:
+        """
+        Calculate QCPP contribution to memory significance (0.0-1.0).
+        
+        Based on QCPP stability score with high-significance detection.
+        High significance is triggered when:
+        - QCPP stability > 1.5 (stable structure)
+        - Energy change < -20 kcal/mol (favorable)
+        
+        Args:
+            qcpp_metrics: QCPP metrics for the conformation (QCPPMetrics instance)
+            outcome: Conformational outcome for energy information
+            
+        Returns:
+            QCPP significance score between 0.0 and 1.0
+        """
+        try:
+            # Extract stability score from QCPP metrics
+            stability = qcpp_metrics.stability_score if hasattr(qcpp_metrics, 'stability_score') else 0.0
+            
+            # High-significance detection
+            is_high_significance = (stability > 1.5) and (outcome.energy_change < -20.0)
+            
+            if is_high_significance:
+                # High significance: boost to 0.9-1.0 range
+                return min(1.0, 0.9 + (stability - 1.5) * 0.1)
+            else:
+                # Normal significance: map stability to 0.0-0.8 range
+                # Stability typically ranges 0-3, so normalize
+                normalized_stability = min(1.0, stability / 3.0)
+                return normalized_stability * 0.8
+        except Exception as e:
+            logger.warning(f"Error calculating QCPP significance: {e}")
+            return 0.0
 
     def _prune_memories(self) -> None:
         """

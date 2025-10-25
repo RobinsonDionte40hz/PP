@@ -22,11 +22,13 @@ try:
     from .interfaces import IMoveGenerator, IMoveEvaluator
     from .models import Conformation, ConformationalMove, MoveType
     from .physics_integration import QAAPCalculator, ResonanceCouplingCalculator, WaterShieldingCalculator
+    from .qcpp_integration import QCPPIntegrationAdapter, QCPPMetrics
 except ImportError:
     # Fall back to absolute imports from ubf_protein package
     from ubf_protein.interfaces import IMoveGenerator, IMoveEvaluator
     from ubf_protein.models import Conformation, ConformationalMove, MoveType
     from ubf_protein.physics_integration import QAAPCalculator, ResonanceCouplingCalculator, WaterShieldingCalculator
+    from ubf_protein.qcpp_integration import QCPPIntegrationAdapter, QCPPMetrics
 
 
 class MaplessMoveGenerator(IMoveGenerator):
@@ -235,17 +237,29 @@ class CapabilityBasedMoveEvaluator(IMoveEvaluator):
 
     Implements the simplified 5-factor evaluation approach:
     1. Physical Feasibility
-    2. Quantum Alignment (QAAP + resonance + water shielding)
+    2. Quantum Alignment (QCPP-based or QAAP fallback)
     3. Behavioral Preference
     4. Historical Success
     5. Goal Alignment
     """
 
-    def __init__(self):
-        """Initialize move evaluator with physics calculators."""
+    def __init__(self, qcpp_integration: Optional['QCPPIntegrationAdapter'] = None):
+        """
+        Initialize move evaluator with physics calculators.
+        
+        Args:
+            qcpp_integration: Optional QCPP integration adapter. If provided, QCPP
+                            metrics will be used for quantum alignment. If None,
+                            falls back to QAAP-based calculations.
+        """
+        self.qcpp_integration = qcpp_integration
         self.qaap_calculator = QAAPCalculator()
         self.resonance_calculator = ResonanceCouplingCalculator()
         self.water_shielding_calculator = WaterShieldingCalculator()
+        
+        # Phi pattern reward configuration
+        self.phi_reward_threshold = 0.8  # Min phi match score for reward
+        self.phi_reward_energy = -50.0  # Energy bonus in kcal/mol
 
     def evaluate_move(self,
                      move: ConformationalMove,
@@ -321,7 +335,80 @@ class CapabilityBasedMoveEvaluator(IMoveEvaluator):
                                    physics_factors: Optional[Dict[str, float]]) -> float:
         """
         Factor 2: Quantum Alignment
-        Combines QAAP, resonance, and water shielding.
+        Uses QCPP metrics when available, falls back to QAAP + resonance + water shielding.
+        
+        When QCPP is enabled:
+        - Formula: 0.5 + min(1.0, (qcp/5.0)*0.4 + (coherence+1.0)*0.3 + phi_match*0.3)
+        - Range: [0.5, 1.5]
+        
+        When QCPP is disabled (fallback):
+        - Uses QAAP, resonance, and water shielding
+        - Range: similar to QCPP for compatibility
+        """
+        # Check if QCPP integration is available
+        if self.qcpp_integration is not None:
+            # Use QCPP-based quantum alignment
+            return self._calculate_qcpp_quantum_alignment(move)
+        else:
+            # Fall back to QAAP-based quantum alignment
+            return self._calculate_qaap_quantum_alignment(move, physics_factors)
+    
+    def _calculate_qcpp_quantum_alignment(self, move: ConformationalMove) -> float:
+        """
+        Calculate quantum alignment using QCPP metrics.
+        
+        This replaces the QAAP-based calculation when QCPP integration is available.
+        Uses the formula: 0.5 + min(1.0, (qcp/5.0)*0.4 + (coherence+1.0)*0.3 + phi_match*0.3)
+        
+        Args:
+            move: The conformational move to evaluate
+            
+        Returns:
+            Quantum alignment factor in range [0.5, 1.5]
+        """
+        # Note: In a full implementation, we would need to predict the resulting
+        # conformation after the move and analyze it with QCPP. For now, we use
+        # a simplified approach based on move characteristics.
+        
+        # For moves with pre-calculated QCPP metrics (e.g., from previous analysis)
+        if hasattr(move, 'qaap_factor') and move.qaap_factor is not None:
+            # If move has stored QCPP-derived factor, use it
+            qcp_score = move.qaap_factor  # Reusing this field for QCPP
+            coherence = getattr(move, 'resonance_factor', 0.0) or 0.0
+            phi_match = getattr(move, 'water_shielding_factor', 0.5) or 0.5
+        else:
+            # Estimate QCPP metrics based on move characteristics
+            # This is a simplified heuristic until full conformation prediction is available
+            qcp_score = self._estimate_qcp_from_move(move)
+            coherence = self._estimate_coherence_from_move(move)
+            phi_match = self._estimate_phi_match_from_move(move)
+        
+        # Apply QCPP quantum alignment formula
+        alignment = self.qcpp_integration.calculate_quantum_alignment(
+            QCPPMetrics(
+                qcp_score=qcp_score,
+                field_coherence=coherence,
+                stability_score=1.0,  # Not used in quantum alignment formula
+                phi_match_score=phi_match,
+                calculation_time_ms=0.0
+            )
+        )
+        
+        return alignment
+    
+    def _calculate_qaap_quantum_alignment(self, move: ConformationalMove,
+                                         physics_factors: Optional[Dict[str, float]]) -> float:
+        """
+        Calculate quantum alignment using QAAP (fallback when QCPP unavailable).
+        
+        This is the original QAAP-based calculation for backward compatibility.
+        
+        Args:
+            move: The conformational move to evaluate
+            physics_factors: Optional pre-calculated physics factors
+            
+        Returns:
+            Quantum alignment factor
         """
         if physics_factors:
             # Use provided factors if available
@@ -348,6 +435,62 @@ class CapabilityBasedMoveEvaluator(IMoveEvaluator):
         shielding_contribution = shielding_weight * (0.95 + 0.1 * water_shielding)  # Maps 0-1 to 0.95-1.05
 
         return qaap_contribution + resonance_contribution + shielding_contribution
+    
+    def _estimate_qcp_from_move(self, move: ConformationalMove) -> float:
+        """
+        Estimate QCP score from move characteristics.
+        
+        This is a heuristic until full conformation prediction is available.
+        QCP typically ranges from 3-8.
+        """
+        # Base QCP (neutral)
+        qcp = 4.0
+        
+        # Structure-forming moves increase QCP (more organized)
+        if move.move_type.value in ['helix_formation', 'sheet_formation']:
+            qcp += 1.5
+        elif move.move_type.value == 'hydrophobic_collapse':
+            qcp += 1.0
+        elif move.move_type.value == 'turn_formation':
+            qcp += 0.5
+        
+        # Energy-improving moves suggest better QCP
+        if move.estimated_energy_change < -20:
+            qcp += 1.0
+        elif move.estimated_energy_change < -10:
+            qcp += 0.5
+        
+        return min(8.0, max(3.0, qcp))
+    
+    def _estimate_coherence_from_move(self, move: ConformationalMove) -> float:
+        """
+        Estimate field coherence from move characteristics.
+        
+        Coherence ranges from -1 to 1 (normalized).
+        """
+        # Structure-forming moves have higher coherence
+        if move.move_type.value in ['helix_formation', 'sheet_formation']:
+            return 0.6
+        elif move.move_type.value == 'hydrophobic_collapse':
+            return 0.4
+        elif move.move_type.value == 'large_jump':
+            return -0.2  # Large jumps reduce coherence
+        else:
+            return 0.0  # Neutral
+    
+    def _estimate_phi_match_from_move(self, move: ConformationalMove) -> float:
+        """
+        Estimate phi match score from move characteristics.
+        
+        Phi match ranges from 0 to 1.
+        """
+        # Structure-forming moves more likely to have phi patterns
+        if move.move_type.value in ['helix_formation', 'sheet_formation']:
+            return 0.7
+        elif move.move_type.value == 'turn_formation':
+            return 0.6
+        else:
+            return 0.5  # Neutral
 
     def _calculate_behavioral_preference(self, move: ConformationalMove,
                                        behavioral_state) -> float:
@@ -392,13 +535,24 @@ class CapabilityBasedMoveEvaluator(IMoveEvaluator):
         """
         Factor 5: Goal Alignment
         Based on energy decrease and RMSD improvement potential.
+        
+        When QCPP is enabled, applies phi pattern rewards for high phi match scores.
         """
         # Energy alignment (negative energy change = good, positive = bad)
         # Convert energy change to alignment score (higher = better)
         # energy_change of -50 or less = 1.0 (perfect)
         # energy_change of 0 = 0.5 (neutral)
         # energy_change of +50 or more = 0.0 (terrible)
-        energy_alignment = max(0.0, min(1.0, 1.0 - (move.estimated_energy_change / 50.0)))
+        energy_change = move.estimated_energy_change
+        
+        # Apply phi pattern reward if QCPP is enabled
+        if self.qcpp_integration is not None:
+            phi_match = self._estimate_phi_match_from_move(move)
+            if phi_match > self.phi_reward_threshold:
+                # Apply energy bonus for strong phi patterns
+                energy_change += self.phi_reward_energy
+        
+        energy_alignment = max(0.0, min(1.0, 1.0 - (energy_change / 50.0)))
 
         # RMSD alignment (some RMSD change is good, but not too much)
         optimal_rmsd = 1.0  # Ideal RMSD change

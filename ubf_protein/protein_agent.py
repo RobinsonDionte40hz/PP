@@ -10,7 +10,7 @@ import time
 import random
 import math
 import logging
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Any
 
 from .interfaces import IProteinAgent, IPhysicsCalculator
 from .models import (
@@ -59,7 +59,8 @@ class ProteinAgent(IProteinAgent):
                  adaptive_config: Optional[AdaptiveConfig] = None,
                  enable_visualization: bool = False,
                  max_snapshots: int = 1000,
-                 native_structure: Optional[Conformation] = None):
+                 native_structure: Optional[Conformation] = None,
+                 qcpp_integration: Optional[Any] = None):
         """
         Initialize protein agent with consciousness coordinates and protein sequence.
 
@@ -72,13 +73,38 @@ class ProteinAgent(IProteinAgent):
             enable_visualization: Enable trajectory snapshot recording
             max_snapshots: Maximum snapshots to store (prevents memory overflow)
             native_structure: Optional native structure for RMSD validation (Task 5)
+            qcpp_integration: Optional QCPP integration adapter for physics-grounded exploration
         """
         # Create adaptive config if not provided
         if adaptive_config is None:
             adaptive_config = self._create_default_adaptive_config(protein_sequence)
+        
+        # Store QCPP integration reference
+        self._qcpp_integration = qcpp_integration
 
-        # Initialize consciousness system
-        self._consciousness = ConsciousnessState(initial_frequency, initial_coherence)
+        # Initialize consciousness system (physics-grounded if QCPP enabled)
+        if qcpp_integration is not None:
+            try:
+                from .physics_grounded_consciousness import PhysicsGroundedConsciousness
+                self._consciousness = PhysicsGroundedConsciousness(initial_frequency, initial_coherence)
+                logger.info("Using PhysicsGroundedConsciousness with QCPP integration")
+            except ImportError as e:
+                logger.warning(f"Failed to import PhysicsGroundedConsciousness: {e}")
+                logger.warning("Falling back to standard ConsciousnessState")
+                self._consciousness = ConsciousnessState(initial_frequency, initial_coherence)
+        else:
+            self._consciousness = ConsciousnessState(initial_frequency, initial_coherence)
+        
+        # Initialize dynamic parameter adjuster if QCPP enabled
+        self._dynamic_adjuster = None
+        if qcpp_integration is not None:
+            try:
+                from .dynamic_adjustment import DynamicParameterAdjuster
+                self._dynamic_adjuster = DynamicParameterAdjuster()
+                logger.info("Dynamic parameter adjustment enabled with QCPP integration")
+            except ImportError as e:
+                logger.warning(f"Failed to import DynamicParameterAdjuster: {e}")
+                logger.warning("Dynamic parameter adjustment disabled")
 
         # Initialize behavioral state (derived from consciousness)
         self._behavioral = BehavioralState(self._consciousness.get_coordinates())
@@ -190,7 +216,12 @@ class ProteinAgent(IProteinAgent):
             # Generate available moves using mapless generator
             from .mapless_moves import MaplessMoveGenerator, CapabilityBasedMoveEvaluator
             move_generator = MaplessMoveGenerator()
-            move_evaluator = CapabilityBasedMoveEvaluator()
+            
+            # Create move evaluator with QCPP integration if available
+            if self._qcpp_integration is not None:
+                move_evaluator = CapabilityBasedMoveEvaluator(qcpp_integration=self._qcpp_integration)
+            else:
+                move_evaluator = CapabilityBasedMoveEvaluator()
 
             available_moves = move_generator.generate_moves(self._current_conformation)
 
@@ -296,6 +327,47 @@ class ProteinAgent(IProteinAgent):
                         success=success,
                         significance=significance
                     )
+                    
+                    # QCPP Integration: Analyze conformation and update consciousness
+                    qcpp_metrics = None  # Store for memory creation
+                    if self._qcpp_integration is not None and success:
+                        try:
+                            # Analyze conformation with QCPP
+                            qcpp_metrics = self._qcpp_integration.analyze_conformation(new_conformation)
+                            
+                            # Update physics-grounded consciousness from QCPP metrics
+                            if hasattr(self._consciousness, 'update_from_qcpp_metrics'):
+                                self._consciousness.update_from_qcpp_metrics(qcpp_metrics)
+                                logger.debug(
+                                    f"Updated consciousness from QCPP: "
+                                    f"QCP={qcpp_metrics.qcp_score:.2f}, "
+                                    f"stability={qcpp_metrics.stability_score:.2f}"
+                                )
+                            
+                            # Apply dynamic parameter adjustment if stability suggests it
+                            if self._dynamic_adjuster is not None:
+                                current_coords = self._consciousness.get_coordinates()
+                                new_freq, new_temp = self._dynamic_adjuster.adjust_from_qcpp_metrics(
+                                    current_coords.frequency,
+                                    self._temperature,
+                                    qcpp_metrics
+                                )
+                                
+                                # Update parameters if they changed
+                                if new_freq != current_coords.frequency:
+                                    self._consciousness._coordinates.frequency = new_freq
+                                    logger.debug(f"Adjusted frequency: {current_coords.frequency:.1f} → {new_freq:.1f} Hz")
+                                
+                                if new_temp != self._temperature:
+                                    self._temperature = new_temp
+                                    logger.debug(f"Adjusted temperature: {self._temperature:.1f} → {new_temp:.1f} K")
+                        
+                        except Exception as e:
+                            logger.warning(f"Error in QCPP analysis/adjustment: {e}")
+                            # Continue execution - QCPP integration is non-critical
+                    
+                    # Store qcpp_metrics for memory creation
+                    outcome._qcpp_metrics = qcpp_metrics
 
         except Exception as e:
             logger.error(f"Critical error in explore_step: {e}", exc_info=True)
@@ -360,10 +432,14 @@ class ProteinAgent(IProteinAgent):
 
         # Create and store memory if significant
         try:
+            # Get QCPP metrics if available
+            qcpp_metrics_for_memory = getattr(outcome, '_qcpp_metrics', None)
+            
             memory = self._memory.create_memory_from_outcome(
                 outcome,
                 self._consciousness.get_coordinates(),
-                self._behavioral.get_behavioral_data()
+                self._behavioral.get_behavioral_data(),
+                qcpp_metrics=qcpp_metrics_for_memory
             )
             self._memory.store_memory(memory)
             if memory.significance >= MEMORY_SIGNIFICANCE_THRESHOLD:
@@ -384,10 +460,12 @@ class ProteinAgent(IProteinAgent):
             self._local_minima_detector.record_escape_success(self._iterations_completed)
 
             # Create high-significance memory for successful escape
+            qcpp_metrics_for_memory = getattr(outcome, '_qcpp_metrics', None)
             escape_memory = self._memory.create_memory_from_outcome(
                 outcome,
                 self._consciousness.get_coordinates(),
-                self._behavioral.get_behavioral_data()
+                self._behavioral.get_behavioral_data(),
+                qcpp_metrics=qcpp_metrics_for_memory
             )
             # Override significance for successful escape
             escape_memory.significance = 0.8

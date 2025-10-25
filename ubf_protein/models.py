@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List, Tuple, Dict, Optional, Any
+from typing import List, Tuple, Dict, Optional, Any, TYPE_CHECKING
 from enum import Enum
 
 # Handle imports for both package and direct execution
@@ -9,6 +9,10 @@ current_dir = os.path.dirname(__file__)
 parent_dir = os.path.dirname(current_dir)
 if parent_dir not in sys.path:
     sys.path.insert(0, parent_dir)
+
+# Use TYPE_CHECKING to avoid circular imports
+if TYPE_CHECKING:
+    from .qcpp_integration import QCPPMetrics
 
 try:
     # Try package-relative imports first
@@ -58,6 +62,51 @@ class ConformationalMemory:
         self._weight_calc_time = current_time
         
         return weight
+
+
+@dataclass
+class QCPPValidatedMemory(ConformationalMemory):
+    """
+    Memory with QCPP validation metrics.
+    
+    Extends ConformationalMemory to include quantum physics-based
+    validation from QCPP system. Allows memory significance to be
+    influenced by structural stability and quantum coherence.
+    """
+    qcpp_metrics: Optional[Any] = None  # QCPPMetrics type, use Any to avoid circular import
+    qcpp_significance: float = 0.0  # QCPP contribution to overall significance (0.0-1.0)
+    
+    def __post_init__(self):
+        """Validate QCPP-specific fields."""
+        if self.qcpp_metrics is not None:
+            # Validate qcpp_significance is in range
+            if not (0.0 <= self.qcpp_significance <= 1.0):
+                raise ValueError(f"qcpp_significance {self.qcpp_significance} must be in [0.0, 1.0]")
+            
+            # Update total significance to include QCPP contribution
+            # This is done after initial significance calculation
+            # Total significance remains clamped to [0.0, 1.0]
+            pass  # Significance recalculation done in memory system
+    
+    def is_high_significance(self) -> bool:
+        """
+        Check if memory meets high-significance criteria.
+        
+        High significance is defined as:
+        - QCPP stability > 1.5 (stable structure)
+        - Energy change < -20 kcal/mol (favorable)
+        
+        Returns:
+            True if memory meets high-significance criteria
+        """
+        if self.qcpp_metrics is None:
+            return False
+        
+        has_high_stability = self.qcpp_metrics.stability_score > 1.5
+        has_favorable_energy = self.energy_change < -20.0
+        
+        return has_high_stability and has_favorable_energy
+
 
 # ============================================================================
 # Consciousness & Behavioral State Data
