@@ -55,6 +55,11 @@ class QCPPIntegrationConfig:
     # QCPP analysis frequency
     analysis_frequency: int = 1  # Analyze every N iterations (1 = every iteration)
     
+    # Task 12: Adaptive analysis frequency
+    enable_adaptive_frequency: bool = True  # Automatically adjust frequency based on performance
+    min_analysis_frequency: int = 1  # Minimum frequency (most frequent)
+    max_analysis_frequency: int = 10  # Maximum frequency (least frequent)
+    
     # Caching configuration
     cache_size: int = 1000  # LRU cache size for conformations
     
@@ -100,6 +105,16 @@ class QCPPIntegrationConfig:
         if self.analysis_frequency < 1:
             raise ValueError(f"analysis_frequency must be >= 1, got {self.analysis_frequency}")
         
+        # Task 12: Validate adaptive frequency bounds
+        if self.enable_adaptive_frequency:
+            if self.min_analysis_frequency < 1:
+                raise ValueError(f"min_analysis_frequency must be >= 1, got {self.min_analysis_frequency}")
+            if self.max_analysis_frequency < self.min_analysis_frequency:
+                raise ValueError(
+                    f"max_analysis_frequency ({self.max_analysis_frequency}) must be >= "
+                    f"min_analysis_frequency ({self.min_analysis_frequency})"
+                )
+        
         # Cache size must be positive
         if self.cache_size < 1:
             raise ValueError(f"cache_size must be >= 1, got {self.cache_size}")
@@ -140,6 +155,9 @@ class QCPPIntegrationConfig:
         return {
             'enabled': self.enabled,
             'analysis_frequency': self.analysis_frequency,
+            'enable_adaptive_frequency': self.enable_adaptive_frequency,
+            'min_analysis_frequency': self.min_analysis_frequency,
+            'max_analysis_frequency': self.max_analysis_frequency,
             'cache_size': self.cache_size,
             'max_calculation_time_ms': self.max_calculation_time_ms,
             'phi_reward_threshold': self.phi_reward_threshold,

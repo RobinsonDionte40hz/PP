@@ -19,6 +19,7 @@ Complete API reference for the UBF Protein System, organized by component.
 - [Validation & Error Handling](#validation--error-handling)
 - [Checkpoint System](#checkpoint-system)
 - [Visualization](#visualization)
+- [QCPP Integration](#qcpp-integration) **← NEW**
 
 ---
 
@@ -1895,8 +1896,450 @@ class NativeStructureLoader:
 
 ---
 
+## QCPP Integration
+
+Integration with Quantum Coherence Protein Predictor (QCPP) for physics-based stability validation during conformational exploration.
+
+### QCPPIntegrationAdapter
+
+```python
+class QCPPIntegrationAdapter:
+    """
+    Adapter for integrating QCPP physics calculations into UBF exploration.
+    
+    Provides real-time quantum coherence analysis, stability predictions,
+    and performance monitoring for conformational exploration.
+    
+    Features:
+    - Caching for repeated conformation analysis
+    - Performance timing instrumentation
+    - Adaptive frequency adjustment based on performance
+    - Optional scipy/numpy dependencies with fallbacks
+    """
+    
+    def __init__(
+        self,
+        qcpp_predictor,
+        config: Optional['QCPPIntegrationConfig'] = None
+    ):
+        """
+        Initialize QCPP integration adapter.
+        
+        Args:
+            qcpp_predictor: QCPP predictor instance (QuantumCoherenceProteinPredictor)
+            config: Integration configuration (uses default if None)
+            
+        Example:
+            >>> from protein_predictor import QuantumCoherenceProteinPredictor
+            >>> predictor = QuantumCoherenceProteinPredictor()
+            >>> adapter = QCPPIntegrationAdapter(predictor)
+        """
+        pass
+    
+    def analyze_conformation(
+        self,
+        sequence: str,
+        coordinates: List[Tuple[float, float, float]]
+    ) -> 'QCPPMetrics':
+        """
+        Analyze conformation using QCPP physics calculations.
+        
+        Calculates:
+        - QCP values (Quantum Coherence Protein values)
+        - Field coherence
+        - Stability prediction
+        - THz spectrum
+        
+        Args:
+            sequence: Amino acid sequence (single-letter codes)
+            coordinates: CA atom coordinates (x, y, z) in Angstroms
+            
+        Returns:
+            QCPPMetrics with physics calculations and timing information
+            
+        Example:
+            >>> metrics = adapter.analyze_conformation("ACDEFGH", coords)
+            >>> print(f"Stability: {metrics.stability_prediction:.3f}")
+            >>> print(f"Calculation time: {metrics.calculation_time_ms:.2f}ms")
+            Stability: 0.742
+            Calculation time: 0.35ms
+        """
+        pass
+    
+    def get_cache_stats(self) -> Dict[str, Any]:
+        """
+        Get comprehensive cache and performance statistics.
+        
+        Returns:
+            Dictionary with:
+            - total_requests: Total analysis requests
+            - cache_hits: Number of cache hits
+            - cache_misses: Number of cache misses
+            - hit_rate: Cache hit rate (0-1)
+            - avg_calculation_time_ms: Average calculation time
+            - total_calculation_time_ms: Total calculation time
+            - slow_analyses: List of slow analyses (>5ms threshold)
+            
+        Example:
+            >>> stats = adapter.get_cache_stats()
+            >>> print(f"Hit rate: {stats['hit_rate']*100:.1f}%")
+            >>> print(f"Avg time: {stats['avg_calculation_time_ms']:.2f}ms")
+            Hit rate: 43.5%
+            Avg time: 0.30ms
+        """
+        pass
+    
+    def should_reduce_analysis_frequency(self) -> bool:
+        """
+        Check if QCPP analysis frequency should be reduced.
+        
+        Returns True if:
+        - Average calculation time > 5ms
+        - Cache hit rate < 20%
+        - Adaptive frequency enabled in config
+        
+        Returns:
+            True if frequency should be reduced for performance
+            
+        Example:
+            >>> if adapter.should_reduce_analysis_frequency():
+            ...     config.analysis_frequency = max(0.1, config.analysis_frequency / 2)
+        """
+        pass
+    
+    def get_performance_recommendations(self) -> List[str]:
+        """
+        Get performance optimization recommendations.
+        
+        Analyzes current performance metrics and suggests:
+        - Cache size adjustments
+        - Analysis frequency changes
+        - Precomputation strategies
+        
+        Returns:
+            List of recommendation strings
+            
+        Example:
+            >>> for rec in adapter.get_performance_recommendations():
+            ...     print(f"⚠️  {rec}")
+            ⚠️  Average QCPP calculation time (5.2ms) exceeds 5ms target
+            ⚠️  Consider reducing analysis_frequency to 0.5
+        ```
+        pass
+```
+
+### QCPPMetrics
+
+```python
+@dataclass(frozen=True)
+class QCPPMetrics:
+    """
+    Quantum Coherence Protein Predictor metrics for a conformation.
+    
+    Contains physics-based calculations from QCPP system including
+    quantum coherence, stability predictions, and THz spectra.
+    
+    Attributes:
+        qcp_values: QCP value per residue (quantum coherence protein)
+        field_coherence: Field coherence per residue (0-1)
+        stability_prediction: Overall stability score (0-1, higher is better)
+        thz_spectrum: THz frequency spectrum amplitudes
+        calculation_time_ms: Time taken for QCPP analysis (milliseconds)
+    """
+    qcp_values: List[float]
+    field_coherence: List[float]
+    stability_prediction: float
+    thz_spectrum: List[float]
+    calculation_time_ms: float = 0.0
+    
+    def average_qcp(self) -> float:
+        """Average QCP value across all residues."""
+        return sum(self.qcp_values) / len(self.qcp_values) if self.qcp_values else 0.0
+    
+    def average_coherence(self) -> float:
+        """Average field coherence across all residues."""
+        return sum(self.field_coherence) / len(self.field_coherence) if self.field_coherence else 0.0
+    
+    def peak_thz_frequency(self) -> float:
+        """Frequency (THz) with maximum amplitude in spectrum."""
+        if not self.thz_spectrum:
+            return 0.0
+        max_idx = self.thz_spectrum.index(max(self.thz_spectrum))
+        return max_idx * 0.1  # Assuming 0.1 THz spacing
+```
+
+### QCPPIntegrationConfig
+
+```python
+@dataclass
+class QCPPIntegrationConfig:
+    """
+    Configuration for QCPP integration behavior.
+    
+    Controls when and how QCPP analysis is performed during exploration,
+    with presets for different performance/accuracy tradeoffs.
+    
+    Attributes:
+        analysis_frequency: Fraction of moves to analyze (0.0-1.0)
+        cache_size: Maximum number of cached analyses
+        min_energy_change: Minimum energy change to trigger analysis (kcal/mol)
+        enable_stability_adjustment: Adjust consciousness based on stability
+        stability_weight: Weight for stability in consciousness updates (0-1)
+        enable_adaptive_frequency: Auto-adjust frequency based on performance
+        min_analysis_frequency: Minimum frequency when adaptive (0.0-1.0)
+        max_analysis_frequency: Maximum frequency when adaptive (0.0-1.0)
+    """
+    analysis_frequency: float = 0.1
+    cache_size: int = 1000
+    min_energy_change: float = 0.5
+    enable_stability_adjustment: bool = True
+    stability_weight: float = 0.3
+    enable_adaptive_frequency: bool = True
+    min_analysis_frequency: float = 0.05
+    max_analysis_frequency: float = 1.0
+    
+    @staticmethod
+    def default() -> 'QCPPIntegrationConfig':
+        """Balanced configuration (10% analysis, adaptive enabled)."""
+        return QCPPIntegrationConfig()
+    
+    @staticmethod
+    def high_performance() -> 'QCPPIntegrationConfig':
+        """
+        Performance-optimized configuration.
+        
+        - Lower analysis frequency (5%)
+        - Smaller cache (500)
+        - Higher energy threshold (1.0 kcal/mol)
+        - Adaptive frequency enabled
+        
+        Use for: Large proteins, high throughput screening
+        """
+        return QCPPIntegrationConfig(
+            analysis_frequency=0.05,
+            cache_size=500,
+            min_energy_change=1.0,
+            min_analysis_frequency=0.01,
+            max_analysis_frequency=0.1
+        )
+    
+    @staticmethod
+    def high_accuracy() -> 'QCPPIntegrationConfig':
+        """
+        Accuracy-optimized configuration.
+        
+        - Higher analysis frequency (50%)
+        - Larger cache (5000)
+        - Lower energy threshold (0.1 kcal/mol)
+        - Adaptive frequency disabled
+        
+        Use for: Final refinement, critical predictions
+        """
+        return QCPPIntegrationConfig(
+            analysis_frequency=0.5,
+            cache_size=5000,
+            min_energy_change=0.1,
+            enable_adaptive_frequency=False
+        )
+```
+
+### PhysicsGroundedConsciousness
+
+```python
+class PhysicsGroundedConsciousness:
+    """
+    Consciousness system grounded in QCPP physics calculations.
+    
+    Updates consciousness coordinates based on:
+    - QCPP stability predictions
+    - Quantum coherence values
+    - THz spectrum features
+    
+    Replaces heuristic consciousness updates with physics-based adjustments.
+    """
+    
+    def __init__(
+        self,
+        base_consciousness: 'IConsciousnessState',
+        config: QCPPIntegrationConfig
+    ):
+        """
+        Initialize physics-grounded consciousness.
+        
+        Args:
+            base_consciousness: Base consciousness state to modify
+            config: Integration configuration
+        """
+        pass
+    
+    def update_with_qcpp_metrics(
+        self,
+        metrics: QCPPMetrics,
+        outcome: 'ConformationalOutcome'
+    ) -> 'IConsciousnessState':
+        """
+        Update consciousness based on QCPP metrics.
+        
+        Adjustments:
+        - High stability → Increase coherence
+        - Low stability → Decrease coherence, increase frequency
+        - High QCP → Increase coherence
+        - Strong THz peaks → Fine-tune frequency to match
+        
+        Args:
+            metrics: QCPP analysis results
+            outcome: Conformational change outcome
+            
+        Returns:
+            Updated consciousness state
+            
+        Example:
+            >>> new_consciousness = physics_grounded.update_with_qcpp_metrics(
+            ...     metrics, outcome
+            ... )
+            >>> print(f"Coherence: {new_consciousness.coherence:.3f}")
+            Coherence: 0.782
+        """
+        pass
+```
+
+### IntegratedTrajectoryRecorder
+
+```python
+class IntegratedTrajectoryRecorder:
+    """
+    Records combined UBF + QCPP trajectory information.
+    
+    Captures both consciousness-based exploration metrics and
+    quantum physics calculations at each step.
+    """
+    
+    def __init__(self):
+        """Initialize empty trajectory."""
+        self.points: List['IntegratedTrajectoryPoint'] = []
+    
+    def record_step(
+        self,
+        iteration: int,
+        conformation: 'Conformation',
+        consciousness: 'IConsciousnessState',
+        behavioral: 'BehavioralState',
+        energy: float,
+        rmsd: float,
+        qcpp_metrics: Optional[QCPPMetrics] = None
+    ):
+        """
+        Record single exploration step.
+        
+        Args:
+            iteration: Step number
+            conformation: Current conformation
+            consciousness: Consciousness state
+            behavioral: Behavioral state
+            energy: Total energy (kcal/mol)
+            rmsd: RMSD from native (Angstroms)
+            qcpp_metrics: Optional QCPP analysis results
+        """
+        pass
+    
+    def export_json(self, filepath: str):
+        """Export trajectory to JSON file."""
+        pass
+    
+    def export_csv(self, filepath: str):
+        """Export trajectory to CSV file."""
+        pass
+```
+
+### IntegratedTrajectoryPoint
+
+```python
+@dataclass(frozen=True)
+class IntegratedTrajectoryPoint:
+    """
+    Single point in combined UBF+QCPP trajectory.
+    
+    Attributes:
+        iteration: Step number
+        energy: Total energy (kcal/mol)
+        rmsd: RMSD from native (Angstroms)
+        consciousness_frequency: Consciousness frequency (Hz)
+        consciousness_coherence: Consciousness coherence (0-1)
+        exploration_energy: Behavioral exploration energy
+        structural_focus: Behavioral structural focus
+        qcpp_stability: QCPP stability prediction (0-1, optional)
+        qcpp_avg_coherence: Average QCPP field coherence (optional)
+        qcpp_avg_qcp: Average QCP value (optional)
+        qcpp_calculation_time_ms: QCPP analysis time (milliseconds)
+    """
+    iteration: int
+    energy: float
+    rmsd: float
+    consciousness_frequency: float
+    consciousness_coherence: float
+    exploration_energy: float
+    structural_focus: float
+    qcpp_stability: Optional[float] = None
+    qcpp_avg_coherence: Optional[float] = None
+    qcpp_avg_qcp: Optional[float] = None
+    qcpp_calculation_time_ms: float = 0.0
+```
+
+### DynamicParameterAdjuster
+
+```python
+class DynamicParameterAdjuster:
+    """
+    Dynamically adjust UBF parameters based on QCPP stability feedback.
+    
+    Modifies exploration parameters (temperature, stuck thresholds, etc.)
+    based on real-time stability predictions from QCPP.
+    
+    Strategy:
+    - High stability → Reduce temperature (exploit)
+    - Low stability → Increase temperature (explore)
+    - Stable region → Tighten stuck detection
+    - Unstable region → Loosen stuck detection
+    """
+    
+    def __init__(self, base_config: 'SystemConfig'):
+        """
+        Initialize with base configuration.
+        
+        Args:
+            base_config: Initial system configuration
+        """
+        pass
+    
+    def adjust_parameters(
+        self,
+        metrics: QCPPMetrics,
+        current_config: 'SystemConfig'
+    ) -> 'SystemConfig':
+        """
+        Adjust parameters based on QCPP stability.
+        
+        Args:
+            metrics: Current QCPP analysis
+            current_config: Current configuration
+            
+        Returns:
+            Adjusted configuration
+            
+        Example:
+            >>> adjuster = DynamicParameterAdjuster(base_config)
+            >>> new_config = adjuster.adjust_parameters(metrics, current_config)
+            >>> print(f"Temperature: {new_config.temperature:.3f}")
+            Temperature: 0.850
+        """
+        pass
+```
+
+---
+
 ## See Also
 
 - [README.md](README.md) - System overview and quick start
 - [EXAMPLES.md](EXAMPLES.md) - Detailed usage examples
 - [tests/](tests/) - Comprehensive test suite demonstrating API usage
+- [examples/integrated_exploration.py](examples/integrated_exploration.py) - Complete QCPP integration example

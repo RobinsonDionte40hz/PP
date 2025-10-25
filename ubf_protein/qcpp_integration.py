@@ -11,14 +11,18 @@ Key Components:
 """
 
 from dataclasses import dataclass
-from typing import Optional, TYPE_CHECKING
+from typing import Optional, TYPE_CHECKING, Any, List
 from functools import lru_cache
 import hashlib
 import numpy as np
+import logging
+import time
 
 if TYPE_CHECKING:
     from .models import Conformation
-    from protein_predictor import QuantumCoherenceProteinPredictor
+
+# Setup logger for performance monitoring
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -84,12 +88,12 @@ class QCPPIntegrationAdapter:
     - Cache hit rate: >80% for typical exploration
     """
     
-    def __init__(self, predictor: 'QuantumCoherenceProteinPredictor', cache_size: int = 1000):
+    def __init__(self, predictor: Any, cache_size: int = 1000):
         """
         Initialize QCPP integration adapter.
         
         Args:
-            predictor: Instance of QuantumCoherenceProteinPredictor
+            predictor: Instance of QuantumCoherenceProteinPredictor (or mock)
             cache_size: Maximum number of conformations to cache (default: 1000)
         """
         self.predictor = predictor
@@ -99,6 +103,12 @@ class QCPPIntegrationAdapter:
         self.analysis_count = 0
         self.cache_hits = 0
         self.total_calculation_time_ms = 0.0
+        
+        # Performance monitoring (Task 12)
+        self.slow_analyses_count = 0  # Count of analyses exceeding 5ms
+        self.calculation_times: List[float] = []  # Recent calculation times
+        self.max_calculation_time_ms = 0.0  # Peak calculation time
+        self.performance_warning_threshold_ms = 5.0  # Threshold for warnings
         
         # Golden ratio constant (cached for performance)
         self.phi = (1 + np.sqrt(5)) / 2  # ≈ 1.618
@@ -184,6 +194,8 @@ class QCPPIntegrationAdapter:
         This method uses LRU caching to avoid redundant calculations.
         Results are cached based on the conformation's atomic coordinates.
         
+        Task 12: Now includes performance monitoring with timing and warnings.
+        
         Args:
             conformation: Conformation to analyze
             
@@ -193,6 +205,9 @@ class QCPPIntegrationAdapter:
         Raises:
             ValueError: If conformation is invalid or analysis fails
         """
+        # Task 12: Start timing for performance monitoring
+        start_time = time.perf_counter()
+        
         self.analysis_count += 1
         
         # Create hash and hashable representation
@@ -209,14 +224,36 @@ class QCPPIntegrationAdapter:
             
             # Update cache hit statistics
             new_cache_info = self._analyze_conformation_cached.cache_info()
-            if new_cache_info.hits > previous_hits:
+            is_cache_hit = new_cache_info.hits > previous_hits
+            if is_cache_hit:
                 self.cache_hits += 1
+            
+            # Task 12: Record timing and check threshold
+            end_time = time.perf_counter()
+            total_time_ms = (end_time - start_time) * 1000
+            
+            # Store calculation time for monitoring (keep last 100)
+            self.calculation_times.append(total_time_ms)
+            if len(self.calculation_times) > 100:
+                self.calculation_times.pop(0)
+            
+            # Update peak calculation time
+            if total_time_ms > self.max_calculation_time_ms:
+                self.max_calculation_time_ms = total_time_ms
+            
+            # Task 12: Log warning if exceeds threshold (only for non-cached calls)
+            if not is_cache_hit and total_time_ms > self.performance_warning_threshold_ms:
+                self.slow_analyses_count += 1
+                logger.warning(
+                    f"QCPP analysis exceeded {self.performance_warning_threshold_ms}ms threshold: "
+                    f"{total_time_ms:.2f}ms (analysis #{self.analysis_count})"
+                )
             
             return metrics
             
         except Exception as e:
             # Fallback to default metrics on failure
-            print(f"Warning: QCPP analysis failed: {e}. Using default metrics.")
+            logger.error(f"QCPP analysis failed: {e}. Using default metrics.")
             return QCPPMetrics(
                 qcp_score=4.0,  # Base energy level
                 field_coherence=0.0,  # Neutral coherence
@@ -288,16 +325,29 @@ class QCPPIntegrationAdapter:
     
     def get_cache_stats(self) -> dict:
         """
-        Get caching statistics for performance monitoring.
+        Get caching and performance statistics for monitoring.
+        
+        Task 12: Enhanced with detailed performance metrics including
+        slow analysis tracking, peak times, and recent calculation times.
         
         Returns:
-            Dictionary with cache statistics:
+            Dictionary with cache and performance statistics:
             - total_analyses: Total number of analyze_conformation() calls
             - cache_hits: Number of cache hits
             - cache_hit_rate: Percentage of cache hits
             - avg_calculation_time_ms: Average calculation time
+            - max_calculation_time_ms: Peak calculation time
+            - slow_analyses_count: Number of analyses exceeding threshold
+            - slow_analyses_rate: Percentage of slow analyses
+            - recent_avg_time_ms: Average of last 100 calculations
+            - performance_warning_threshold_ms: Current warning threshold
         """
         cache_info = self._analyze_conformation_cached.cache_info()
+        
+        # Calculate recent average (last 100 calculations)
+        recent_avg = 0.0
+        if self.calculation_times:
+            recent_avg = sum(self.calculation_times) / len(self.calculation_times)
         
         return {
             'total_analyses': self.analysis_count,
@@ -305,8 +355,90 @@ class QCPPIntegrationAdapter:
             'cache_hit_rate': (self.cache_hits / self.analysis_count * 100) if self.analysis_count > 0 else 0.0,
             'cache_size': cache_info.currsize,
             'cache_maxsize': cache_info.maxsize,
-            'avg_calculation_time_ms': (self.total_calculation_time_ms / self.analysis_count) if self.analysis_count > 0 else 0.0
+            'avg_calculation_time_ms': (self.total_calculation_time_ms / self.analysis_count) if self.analysis_count > 0 else 0.0,
+            # Task 12: Enhanced performance metrics
+            'max_calculation_time_ms': self.max_calculation_time_ms,
+            'slow_analyses_count': self.slow_analyses_count,
+            'slow_analyses_rate': (self.slow_analyses_count / self.analysis_count * 100) if self.analysis_count > 0 else 0.0,
+            'recent_avg_time_ms': recent_avg,
+            'performance_warning_threshold_ms': self.performance_warning_threshold_ms
         }
+    
+    def get_performance_recommendations(self) -> List[str]:
+        """
+        Analyze performance and provide optimization recommendations.
+        
+        Task 12: Provides actionable recommendations based on performance metrics.
+        
+        Returns:
+            List of recommendation strings
+        """
+        recommendations = []
+        
+        if self.analysis_count == 0:
+            return ["No analyses performed yet"]
+        
+        stats = self.get_cache_stats()
+        
+        # Check slow analyses
+        if stats['slow_analyses_rate'] > 10.0:
+            recommendations.append(
+                f"High slow analysis rate ({stats['slow_analyses_rate']:.1f}%): "
+                "Consider increasing analysis frequency interval or cache size"
+            )
+        
+        # Check cache hit rate
+        if stats['cache_hit_rate'] < 20.0 and self.analysis_count > 50:
+            recommendations.append(
+                f"Low cache hit rate ({stats['cache_hit_rate']:.1f}%): "
+                "Consider increasing cache size for better performance"
+            )
+        elif stats['cache_hit_rate'] > 70.0 and self.analysis_count > 50:
+            recommendations.append(
+                f"Excellent cache hit rate ({stats['cache_hit_rate']:.1f}%): "
+                "Current cache size is working well"
+            )
+        
+        # Check average calculation time
+        if stats['recent_avg_time_ms'] > 3.0:
+            recommendations.append(
+                f"Recent calculations averaging {stats['recent_avg_time_ms']:.2f}ms: "
+                "Consider reducing analysis frequency to maintain performance"
+            )
+        elif stats['recent_avg_time_ms'] < 1.0:
+            recommendations.append(
+                f"Fast calculations ({stats['recent_avg_time_ms']:.2f}ms avg): "
+                "Can afford to analyze more frequently"
+            )
+        
+        # Check peak time
+        if stats['max_calculation_time_ms'] > 10.0:
+            recommendations.append(
+                f"Peak calculation time very high ({stats['max_calculation_time_ms']:.2f}ms): "
+                "Some conformations are expensive to analyze"
+            )
+        
+        if not recommendations:
+            recommendations.append("Performance is within acceptable ranges")
+        
+        return recommendations
+    
+    def should_reduce_analysis_frequency(self) -> bool:
+        """
+        Determine if analysis frequency should be reduced for performance.
+        
+        Task 12: Adaptive frequency adjustment based on calculation time.
+        
+        Returns:
+            True if recent calculations are slow and frequency should be reduced
+        """
+        if len(self.calculation_times) < 10:
+            return False  # Not enough data
+        
+        stats = self.get_cache_stats()
+        
+        # Reduce frequency if recent calculations are consistently slow
+        return stats['recent_avg_time_ms'] > 4.0 or stats['slow_analyses_rate'] > 20.0
     
     # ========================================================================
     # Private helper methods for simplified QCPP calculations

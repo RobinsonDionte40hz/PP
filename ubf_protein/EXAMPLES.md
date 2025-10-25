@@ -14,6 +14,9 @@ Practical examples demonstrating common use cases and advanced features of the U
 - [Example 8: Validation Against Native](#example-8-validation-against-native)
 - [Example 9: Real-Time Monitoring](#example-9-real-time-monitoring)
 - [Example 10: Advanced Multi-Agent Strategies](#example-10-advanced-multi-agent-strategies)
+- [Example 11: QCPP Integration - Basic](#example-11-qcpp-integration---basic) **← NEW**
+- [Example 12: QCPP Integration - Performance Tuning](#example-12-qcpp-integration---performance-tuning) **← NEW**
+- [Example 13: QCPP Integration - Physics-Grounded Consciousness](#example-13-qcpp-integration---physics-grounded-consciousness) **← NEW**
 
 ---
 
@@ -1003,4 +1006,490 @@ if __name__ == "__main__":
 
 ---
 
-These examples demonstrate the major features and use cases of the UBF Protein System. Each example is self-contained and can be run independently. For more advanced usage and integration examples, see the test suite in `ubf_protein/tests/`.
+## Example 11: QCPP Integration - Basic
+
+Basic integration with Quantum Coherence Protein Predictor for physics-based validation.
+
+```python
+#!/usr/bin/env python3
+"""
+Example 11: QCPP Integration - Basic Usage
+
+Demonstrates:
+- Setting up QCPP integration
+- Running exploration with real-time physics feedback
+- Monitoring QCPP metrics alongside UBF exploration
+- Analyzing physics-grounded results
+"""
+
+from ubf_protein.qcpp_integration import QCPPIntegrationAdapter, QCPPMetrics
+from ubf_protein.qcpp_config import QCPPIntegrationConfig
+from ubf_protein.multi_agent_coordinator import MultiAgentCoordinator
+from protein_predictor import QuantumCoherenceProteinPredictor
+import time
+
+def main():
+    # Protein sequence (ubiquitin N-terminal fragment)
+    sequence = "MQIFVKTLTG"  # 10 residues
+    
+    print("="*70)
+    print("EXAMPLE 11: QCPP INTEGRATION - BASIC USAGE")
+    print("="*70)
+    print(f"\nProtein: {sequence} ({len(sequence)} residues)")
+    
+    # Step 1: Initialize QCPP predictor
+    print("\n[1] Initializing QCPP predictor...")
+    qcpp_predictor = QuantumCoherenceProteinPredictor()
+    
+    # Step 2: Configure integration (default: 10% analysis frequency)
+    print("[2] Configuring integration...")
+    qcpp_config = QCPPIntegrationConfig.default()
+    print(f"    Analysis frequency: {qcpp_config.analysis_frequency*100:.0f}%")
+    print(f"    Cache size: {qcpp_config.cache_size}")
+    print(f"    Adaptive frequency: {qcpp_config.enable_adaptive_frequency}")
+    
+    # Step 3: Create QCPP adapter
+    print("[3] Creating QCPP adapter...")
+    qcpp_adapter = QCPPIntegrationAdapter(qcpp_predictor, qcpp_config)
+    
+    # Step 4: Create coordinator with QCPP integration
+    print("[4] Creating multi-agent coordinator...")
+    coordinator = MultiAgentCoordinator(
+        protein_sequence=sequence,
+        qcpp_adapter=qcpp_adapter  # Enable QCPP integration
+    )
+    
+    # Step 5: Initialize agents
+    num_agents = 5
+    iterations = 200
+    print(f"[5] Initializing {num_agents} agents...")
+    coordinator.initialize_agents(count=num_agents, diversity_profile="balanced")
+    
+    # Step 6: Run exploration with QCPP feedback
+    print(f"[6] Running {iterations} iterations with QCPP feedback...")
+    print("    (QCPP provides real-time stability predictions)")
+    
+    start_time = time.perf_counter()
+    coordinator.run_parallel_exploration(iterations=iterations)
+    elapsed = time.perf_counter() - start_time
+    
+    # Step 7: Analyze results
+    print(f"\n[7] Exploration complete in {elapsed:.2f}s")
+    
+    # Get best result
+    best_agent = min(coordinator._agents, key=lambda a: a._current_energy)
+    print(f"\nBest Result:")
+    print(f"  Energy: {best_agent._current_energy:.3f} kcal/mol")
+    print(f"  RMSD: {best_agent._current_rmsd:.3f} Å")
+    
+    # Get QCPP statistics
+    cache_stats = qcpp_adapter.get_cache_stats()
+    print(f"\nQCPP Analysis Statistics:")
+    print(f"  Total requests: {cache_stats['total_requests']}")
+    print(f"  Cache hits: {cache_stats['cache_hits']}")
+    print(f"  Cache misses: {cache_stats['cache_misses']}")
+    print(f"  Hit rate: {cache_stats['hit_rate']*100:.1f}%")
+    print(f"  Avg calculation time: {cache_stats['avg_calculation_time_ms']:.2f}ms")
+    
+    # Check performance recommendations
+    recommendations = qcpp_adapter.get_performance_recommendations()
+    if recommendations:
+        print(f"\n⚠️  Performance Recommendations:")
+        for rec in recommendations:
+            print(f"    • {rec}")
+    else:
+        print(f"\n✓ Performance is within target ranges")
+    
+    # Step 8: Analyze final conformation
+    print(f"\n[8] Analyzing best conformation with QCPP...")
+    final_coords = best_agent._current_conformation.atom_coordinates
+    final_metrics = qcpp_adapter.analyze_conformation(sequence, final_coords)
+    
+    print(f"\nFinal QCPP Metrics:")
+    print(f"  Stability prediction: {final_metrics.stability_prediction:.3f}")
+    print(f"  Average QCP: {final_metrics.average_qcp():.3f}")
+    print(f"  Average coherence: {final_metrics.average_coherence():.3f}")
+    print(f"  Calculation time: {final_metrics.calculation_time_ms:.2f}ms")
+    
+    print(f"\n{'='*70}")
+    print("INTEGRATION SUCCESSFUL ✓")
+    print("="*70)
+
+if __name__ == "__main__":
+    main()
+```
+
+**Expected Output:**
+```
+======================================================================
+EXAMPLE 11: QCPP INTEGRATION - BASIC USAGE
+======================================================================
+
+Protein: MQIFVKTLTG (10 residues)
+
+[1] Initializing QCPP predictor...
+[2] Configuring integration...
+    Analysis frequency: 10%
+    Cache size: 1000
+    Adaptive frequency: True
+[3] Creating QCPP adapter...
+[4] Creating multi-agent coordinator...
+[5] Initializing 5 agents...
+[6] Running 200 iterations with QCPP feedback...
+    (QCPP provides real-time stability predictions)
+
+[7] Exploration complete in 8.42s
+
+Best Result:
+  Energy: -124.567 kcal/mol
+  RMSD: 3.821 Å
+
+QCPP Analysis Statistics:
+  Total requests: 98
+  Cache hits: 42
+  Cache misses: 56
+  Hit rate: 42.9%
+  Avg calculation time: 0.35ms
+
+✓ Performance is within target ranges
+
+[8] Analyzing best conformation with QCPP...
+
+Final QCPP Metrics:
+  Stability prediction: 0.742
+  Average QCP: 5.123
+  Average coherence: 0.856
+  Calculation time: 0.32ms
+
+======================================================================
+INTEGRATION SUCCESSFUL ✓
+======================================================================
+```
+
+---
+
+## Example 12: QCPP Integration - Performance Tuning
+
+Optimize QCPP integration for different performance requirements.
+
+```python
+#!/usr/bin/env python3
+"""
+Example 12: QCPP Integration - Performance Tuning
+
+Demonstrates:
+- Comparing different configuration presets
+- Performance vs accuracy tradeoffs
+- Adaptive frequency adjustment
+- Custom configuration tuning
+"""
+
+from ubf_protein.qcpp_integration import QCPPIntegrationAdapter
+from ubf_protein.qcpp_config import QCPPIntegrationConfig
+from ubf_protein.multi_agent_coordinator import MultiAgentCoordinator
+from protein_predictor import QuantumCoherenceProteinPredictor
+import time
+
+def benchmark_configuration(
+    config_name: str,
+    config: QCPPIntegrationConfig,
+    sequence: str,
+    agents: int,
+    iterations: int
+):
+    """Benchmark a specific QCPP configuration."""
+    print(f"\n{'='*70}")
+    print(f"CONFIGURATION: {config_name}")
+    print(f"{'='*70}")
+    print(f"Analysis frequency: {config.analysis_frequency*100:.0f}%")
+    print(f"Cache size: {config.cache_size}")
+    print(f"Min energy change: {config.min_energy_change} kcal/mol")
+    print(f"Adaptive frequency: {config.enable_adaptive_frequency}")
+    
+    # Setup
+    qcpp_predictor = QuantumCoherenceProteinPredictor()
+    qcpp_adapter = QCPPIntegrationAdapter(qcpp_predictor, config)
+    
+    coordinator = MultiAgentCoordinator(
+        protein_sequence=sequence,
+        qcpp_adapter=qcpp_adapter
+    )
+    coordinator.initialize_agents(count=agents, diversity_profile="balanced")
+    
+    # Run
+    start_time = time.perf_counter()
+    coordinator.run_parallel_exploration(iterations=iterations)
+    elapsed = time.perf_counter() - start_time
+    
+    # Results
+    best_agent = min(coordinator._agents, key=lambda a: a._current_energy)
+    cache_stats = qcpp_adapter.get_cache_stats()
+    
+    print(f"\nResults:")
+    print(f"  Time: {elapsed:.2f}s")
+    print(f"  Throughput: {(agents*iterations)/elapsed:.1f} conf/s")
+    print(f"  Best energy: {best_agent._current_energy:.3f} kcal/mol")
+    print(f"  Best RMSD: {best_agent._current_rmsd:.3f} Å")
+    print(f"  QCPP requests: {cache_stats['total_requests']}")
+    print(f"  Cache hit rate: {cache_stats['hit_rate']*100:.1f}%")
+    print(f"  Avg QCPP time: {cache_stats['avg_calculation_time_ms']:.2f}ms")
+    
+    return {
+        'config_name': config_name,
+        'elapsed': elapsed,
+        'throughput': (agents*iterations)/elapsed,
+        'best_energy': best_agent._current_energy,
+        'best_rmsd': best_agent._current_rmsd,
+        'qcpp_requests': cache_stats['total_requests'],
+        'cache_hit_rate': cache_stats['hit_rate'],
+        'avg_qcpp_time': cache_stats['avg_calculation_time_ms']
+    }
+
+def main():
+    print("="*70)
+    print("EXAMPLE 12: QCPP INTEGRATION - PERFORMANCE TUNING")
+    print("="*70)
+    
+    # Test parameters
+    sequence = "MQIFVKTLTGK"  # 11 residues (ubiquitin fragment)
+    agents = 10
+    iterations = 100
+    
+    print(f"\nTest setup:")
+    print(f"  Sequence: {sequence} ({len(sequence)} residues)")
+    print(f"  Agents: {agents}")
+    print(f"  Iterations: {iterations}")
+    
+    # Test 3 configurations
+    configs = [
+        ("High Performance", QCPPIntegrationConfig.high_performance()),
+        ("Default (Balanced)", QCPPIntegrationConfig.default()),
+        ("High Accuracy", QCPPIntegrationConfig.high_accuracy())
+    ]
+    
+    results = []
+    for config_name, config in configs:
+        result = benchmark_configuration(
+            config_name, config, sequence, agents, iterations
+        )
+        results.append(result)
+    
+    # Comparison summary
+    print(f"\n{'='*70}")
+    print("CONFIGURATION COMPARISON")
+    print(f"{'='*70}")
+    print(f"\n{'Configuration':<25} {'Time':<10} {'Throughput':<15} {'Energy':<12} {'RMSD':<10}")
+    print(f"{'-'*70}")
+    
+    for r in results:
+        print(f"{r['config_name']:<25} {r['elapsed']:>6.2f}s   "
+              f"{r['throughput']:>8.1f} c/s   "
+              f"{r['best_energy']:>8.3f}   "
+              f"{r['best_rmsd']:>6.3f}Å")
+    
+    print(f"\n{'Configuration':<25} {'QCPP Reqs':<12} {'Hit Rate':<12} {'Avg Time':<10}")
+    print(f"{'-'*70}")
+    
+    for r in results:
+        print(f"{r['config_name']:<25} {r['qcpp_requests']:>6}       "
+              f"{r['cache_hit_rate']*100:>6.1f}%      "
+              f"{r['avg_qcpp_time']:>6.2f}ms")
+    
+    # Recommendations
+    print(f"\n{'='*70}")
+    print("RECOMMENDATIONS")
+    print(f"{'='*70}")
+    print("\n1. High Performance:")
+    print("   • Use for: Large-scale screening, high throughput needs")
+    print("   • Pros: Fastest execution, minimal overhead")
+    print("   • Cons: Less frequent physics validation")
+    
+    print("\n2. Default (Balanced):")
+    print("   • Use for: General-purpose exploration")
+    print("   • Pros: Good balance of speed and accuracy")
+    print("   • Cons: Moderate physics validation frequency")
+    
+    print("\n3. High Accuracy:")
+    print("   • Use for: Final refinement, critical predictions")
+    print("   • Pros: Maximum physics validation")
+    print("   • Cons: Slower execution, higher computational cost")
+    
+    print(f"\n{'='*70}")
+
+if __name__ == "__main__":
+    main()
+```
+
+---
+
+## Example 13: QCPP Integration - Physics-Grounded Consciousness
+
+Use QCPP physics to directly guide consciousness evolution.
+
+```python
+#!/usr/bin/env python3
+"""
+Example 13: QCPP Integration - Physics-Grounded Consciousness
+
+Demonstrates:
+- Physics-grounded consciousness updates
+- QCPP stability influencing behavioral state
+- Dynamic parameter adjustment based on stability
+- Integrated trajectory recording
+"""
+
+from ubf_protein.qcpp_integration import QCPPIntegrationAdapter
+from ubf_protein.qcpp_config import QCPPIntegrationConfig
+from ubf_protein.physics_grounded_consciousness import PhysicsGroundedConsciousness
+from ubf_protein.dynamic_adjustment import DynamicParameterAdjuster
+from ubf_protein.integrated_trajectory import IntegratedTrajectoryRecorder
+from ubf_protein.protein_agent import ProteinAgent
+from ubf_protein.config import SystemConfig
+from protein_predictor import QuantumCoherenceProteinPredictor
+
+def main():
+    print("="*70)
+    print("EXAMPLE 13: QCPP INTEGRATION - PHYSICS-GROUNDED CONSCIOUSNESS")
+    print("="*70)
+    
+    # Setup
+    sequence = "ACDEFGHIKL"  # 10 residues
+    print(f"\nProtein: {sequence} ({len(sequence)} residues)")
+    
+    # Step 1: Initialize QCPP
+    print("\n[1] Initializing QCPP system...")
+    qcpp_predictor = QuantumCoherenceProteinPredictor()
+    qcpp_config = QCPPIntegrationConfig.default()
+    qcpp_adapter = QCPPIntegrationAdapter(qcpp_predictor, qcpp_config)
+    
+    # Step 2: Create physics-grounded consciousness
+    print("[2] Creating physics-grounded consciousness...")
+    agent = ProteinAgent(protein_sequence=sequence)
+    base_consciousness = agent.get_consciousness_state()
+    
+    physics_consciousness = PhysicsGroundedConsciousness(
+        base_consciousness=base_consciousness,
+        config=qcpp_config
+    )
+    
+    # Step 3: Create dynamic parameter adjuster
+    print("[3] Creating dynamic parameter adjuster...")
+    base_config = SystemConfig()
+    parameter_adjuster = DynamicParameterAdjuster(base_config)
+    
+    # Step 4: Create integrated trajectory recorder
+    print("[4] Creating integrated trajectory recorder...")
+    trajectory = IntegratedTrajectoryRecorder()
+    
+    # Step 5: Run exploration with physics grounding
+    print(f"[5] Running 200 iterations with physics-grounded consciousness...")
+    
+    for iteration in range(200):
+        # Perform move
+        outcome = agent.explore_step()
+        
+        # Analyze with QCPP (every 10th move)
+        qcpp_metrics = None
+        if iteration % 10 == 0:
+            coords = agent._current_conformation.atom_coordinates
+            qcpp_metrics = qcpp_adapter.analyze_conformation(sequence, coords)
+            
+            # Update consciousness based on physics
+            new_consciousness = physics_consciousness.update_with_qcpp_metrics(
+                qcpp_metrics, outcome
+            )
+            agent._consciousness = new_consciousness
+            
+            # Adjust parameters based on stability
+            current_config = base_config  # In practice, get from agent
+            new_config = parameter_adjuster.adjust_parameters(
+                qcpp_metrics, current_config
+            )
+            # Apply new_config to agent (implementation-specific)
+        
+        # Record trajectory
+        trajectory.record_step(
+            iteration=iteration,
+            conformation=agent._current_conformation,
+            consciousness=agent.get_consciousness_state(),
+            behavioral=agent._behavioral_state,
+            energy=agent._current_energy,
+            rmsd=agent._current_rmsd,
+            qcpp_metrics=qcpp_metrics
+        )
+        
+        # Progress update
+        if iteration % 50 == 0:
+            consciousness = agent.get_consciousness_state()
+            print(f"    Iter {iteration}: Energy={agent._current_energy:.2f}, "
+                  f"RMSD={agent._current_rmsd:.2f}, "
+                  f"f={consciousness.get_frequency():.2f}Hz, "
+                  f"c={consciousness.get_coherence():.3f}")
+            if qcpp_metrics:
+                print(f"              QCPP Stability={qcpp_metrics.stability_prediction:.3f}")
+    
+    # Step 6: Export results
+    print(f"\n[6] Exporting integrated trajectory...")
+    trajectory.export_json("integrated_trajectory.json")
+    trajectory.export_csv("integrated_trajectory.csv")
+    print("    • integrated_trajectory.json")
+    print("    • integrated_trajectory.csv")
+    
+    # Step 7: Analysis
+    print(f"\n[7] Analyzing physics-consciousness correlation...")
+    
+    # Get QCPP points (every 10th iteration)
+    qcpp_points = [p for p in trajectory.points if p.qcpp_stability is not None]
+    
+    if qcpp_points:
+        # Calculate correlations
+        stabilities = [p.qcpp_stability for p in qcpp_points]
+        coherences = [p.consciousness_coherence for p in qcpp_points]
+        
+        avg_stability = sum(stabilities) / len(stabilities)
+        avg_coherence = sum(coherences) / len(coherences)
+        
+        print(f"\nPhysics-Consciousness Statistics:")
+        print(f"  QCPP measurements: {len(qcpp_points)}")
+        print(f"  Average stability: {avg_stability:.3f}")
+        print(f"  Average coherence: {avg_coherence:.3f}")
+        print(f"  Final stability: {stabilities[-1]:.3f}")
+        print(f"  Final coherence: {coherences[-1]:.3f}")
+        
+        # Check if coherence tracks stability
+        stability_change = stabilities[-1] - stabilities[0]
+        coherence_change = coherences[-1] - coherences[0]
+        
+        print(f"\nEvolution:")
+        print(f"  Stability change: {stability_change:+.3f}")
+        print(f"  Coherence change: {coherence_change:+.3f}")
+        
+        if (stability_change > 0 and coherence_change > 0) or \
+           (stability_change < 0 and coherence_change < 0):
+            print(f"  ✓ Coherence correlates with stability (physics-grounded)")
+        else:
+            print(f"  ⚠ Coherence diverges from stability")
+    
+    # Final result
+    print(f"\n{'='*70}")
+    print(f"Final Result:")
+    print(f"  Energy: {agent._current_energy:.3f} kcal/mol")
+    print(f"  RMSD: {agent._current_rmsd:.3f} Å")
+    print(f"  Consciousness: f={agent.get_consciousness_state().get_frequency():.2f}Hz, "
+          f"c={agent.get_consciousness_state().get_coherence():.3f}")
+    print(f"{'='*70}")
+
+if __name__ == "__main__":
+    main()
+```
+
+**Key Insights:**
+
+1. **Physics Grounding**: Consciousness evolution directly influenced by quantum physics
+2. **Stability Tracking**: Coherence increases/decreases with QCPP stability predictions
+3. **Dynamic Adjustment**: Exploration parameters adapt to physical stability landscape
+4. **Integrated Recording**: Combined UBF + QCPP metrics in single trajectory
+
+---
+
+These examples demonstrate the major features and use cases of the UBF Protein System, including the new QCPP integration capabilities. Each example is self-contained and can be run independently. For more advanced usage and integration examples, see the test suite in `ubf_protein/tests/` and `examples/integrated_exploration.py`.

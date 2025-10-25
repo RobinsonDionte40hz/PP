@@ -29,6 +29,8 @@ class IntegratedTrajectoryPoint:
     specific iteration, including both consciousness-based metrics (UBF) and
     quantum physics metrics (QCPP).
     
+    Task 12: Enhanced with qcpp_calculation_time_ms for performance monitoring.
+    
     Attributes:
         iteration: Iteration number
         
@@ -43,6 +45,7 @@ class IntegratedTrajectoryPoint:
         field_coherence: Field coherence metric (-1 to 1)
         stability_score: QCPP stability prediction (higher = more stable)
         phi_match_score: Golden ratio angle matching score (0-1)
+        qcpp_calculation_time_ms: Time taken for QCPP analysis (Task 12)
         
         # Timestamp
         timestamp: Unix timestamp in milliseconds
@@ -60,6 +63,7 @@ class IntegratedTrajectoryPoint:
     field_coherence: float
     stability_score: float
     phi_match_score: float
+    qcpp_calculation_time_ms: float  # Task 12: Performance metric
     
     # Timestamp
     timestamp: int
@@ -127,9 +131,12 @@ class IntegratedTrajectoryRecorder:
                     qcp_score: float,
                     field_coherence: float,
                     stability_score: float,
-                    phi_match_score: float) -> IntegratedTrajectoryPoint:
+                    phi_match_score: float,
+                    qcpp_calculation_time_ms: float = 0.0) -> IntegratedTrajectoryPoint:  # Task 12
         """
         Record a trajectory point with both UBF and QCPP metrics.
+        
+        Task 12: Now includes qcpp_calculation_time_ms for performance tracking.
         
         Args:
             iteration: Current iteration number
@@ -141,6 +148,7 @@ class IntegratedTrajectoryRecorder:
             field_coherence: QCPP field coherence
             stability_score: QCPP stability score
             phi_match_score: QCPP phi match score
+            qcpp_calculation_time_ms: Time taken for QCPP analysis (Task 12, default: 0.0)
             
         Returns:
             Created IntegratedTrajectoryPoint
@@ -161,6 +169,7 @@ class IntegratedTrajectoryRecorder:
             field_coherence=field_coherence,
             stability_score=stability_score,
             phi_match_score=phi_match_score,
+            qcpp_calculation_time_ms=qcpp_calculation_time_ms,  # Task 12
             timestamp=int(time.time() * 1000)  # milliseconds
         )
         
