@@ -74,7 +74,7 @@ def calculate_qcpp_stability_prediction(sequence):
         return None
     
     # Extract statistics
-    qcp_values = qcp_df['qcp'].values
+    qcp_values = qcp_df['qcp'].to_numpy()  # Convert to numpy array for type safety
     avg_qcp = float(np.mean(qcp_values))
     std_qcp = float(np.std(qcp_values))
     
