@@ -1,0 +1,13 @@
+{
+  "sequence": "MQIFVKTLTGKTITLEVEPSDTIENVKAKIQDKEGIPPDQQRLIFAGKQLEDGRTLSDYNIQKESTLHLVLRLRGG",
+  "iterations": 100,
+  "statistics": {
+    "validation_failure_rate": 0.37,
+    "repair_success_rate": 1.0,
+    "avg_min_bond": 2.8532846538400993,
+    "avg_max_bond": 4.8323575218182775,
+    "avg_avg_bond": 3.9266148625779516,
+    "violations_over_5": 0,
+    "violations_under_1": 0
+  }
+}

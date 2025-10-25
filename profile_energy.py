@@ -96,9 +96,10 @@ def profile_energy_calculation(num_residues: int, num_iterations: int = 100):
         print("\nKey Method Breakdown:")
         ps = pstats.Stats(profiler, stream=s)
         ps.sort_stats('cumulative')
-        for func, stats in list(ps.stats.items())[:20]:
+        stats_dict = ps.stats  # type: ignore - pstats.Stats has stats attribute
+        for func, stat_tuple in list(stats_dict.items())[:20]:
             if 'energy_function' in str(func):
-                cc, nc, tt, ct, callers = stats
+                cc, nc, tt, ct, callers = stat_tuple
                 print(f"  {func[2]:40s} {ct*1000/50:8.2f}ms/call ({nc:4d} calls)")
     
     return avg_time

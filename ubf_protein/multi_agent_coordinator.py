@@ -8,6 +8,8 @@ protein agents working together to explore conformational space.
 import time
 import random
 import logging
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List, Tuple, Optional
 
 from .interfaces import IMultiAgentCoordinator, IProteinAgent, ISharedMemoryPool, IAdaptiveConfigurator
@@ -133,7 +135,7 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
 
     def run_parallel_exploration(self, iterations: int) -> ExplorationResults:
         """
-        Run all agents in parallel for N iterations.
+        Run all agents in parallel (simultaneously) for N iterations using threading.
 
         Args:
             iterations: Number of iterations to run
@@ -146,38 +148,62 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
         # Track collective metrics
         total_conformations_explored = 0
         agent_metrics = []
+        
+        # Lock for thread-safe updates
+        update_lock = threading.Lock()
 
+        def run_agent_iteration(agent: IProteinAgent) -> Tuple[float, float, bool]:
+            """Run one iteration for a single agent (thread-safe)."""
+            # Execute exploration step
+            outcome = agent.explore_step()
+            
+            # Share significant memories with the pool (lowered threshold)
+            memory_shared = False
+            if outcome.significance >= 0.3:
+                from .memory_system import MemorySystem
+                memory_system = agent.get_memory_system()
+                recent_memories = memory_system.retrieve_relevant_memories(
+                    outcome.move_executed.move_type.value, max_count=1
+                )
+                if recent_memories:
+                    with update_lock:
+                        self._shared_memory_pool.share_memory(recent_memories[0])
+                    memory_shared = True
+            
+            # Get current conformation
+            current_conf = agent.get_current_conformation()
+            return (current_conf.energy, 
+                    current_conf.rmsd_to_native if current_conf.rmsd_to_native else float('inf'),
+                    memory_shared)
+
+        # Run iterations
         for iteration in range(iterations):
             self._total_iterations += 1
 
-            # Run one iteration for each agent
-            iteration_conformations = 0
-
-            for agent in self._agents:
-                # Execute exploration step
-                outcome = agent.explore_step()
-                iteration_conformations += 1
-
-                # Share significant memories with the pool (lowered threshold)
-                if outcome.significance >= 0.3:  # Lowered from 0.7 to enable more sharing
-                    from .memory_system import MemorySystem
-                    memory_system = agent.get_memory_system()
-                    # Get the most recent memory (should be the one from this outcome)
-                    recent_memories = memory_system.retrieve_relevant_memories(
-                        outcome.move_executed.move_type.value, max_count=1
-                    )
-                    if recent_memories:
-                        self._shared_memory_pool.share_memory(recent_memories[0])
-
-                # Update best conformation tracking
-                current_conf = agent.get_current_conformation()
-                if current_conf.energy < self._best_energy:
-                    self._best_energy = current_conf.energy
-                    self._best_conformation = current_conf
-
-                if (current_conf.rmsd_to_native and
-                    current_conf.rmsd_to_native < self._best_rmsd):
-                    self._best_rmsd = current_conf.rmsd_to_native
+            # Run all agents in parallel using ThreadPoolExecutor
+            with ThreadPoolExecutor(max_workers=len(self._agents)) as executor:
+                # Submit all agent tasks
+                futures = [executor.submit(run_agent_iteration, agent) for agent in self._agents]
+                
+                # Wait for all to complete and collect results
+                iteration_conformations = 0
+                for future in as_completed(futures):
+                    energy, rmsd, memory_shared = future.result()
+                    iteration_conformations += 1
+                    
+                    # Update best conformation tracking (thread-safe)
+                    with update_lock:
+                        if energy < self._best_energy:
+                            self._best_energy = energy
+                            # Update best conformation from the agent that achieved this
+                            for agent in self._agents:
+                                current_conf = agent.get_current_conformation()
+                                if abs(current_conf.energy - energy) < 0.01:  # Match by energy
+                                    self._best_conformation = current_conf
+                                    break
+                        
+                        if rmsd < self._best_rmsd:
+                            self._best_rmsd = rmsd
 
             total_conformations_explored += iteration_conformations
 

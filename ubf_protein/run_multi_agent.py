@@ -357,8 +357,8 @@ Examples:
                        help='Protein amino acid sequence (single-letter codes)')
     parser.add_argument('--agents', '-a',
                        type=int,
-                       default=10,
-                       help='Number of agents to run in parallel (default: 10)')
+                       default=15,
+                       help='Number of agents to run in parallel (default: 15)')
     parser.add_argument('--iterations', '-i',
                        type=int,
                        default=500,
