@@ -10,7 +10,7 @@ import random
 import logging
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Any
 
 from .interfaces import IMultiAgentCoordinator, IProteinAgent, ISharedMemoryPool, IAdaptiveConfigurator
 from .models import ExplorationResults, ExplorationMetrics, Conformation, AdaptiveConfig, ProteinSizeClass
@@ -37,7 +37,8 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
                  adaptive_configurator: Optional[AdaptiveConfigurator] = None,
                  adaptive_config: Optional[AdaptiveConfig] = None,
                  enable_checkpointing: bool = True,
-                 checkpoint_dir: str = "checkpoints"):
+                 checkpoint_dir: str = "checkpoints",
+                 qcpp_integration: Optional[Any] = None):
         """
         Initialize multi-agent coordinator with protein sequence.
 
@@ -47,10 +48,25 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
             adaptive_config: Optional pre-configured AdaptiveConfig (overrides auto-config)
             enable_checkpointing: Whether to enable automatic checkpointing
             checkpoint_dir: Directory for checkpoint files
+            qcpp_integration: Optional QCPP integration adapter for physics-grounded exploration
         """
         self._protein_sequence = protein_sequence
         self._agents: List[IProteinAgent] = []
         self._shared_memory_pool: ISharedMemoryPool = SharedMemoryPool()
+
+        # QCPP Integration (Task 7: Store QCPP integration reference)
+        self._qcpp_integration = qcpp_integration
+        
+        # Task 9: Initialize integrated trajectory recorder if QCPP enabled
+        self._trajectory_recorder = None
+        if qcpp_integration is not None:
+            try:
+                from .integrated_trajectory import IntegratedTrajectoryRecorder
+                self._trajectory_recorder = IntegratedTrajectoryRecorder(max_points=10000)
+                logger.info("Integrated trajectory recording enabled with QCPP")
+            except ImportError as e:
+                logger.warning(f"Could not initialize trajectory recorder: {e}")
+                self._trajectory_recorder = None
 
         # Adaptive configuration
         self._configurator = adaptive_configurator or get_default_configurator()
@@ -122,11 +138,13 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
                 )
 
                 # Create agent with adaptive configuration
+                # Task 7: Pass QCPP integration to agents during initialization
                 agent = ProteinAgent(
                     protein_sequence=self._protein_sequence,
                     initial_frequency=frequency,
                     initial_coherence=coherence,
-                    adaptive_config=self._adaptive_config
+                    adaptive_config=self._adaptive_config,
+                    qcpp_integration=self._qcpp_integration
                 )
 
                 self._agents.append(agent)
@@ -234,6 +252,42 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
             # Sync shared memories to agents every 20 iterations
             if (iteration + 1) % 20 == 0:
                 self._sync_shared_memories_to_agents()
+            
+            # Task 9: Record integrated trajectory point if QCPP enabled
+            if self._trajectory_recorder is not None and self._qcpp_integration is not None:
+                try:
+                    # Get best agent's current state for this iteration
+                    best_agent = self._agents[0]  # Start with first agent
+                    best_agent_energy = float('inf')
+                    
+                    for agent in self._agents:
+                        conf = agent.get_current_conformation()
+                        if conf.energy < best_agent_energy:
+                            best_agent = agent
+                            best_agent_energy = conf.energy
+                    
+                    # Get UBF metrics from best agent
+                    best_conf = best_agent.get_current_conformation()
+                    consciousness = best_agent._consciousness  # type: ignore
+                    
+                    # Get QCPP metrics for best conformation
+                    qcpp_metrics = self._qcpp_integration.analyze_conformation(best_conf)
+                    
+                    # Record trajectory point
+                    self._trajectory_recorder.record_point(
+                        iteration=self._total_iterations,
+                        rmsd=best_conf.rmsd_to_native if best_conf.rmsd_to_native else 0.0,
+                        energy=best_conf.energy,
+                        consciousness_frequency=consciousness.get_frequency(),
+                        consciousness_coherence=consciousness.get_coherence(),
+                        qcp_score=qcpp_metrics.qcp_score,
+                        field_coherence=qcpp_metrics.field_coherence,
+                        stability_score=qcpp_metrics.stability_score,
+                        phi_match_score=qcpp_metrics.phi_match_score
+                    )
+                except Exception as e:
+                    # Log but don't crash - trajectory recording is non-critical
+                    logger.warning(f"Trajectory recording failed at iteration {self._total_iterations}: {e}")
 
         # Collect final agent metrics
         for i, agent in enumerate(self._agents):
@@ -263,6 +317,34 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
 
         total_runtime = time.time() - start_time
 
+        # Task 9: Compute correlation analysis if trajectory recording was enabled
+        qcpp_trajectory_data = None
+        qcpp_rmsd_correlations = None
+        qcpp_energy_correlations = None
+        consciousness_qcpp_correlations = None
+        
+        if self._trajectory_recorder is not None and self._trajectory_recorder.get_point_count() > 0:
+            try:
+                from .integrated_trajectory import TrajectoryAnalyzer
+                
+                # Export trajectory data
+                qcpp_trajectory_data = self._trajectory_recorder.export_to_dict()
+                
+                # Perform correlation analysis (requires at least 2 points)
+                if self._trajectory_recorder.get_point_count() >= 2:
+                    analyzer = TrajectoryAnalyzer(self._trajectory_recorder.get_points())
+                    
+                    qcpp_rmsd_correlations = analyzer.calculate_qcpp_rmsd_correlation()
+                    qcpp_energy_correlations = analyzer.calculate_qcpp_energy_correlation()
+                    consciousness_qcpp_correlations = analyzer.calculate_consciousness_qcpp_correlation()
+                    
+                    logger.info(
+                        f"QCPP-RMSD correlations: QCP={qcpp_rmsd_correlations['qcp_rmsd_corr']:.3f}, "
+                        f"Stability={qcpp_rmsd_correlations['stability_rmsd_corr']:.3f}"
+                    )
+            except Exception as e:
+                logger.warning(f"Correlation analysis failed: {e}")
+
         return ExplorationResults(
             total_iterations=self._total_iterations,
             total_conformations_explored=total_conformations_explored,
@@ -272,7 +354,11 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
             agent_metrics=agent_metrics,
             collective_learning_benefit=collective_learning_benefit,
             total_runtime_seconds=total_runtime,
-            shared_memories_created=self._shared_memory_pool.get_total_memories()
+            shared_memories_created=self._shared_memory_pool.get_total_memories(),
+            qcpp_trajectory_data=qcpp_trajectory_data,
+            qcpp_rmsd_correlations=qcpp_rmsd_correlations,
+            qcpp_energy_correlations=qcpp_energy_correlations,
+            consciousness_qcpp_correlations=consciousness_qcpp_correlations
         )
 
     def resume_from_checkpoint(self, checkpoint_file: str) -> int:
@@ -521,5 +607,26 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
             Formatted configuration summary string
         """
         return self._configurator.get_config_summary(self._adaptive_config)
+
+    def get_qcpp_integration(self) -> Optional[Any]:
+        """
+        Get the QCPP integration adapter instance.
+        
+        This is useful for trajectory recording and external analysis
+        of QCPP-enhanced exploration.
+        
+        Returns:
+            QCPP integration adapter if enabled, None otherwise
+        """
+        return self._qcpp_integration
+    
+    def get_trajectory_recorder(self) -> Optional[Any]:
+        """
+        Get the integrated trajectory recorder instance.
+        
+        Returns:
+            IntegratedTrajectoryRecorder if QCPP is enabled, None otherwise
+        """
+        return self._trajectory_recorder
 
         print(f"Results exported to {output_file}")

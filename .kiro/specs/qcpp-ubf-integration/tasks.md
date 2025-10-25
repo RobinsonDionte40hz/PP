@@ -77,7 +77,7 @@ no# Implementation Plan
   - Test bounds enforcement for frequency and temperature
   - _Requirements: 10.1_
 
-- [ ] 6. Integrate QCPP into ProteinAgent
+- [x] 6. Integrate QCPP into ProteinAgent
   - Modify `ubf_protein/protein_agent.py` `ProteinAgent.__init__()` to accept optional `qcpp_integration` parameter
   - Replace `ConsciousnessState` with `PhysicsGroundedConsciousness` when QCPP enabled
   - Pass QCPP integration to move evaluator during initialization
@@ -86,26 +86,26 @@ no# Implementation Plan
   - Apply dynamic parameter adjustment based on QCPP stability
   - _Requirements: 1.1, 3.1, 5.1_
 
-- [ ] 6.1 Write unit tests for integrated ProteinAgent
+- [x] 6.1 Write unit tests for integrated ProteinAgent
   - Test agent initialization with QCPP integration
   - Test agent uses physics-grounded consciousness when QCPP enabled
   - Test agent updates consciousness from QCPP metrics
   - Test agent applies dynamic parameter adjustment
   - _Requirements: 10.1, 10.3_
 
-- [ ] 7. Integrate QCPP into MultiAgentCoordinator
+- [x] 7. Integrate QCPP into MultiAgentCoordinator
   - Modify `ubf_protein/multi_agent_coordinator.py` `MultiAgentCoordinator.__init__()` to accept optional `qcpp_integration` parameter
   - Pass QCPP integration to agents during `initialize_agents()`
   - Store QCPP integration reference for trajectory recording
   - _Requirements: 1.1, 2.1_
 
-- [ ] 7.1 Write unit tests for integrated MultiAgentCoordinator
+- [x] 7.1 Write unit tests for integrated MultiAgentCoordinator
   - Test coordinator initialization with QCPP integration
   - Test coordinator passes QCPP to agents
   - Test coordinator stores QCPP reference
   - _Requirements: 10.1_
 
-- [ ] 8. Implement integrated trajectory recording
+- [x] 8. Implement integrated trajectory recording
   - Create `ubf_protein/integrated_trajectory.py` with `IntegratedTrajectoryRecorder` class
   - Implement `IntegratedTrajectoryPoint` dataclass with UBF metrics (rmsd, energy, consciousness) and QCPP metrics (qcp, coherence, stability, phi_match)
   - Implement `record_point()` method that captures both UBF and QCPP metrics
@@ -114,27 +114,27 @@ no# Implementation Plan
   - Add `calculate_qcpp_rmsd_correlation()` method using scipy.stats.pearsonr
   - _Requirements: 2.3, 2.4, 8.1, 8.2, 8.3, 8.4, 8.5_
 
-- [ ] 8.1 Write unit tests for integrated trajectory recording
+- [x] 8.1 Write unit tests for integrated trajectory recording
   - Test `IntegratedTrajectoryPoint` dataclass creation
   - Test trajectory point recording with both UBF and QCPP metrics
   - Test JSON export format
   - Test correlation analysis calculations
   - _Requirements: 10.5_
 
-- [ ] 9. Wire trajectory recording into coordinator
+- [x] 9. Wire trajectory recording into coordinator
   - Modify `ubf_protein/multi_agent_coordinator.py` to use `IntegratedTrajectoryRecorder` when QCPP enabled
   - Update `run_parallel_exploration()` to record QCPP metrics at each iteration
   - Add correlation analysis after exploration completes
   - Include correlation results in `ExplorationResults`
   - _Requirements: 2.2, 2.3, 2.5_
 
-- [ ] 9.1 Write unit tests for coordinator trajectory integration
+- [x] 9.1 Write unit tests for coordinator trajectory integration
   - Test coordinator records QCPP metrics during exploration
   - Test coordinator computes correlations after exploration
   - Test correlation results included in exploration results
   - _Requirements: 10.5_
 
-- [ ] 10. Add configuration and backward compatibility
+- [x] 10. Add configuration and backward compatibility
   - Create `ubf_protein/qcpp_config.py` with `QCPPIntegrationConfig` dataclass
   - Add configuration fields: enabled, analysis_frequency, cache_size, max_calculation_time_ms, phi_reward_threshold, phi_reward_energy, enable_dynamic_adjustment, stability thresholds, enable_physics_grounding, smoothing_factor
   - Implement configuration validation
@@ -142,7 +142,7 @@ no# Implementation Plan
   - Add configuration parameter to coordinator and agent constructors
   - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5_
 
-- [ ] 10.1 Write unit tests for configuration and backward compatibility
+- [x] 10.1 Write unit tests for configuration and backward compatibility
   - Test UBF operates without QCPP when not provided
   - Test configuration flag disables integration
   - Test all components fall back gracefully

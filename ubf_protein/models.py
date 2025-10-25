@@ -326,6 +326,11 @@ class ExplorationResults:
     validation_quality: Optional[str] = None  # 'excellent', 'good', 'acceptable', 'poor', or None if no native structure
     best_gdt_ts: Optional[float] = None  # Best GDT-TS score across all agents
     best_tm_score: Optional[float] = None  # Best TM-score across all agents
+    # Task 9: QCPP-UBF integration - trajectory and correlation analysis
+    qcpp_trajectory_data: Optional[Dict[str, Any]] = None  # Integrated trajectory with QCPP metrics
+    qcpp_rmsd_correlations: Optional[Dict[str, float]] = None  # QCPP-RMSD correlation analysis
+    qcpp_energy_correlations: Optional[Dict[str, float]] = None  # QCPP-energy correlation analysis
+    consciousness_qcpp_correlations: Optional[Dict[str, float]] = None  # Consciousness-QCPP correlations
 
 # ============================================================================
 # Visualization & Monitoring
