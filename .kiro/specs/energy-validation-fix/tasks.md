@@ -36,7 +36,7 @@
   - Test backward compatibility with existing tests
   - _Requirements: 5.2, 5.3, 6.3_
 
-- [ ] 3. Implement RMSD Calculator
+- [x] 3. Implement RMSD Calculator
   - Create `ubf_protein/rmsd_calculator.py` with `RMSDCalculator` class
   - Implement basic RMSD calculation: RMSD = sqrt(Σ(r_pred - r_native)² / N)
   - Implement Kabsch algorithm for optimal superposition (rotation + translation)
@@ -55,7 +55,7 @@
   - Test TM-score = 1.0 for identical structures
   - _Requirements: 2.6_
 
-- [ ] 4. Implement Native Structure Loader
+- [x] 4. Implement Native Structure Loader
   - Create `NativeStructureLoader` class in `rmsd_calculator.py`
   - Implement PDB file parsing to extract Cα coordinates
   - Implement sequence extraction from PDB SEQRES or ATOM records
@@ -74,7 +74,7 @@
   - Test error handling for invalid files
   - _Requirements: 3.4, 3.7_
 
-- [ ] 5. Integrate RMSD Validation with UBF System
+- [x] 5. Integrate RMSD Validation with UBF System
   - Update `Conformation` model to add `native_structure_ref`, `gdt_ts_score`, `tm_score` fields
   - Update `protein_agent.py` to accept optional native structure parameter
   - Modify `_execute_move` to calculate RMSD if native structure provided
@@ -90,7 +90,7 @@
   - Test RMSD metrics appear in exploration results
   - _Requirements: 2.5_
 
-- [ ] 6. Create Validation Suite
+- [x] 6. Create Validation Suite
   - Create `ubf_protein/validation_suite.py` with `ValidationSuite` class
   - Create test set JSON with 5 proteins: 1UBQ, 1CRN, 2MR9, 1VII, 1LYZ
   - Implement `validate_protein` method to run full validation on single protein

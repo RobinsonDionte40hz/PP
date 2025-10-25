@@ -1,0 +1,117 @@
+{
+  "metadata": {
+    "sequence": "ACDEFGHIKLMNPQRSTVWY",
+    "sequence_length": 20,
+    "num_agents": 5,
+    "iterations_per_agent": 100,
+    "total_iterations": 100,
+    "diversity_profile": "balanced",
+    "total_runtime_seconds": 0.42478370666503906,
+    "avg_time_per_iteration_ms": 4.247837066650391,
+    "native_structure": null
+  },
+  "best_results": {
+    "best_energy": -18.28831474073848,
+    "energy_is_negative": true,
+    "best_rmsd": Infinity,
+    "total_conformations_explored": 500,
+    "best_gdt_ts": null,
+    "best_tm_score": null,
+    "validation_quality": null
+  },
+  "energy_components": {
+    "total_energy": -18.28831474073848,
+    "bond_energy": -100.0,
+    "angle_energy": 82.51384179387136,
+    "dihedral_energy": -0.9213954926564814,
+    "vdw_energy": -0.1209425424150447,
+    "electrostatic_energy": 0.24018150046168052,
+    "hbond_energy": 0.0,
+    "compactness_bonus": -0.0
+  },
+  "collective_learning": {
+    "collective_learning_benefit": 0.0,
+    "shared_memories_created": 0,
+    "avg_learning_improvement": 0.0
+  },
+  "agent_summary": {
+    "total_agents": 5,
+    "avg_conformations_per_agent": 100.0,
+    "avg_memories_per_agent": 1.0,
+    "avg_decision_time_ms": 0.4268326759338379,
+    "total_stuck_events": 440,
+    "total_escapes": 0
+  },
+  "per_agent_metrics": [
+    {
+      "agent_id": "agent_0",
+      "iterations": 100,
+      "conformations": 101,
+      "memories": 1,
+      "best_energy": -18.28831474073848,
+      "best_rmsd": Infinity,
+      "best_gdt_ts": null,
+      "best_tm_score": null,
+      "learning_improvement": 0.0,
+      "decision_time_ms": 0.4602932929992676,
+      "stuck_count": 88,
+      "escape_count": 0
+    },
+    {
+      "agent_id": "agent_1",
+      "iterations": 100,
+      "conformations": 101,
+      "memories": 1,
+      "best_energy": -18.28831474073848,
+      "best_rmsd": Infinity,
+      "best_gdt_ts": null,
+      "best_tm_score": null,
+      "learning_improvement": 0.0,
+      "decision_time_ms": 0.406491756439209,
+      "stuck_count": 88,
+      "escape_count": 0
+    },
+    {
+      "agent_id": "agent_2",
+      "iterations": 100,
+      "conformations": 101,
+      "memories": 1,
+      "best_energy": -18.28831474073848,
+      "best_rmsd": Infinity,
+      "best_gdt_ts": null,
+      "best_tm_score": null,
+      "learning_improvement": 0.0,
+      "decision_time_ms": 0.45237064361572266,
+      "stuck_count": 88,
+      "escape_count": 0
+    },
+    {
+      "agent_id": "agent_3",
+      "iterations": 100,
+      "conformations": 101,
+      "memories": 1,
+      "best_energy": -18.28831474073848,
+      "best_rmsd": Infinity,
+      "best_gdt_ts": null,
+      "best_tm_score": null,
+      "learning_improvement": 0.0,
+      "decision_time_ms": 0.411069393157959,
+      "stuck_count": 88,
+      "escape_count": 0
+    },
+    {
+      "agent_id": "agent_4",
+      "iterations": 100,
+      "conformations": 101,
+      "memories": 1,
+      "best_energy": -18.28831474073848,
+      "best_rmsd": Infinity,
+      "best_gdt_ts": null,
+      "best_tm_score": null,
+      "learning_improvement": 0.0,
+      "decision_time_ms": 0.40393829345703125,
+      "stuck_count": 88,
+      "escape_count": 0
+    }
+  ]
+}

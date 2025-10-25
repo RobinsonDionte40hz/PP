@@ -122,6 +122,11 @@ class Conformation:
     
     # Energy components (for debugging and analysis)
     energy_components: Optional[Dict[str, float]] = None  # Bond, angle, dihedral, VDW, etc.
+    
+    # Validation metrics (Task 5: RMSD validation integration)
+    native_structure_ref: Optional[str] = None  # PDB ID or file path for native structure
+    gdt_ts_score: Optional[float] = None  # GDT-TS score (0-100)
+    tm_score: Optional[float] = None  # TM-score (0-1)
 
     def get_capabilities(self) -> Dict[str, bool]:
         """Return capability flags for mappless move matching"""
@@ -252,6 +257,9 @@ class ExplorationMetrics:
     avg_decision_time_ms: float
     stuck_in_minima_count: int
     successful_escapes: int
+    # Task 5: Add GDT-TS and TM-score tracking
+    best_gdt_ts_score: Optional[float] = None  # Best GDT-TS score (0-100)
+    best_tm_score: Optional[float] = None  # Best TM-score (0-1)
 
 @dataclass
 class ExplorationResults:
@@ -265,6 +273,10 @@ class ExplorationResults:
     collective_learning_benefit: float  # Multi-agent improvement over single
     total_runtime_seconds: float
     shared_memories_created: int
+    # Task 5: Add validation quality assessment
+    validation_quality: Optional[str] = None  # 'excellent', 'good', 'acceptable', 'poor', or None if no native structure
+    best_gdt_ts: Optional[float] = None  # Best GDT-TS score across all agents
+    best_tm_score: Optional[float] = None  # Best TM-score across all agents
 
 # ============================================================================
 # Visualization & Monitoring

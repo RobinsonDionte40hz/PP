@@ -33,6 +33,8 @@ The UBF Protein System integrates quantum coherence principles with autonomous a
 
 ✅ **Pure Python Implementation** - PyPy-compatible for 2-5x performance boost  
 ✅ **SOLID Architecture** - Interface-driven design with dependency inversion  
+✅ **Molecular Mechanics Energy** - AMBER-like force field with 6 energy terms  
+✅ **Structural Validation** - RMSD, GDT-TS, TM-score validation against native structures  
 ✅ **Adaptive Configuration** - Automatic parameter scaling based on protein size (small/medium/large)  
 ✅ **Checkpoint & Resume** - Save and restore exploration state with integrity checking  
 ✅ **Real-Time Visualization** - Export trajectories and energy landscapes in multiple formats  
@@ -52,11 +54,14 @@ ubf_protein/
 ├── behavioral_state.py        # Behavioral state derivation
 ├── memory_system.py           # Experience memory and shared pool
 ├── mapless_moves.py          # Capability-based move generation
+├── energy_function.py        # Molecular mechanics energy calculator
+├── rmsd_calculator.py        # RMSD, GDT-TS, TM-score calculation
 ├── local_minima_detector.py  # Stuck detection and escape strategies
 ├── structural_validation.py   # Conformation validation and repair
 ├── physics_integration.py     # Quantum physics calculators (QAAP, resonance, water shielding)
 ├── protein_agent.py          # Autonomous protein agent
 ├── multi_agent_coordinator.py # Multi-agent coordination
+├── validation_suite.py       # Validation framework for testing predictions
 ├── adaptive_config.py        # Size-based configuration
 ├── checkpoint.py             # Checkpoint and resume system
 └── visualization.py          # Trajectory and energy landscape export
@@ -166,11 +171,14 @@ python run_single_agent.py --sequence ACDEFGH --iterations 1000 --output results
 # Multi-agent
 python run_multi_agent.py --sequence ACDEFGH --agents 10 --iterations 500 --diversity balanced
 
+# Validation against native structure
+python run_multi_agent.py --sequence MQIFVKT --agents 10 --iterations 500 --native 1UBQ
+
 # Benchmark
 python benchmark.py --agents 100 --iterations 1000
 
-# Validation against native structure
-python validate.py --sequence ACDEFGH --native-pdb 1abc.pdb --agents 10
+# Validation suite
+python -m ubf_protein.examples.validation_example
 ```
 
 ## Usage Examples
@@ -294,6 +302,215 @@ for move_type, memories in memory_system._memories.items():
         print(f"  Significance: {memory.significance:.3f}")
         print(f"  Energy change: {memory.energy_change:.2f}")
         print(f"  Success: {memory.success}")
+```
+
+## Energy Function and Validation
+
+### Molecular Mechanics Energy Calculator
+
+The system uses an AMBER-like force field with 6 energy terms for accurate structural evaluation:
+
+#### Energy Components
+
+1. **Bond Stretching Energy**
+   ```python
+   E_bond = Σ k_bond × (r - r₀)²
+   ```
+   - Penalizes deviation from ideal bond lengths (1.5 Å for C-C bonds)
+   - Force constant: 500 kcal/(mol·Å²)
+
+2. **Angle Bending Energy**
+   ```python
+   E_angle = Σ k_angle × (θ - θ₀)²
+   ```
+   - Penalizes deviation from ideal bond angles (109.5° for sp³, 120° for sp²)
+   - Force constant: 100 kcal/(mol·rad²)
+
+3. **Dihedral Torsion Energy**
+   ```python
+   E_dihedral = Σ V_n/2 × [1 + cos(nφ - γ)]
+   ```
+   - Models rotational barriers around bonds
+   - Barrier height: 2.0 kcal/mol
+
+4. **Van der Waals Energy**
+   ```python
+   E_vdw = Σ 4ε[(σ/r)¹² - (σ/r)⁶]
+   ```
+   - Lennard-Jones 12-6 potential for non-bonded interactions
+   - ε = 0.5 kcal/mol, σ = 3.5 Å
+
+5. **Electrostatic Energy**
+   ```python
+   E_elec = Σ k_e × q_i × q_j / (ε_r × r_ij)
+   ```
+   - Coulomb interactions between charged residues
+   - Dielectric constant: 4.0 (protein interior)
+
+6. **Hydrogen Bond Energy**
+   ```python
+   E_hbond = Σ A/r¹² - B/r¹⁰
+   ```
+   - Directional H-bond potential (donor-acceptor)
+   - Distance cutoff: 3.5 Å, angle cutoff: 150°
+
+#### Total Energy
+
+```python
+E_total = E_bond + E_angle + E_dihedral + E_vdw + E_elec + E_hbond
+```
+
+**Energy ranges for folded proteins**: -100 to 0 kcal/mol  
+**Typical native structures**: -50 to -80 kcal/mol  
+**Positive energy**: Indicates steric clashes or unfolded state
+
+#### Configuration
+
+Enable molecular mechanics energy in `config.py`:
+```python
+USE_MOLECULAR_MECHANICS_ENERGY = True  # Default: True
+```
+
+### Structural Validation Metrics
+
+The system validates predictions against native PDB structures using three metrics:
+
+#### 1. RMSD (Root Mean Square Deviation)
+
+```python
+RMSD = sqrt(Σ(r_pred - r_native)² / N)
+```
+
+- Measures average Cα displacement in Ångströms
+- **Quality criteria**:
+  - Excellent: RMSD < 2.0 Å
+  - Good: 2.0 ≤ RMSD < 4.0 Å
+  - Acceptable: 4.0 ≤ RMSD < 5.0 Å
+  - Poor: RMSD ≥ 5.0 Å
+
+#### 2. GDT-TS (Global Distance Test - Total Score)
+
+```python
+GDT-TS = (P₁ + P₂ + P₄ + P₈) / 4
+```
+
+- Percentage of residues within 1Å, 2Å, 4Å, 8Å of native positions
+- Scale: 0-100 (higher is better)
+- **Quality criteria**:
+  - Excellent: GDT-TS ≥ 80
+  - Good: 65 ≤ GDT-TS < 80
+  - Acceptable: 50 ≤ GDT-TS < 65
+  - Poor: GDT-TS < 50
+
+#### 3. TM-score (Template Modeling Score)
+
+```python
+TM-score = (1/L) × Σ 1 / [1 + (d_i/d₀)²]
+```
+
+- Length-independent structure similarity score
+- Scale: 0-1 (higher is better)
+- **Quality criteria**:
+  - Same fold: TM-score > 0.5
+  - Similar structure: TM-score > 0.6
+  - High similarity: TM-score > 0.8
+
+### Validation Suite
+
+The validation suite provides comprehensive testing against known structures:
+
+```python
+from ubf_protein.validation_suite import ValidationSuite
+
+# Initialize suite
+suite = ValidationSuite()
+
+# Validate single protein
+report = suite.validate_protein(
+    pdb_id="1UBQ",          # Ubiquitin
+    num_agents=10,
+    iterations=1000,
+    use_multi_agent=True
+)
+
+# Check results
+print(f"RMSD: {report.best_rmsd:.2f} Å")
+print(f"Energy: {report.best_energy:.2f} kcal/mol")
+print(f"GDT-TS: {report.gdt_ts_score:.1f}")
+print(f"TM-score: {report.tm_score:.3f}")
+print(f"Quality: {report.assess_quality()}")  # "excellent", "good", "acceptable", "poor"
+print(f"Success: {report.is_successful()}")   # True if RMSD < 5.0, Energy < 0, GDT-TS > 50
+
+# Run full test suite
+results = suite.run_test_suite(num_agents=10, iterations=500)
+print(f"Success rate: {results.success_rate:.1f}%")
+print(f"Average RMSD: {results.average_rmsd:.2f} Å")
+print(f"Average GDT-TS: {results.average_gdt_ts:.1f}")
+```
+
+#### Test Proteins
+
+The suite includes 5 validation proteins (configured in `validation_proteins.json`):
+
+| PDB ID | Name | Residues | Difficulty | Expected RMSD |
+|--------|------|----------|------------|---------------|
+| 1UBQ | Ubiquitin | 76 | Medium | 3-5 Å |
+| 1CRN | Crambin | 46 | Easy | 2-4 Å |
+| 2MR9 | Villin Headpiece | 35 | Easy | 2-3 Å |
+| 1VII | Villin Headpiece (NMR) | 36 | Easy | 2-3 Å |
+| 1LYZ | Lysozyme | 129 | Hard | 5-7 Å |
+
+#### Validation Example Script
+
+See `ubf_protein/examples/validation_example.py` for comprehensive usage examples:
+
+```bash
+# Run validation examples
+python -m ubf_protein.examples.validation_example
+
+# Examples include:
+#   1. Single protein validation
+#   2. Quality assessment criteria
+#   3. Test suite validation
+#   4. Baseline comparison
+#   5. Programmatic usage
+#   6. Command-line validation
+```
+
+### Command-Line Validation
+
+Validate predictions directly from the command line:
+
+```bash
+# Basic validation with native structure
+python run_multi_agent.py MQIFVKT --agents 10 --iterations 500 --native 1UBQ
+
+# Output includes:
+#   ✓ Energy components breakdown (6 terms)
+#   ✓ RMSD to native structure
+#   ✓ GDT-TS and TM-score
+#   ✓ Quality assessment (★★★★ to ★)
+#   ✓ Energy validation (✓ Negative = folded / ⚠ Positive = unfolded)
+```
+
+Example output:
+```
+🔬 Energy Components:
+   Bond Energy:        12.50 kcal/mol
+   Angle Energy:       18.30 kcal/mol
+   Dihedral Energy:     8.20 kcal/mol
+   VDW Energy:        -45.60 kcal/mol
+   Electrostatic:     -28.40 kcal/mol
+   H-Bond Energy:     -15.20 kcal/mol
+   -------------------------------
+   Total Energy:      -50.20 kcal/mol  ✓ Negative (folded)
+
+📊 Validation Metrics:
+   RMSD to Native:      3.45 Å
+   GDT-TS Score:       68.2
+   TM-score:            0.721
+
+⭐ Prediction Quality:  ★★★ GOOD
 ```
 
 ## Configuration

@@ -31,6 +31,14 @@ from . import config as config_module
 # Set up logging
 logger = logging.getLogger(__name__)
 
+# Task 5: Import RMSD calculator for native structure validation
+try:
+    from .rmsd_calculator import RMSDCalculator
+    HAS_RMSD_CALCULATOR = True
+except ImportError:
+    HAS_RMSD_CALCULATOR = False
+    logger.warning("RMSDCalculator not available - native structure validation disabled")
+
 
 class ProteinAgent(IProteinAgent):
     """
@@ -47,7 +55,8 @@ class ProteinAgent(IProteinAgent):
                  initial_conformation: Optional[Conformation] = None,
                  adaptive_config: Optional[AdaptiveConfig] = None,
                  enable_visualization: bool = False,
-                 max_snapshots: int = 1000):
+                 max_snapshots: int = 1000,
+                 native_structure: Optional[Conformation] = None):
         """
         Initialize protein agent with consciousness coordinates and protein sequence.
 
@@ -59,6 +68,7 @@ class ProteinAgent(IProteinAgent):
             adaptive_config: Adaptive configuration (created automatically if None)
             enable_visualization: Enable trajectory snapshot recording
             max_snapshots: Maximum snapshots to store (prevents memory overflow)
+            native_structure: Optional native structure for RMSD validation (Task 5)
         """
         # Create adaptive config if not provided
         if adaptive_config is None:
@@ -78,6 +88,17 @@ class ProteinAgent(IProteinAgent):
 
         # Initialize structural validator
         self._validator = StructuralValidation()
+        
+        # Task 5: Initialize RMSD calculator and store native structure
+        self._native_structure = native_structure
+        self._rmsd_calculator = None
+        if HAS_RMSD_CALCULATOR and native_structure is not None:
+            try:
+                self._rmsd_calculator = RMSDCalculator(align_structures=True)
+                logger.info("RMSD calculator initialized for native structure validation")
+            except Exception as e:
+                logger.error(f"Error initializing RMSDCalculator: {e}")
+                logger.warning("Native structure validation will be disabled")
         
         # Initialize energy calculator (if enabled)
         self._energy_calculator: Optional[IPhysicsCalculator] = None
@@ -121,6 +142,10 @@ class ProteinAgent(IProteinAgent):
         self._validation_failures = 0
         self._repair_attempts = 0
         self._repair_successes = 0
+        
+        # Task 5: Add GDT-TS and TM-score tracking
+        self._best_gdt_ts = self._current_conformation.gdt_ts_score if self._current_conformation.gdt_ts_score is not None else 0.0
+        self._best_tm_score = self._current_conformation.tm_score if self._current_conformation.tm_score is not None else 0.0
         
         # Learning improvement tracking
         self._rmsd_history = [self._best_rmsd] if self._best_rmsd != float('inf') else []
@@ -344,6 +369,14 @@ class ProteinAgent(IProteinAgent):
             self._best_rmsd = outcome.new_conformation.rmsd_to_native
             # Track RMSD improvement for learning calculation
             self._rmsd_history.append(self._best_rmsd)
+        
+        # Task 5: Update best GDT-TS and TM-score
+        if (outcome.new_conformation.gdt_ts_score is not None and
+            outcome.new_conformation.gdt_ts_score > self._best_gdt_ts):
+            self._best_gdt_ts = outcome.new_conformation.gdt_ts_score
+        if (outcome.new_conformation.tm_score is not None and
+            outcome.new_conformation.tm_score > self._best_tm_score):
+            self._best_tm_score = outcome.new_conformation.tm_score
 
         # Update metrics
         self._iterations_completed += 1
@@ -522,6 +555,49 @@ class ProteinAgent(IProteinAgent):
 
             new_conformation.secondary_structure = new_ss
 
+        # Task 5: Calculate RMSD, GDT-TS, and TM-score if native structure is provided
+        if self._rmsd_calculator is not None and self._native_structure is not None:
+            try:
+                # Calculate RMSD and quality metrics
+                rmsd_result = self._rmsd_calculator.calculate_rmsd(
+                    predicted_coords=new_conformation.atom_coordinates,
+                    native_coords=self._native_structure.atom_coordinates,
+                    calculate_metrics=True
+                )
+                
+                # Update conformation with validation metrics
+                new_conformation.rmsd_to_native = rmsd_result.rmsd
+                new_conformation.gdt_ts_score = rmsd_result.gdt_ts
+                new_conformation.tm_score = rmsd_result.tm_score
+                
+                # Set native structure reference if not already set
+                if new_conformation.native_structure_ref is None:
+                    new_conformation.native_structure_ref = getattr(
+                        self._native_structure, 
+                        'native_structure_ref', 
+                        'native_structure'
+                    )
+                
+                logger.debug(
+                    f"RMSD validation: RMSD={rmsd_result.rmsd:.2f}Å, "
+                    f"GDT-TS={rmsd_result.gdt_ts:.1f}, TM-score={rmsd_result.tm_score:.3f}"
+                )
+                
+            except ValueError as e:
+                # Handle structure mismatch errors gracefully
+                logger.warning(f"RMSD calculation failed (structure mismatch): {e}")
+                new_conformation.rmsd_to_native = None
+                new_conformation.gdt_ts_score = None
+                new_conformation.tm_score = None
+                
+            except Exception as e:
+                # Handle any other RMSD calculation errors gracefully
+                logger.warning(f"RMSD calculation failed: {e}")
+                logger.debug(f"RMSD error details", exc_info=True)
+                new_conformation.rmsd_to_native = None
+                new_conformation.gdt_ts_score = None
+                new_conformation.tm_score = None
+
         return new_conformation
 
     def _calculate_outcome_significance(self, energy_change: float,
@@ -565,7 +641,7 @@ class ProteinAgent(IProteinAgent):
 
     def get_exploration_metrics(self) -> Dict[str, float]:
         """Get current exploration metrics."""
-        return {
+        metrics = {
             "iterations_completed": self._iterations_completed,
             "conformations_explored": self._conformations_explored,
             "memories_created": self._memories_created,
@@ -581,6 +657,14 @@ class ProteinAgent(IProteinAgent):
             "repair_successes": self._repair_successes,
             "learning_improvement": self._calculate_learning_improvement()
         }
+        
+        # Task 5: Add GDT-TS and TM-score if available
+        if hasattr(self, '_best_gdt_ts'):
+            metrics["best_gdt_ts"] = self._best_gdt_ts
+        if hasattr(self, '_best_tm_score'):
+            metrics["best_tm_score"] = self._best_tm_score
+            
+        return metrics
 
     def _calculate_learning_improvement(self) -> float:
         """

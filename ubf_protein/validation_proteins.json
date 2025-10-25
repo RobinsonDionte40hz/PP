@@ -1,0 +1,44 @@
+{
+  "validation_proteins": [
+    {
+      "pdb_id": "1UBQ",
+      "name": "Ubiquitin",
+      "residues": 76,
+      "native_energy_range": [-120, -80],
+      "difficulty": "medium",
+      "notes": "Well-studied protein, ideal for validation. Compact globular structure."
+    },
+    {
+      "pdb_id": "1CRN",
+      "name": "Crambin",
+      "residues": 46,
+      "native_energy_range": [-80, -50],
+      "difficulty": "easy",
+      "notes": "Small protein, fast-folding. Good starting point for testing."
+    },
+    {
+      "pdb_id": "2MR9",
+      "name": "Villin Headpiece",
+      "residues": 35,
+      "native_energy_range": [-60, -40],
+      "difficulty": "easy",
+      "notes": "Very small, helical protein. Fast-folding model system."
+    },
+    {
+      "pdb_id": "1VII",
+      "name": "Protein G (B1 domain)",
+      "residues": 56,
+      "native_energy_range": [-70, -50],
+      "difficulty": "medium",
+      "notes": "Mixed alpha/beta protein. Good test for secondary structure formation."
+    },
+    {
+      "pdb_id": "1LYZ",
+      "name": "Lysozyme",
+      "residues": 129,
+      "native_energy_range": [-150, -100],
+      "difficulty": "hard",
+      "notes": "Larger protein with multiple domains. Challenging test case."
+    }
+  ]
+}

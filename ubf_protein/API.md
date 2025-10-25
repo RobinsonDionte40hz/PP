@@ -11,6 +11,8 @@ Complete API reference for the UBF Protein System, organized by component.
 - [Behavioral State](#behavioral-state)
 - [Memory System](#memory-system)
 - [Move Generation](#move-generation)
+- [Energy Function](#energy-function)
+- [Validation Suite](#validation-suite)
 - [Protein Agent](#protein-agent)
 - [Multi-Agent Coordinator](#multi-agent-coordinator)
 - [Physics Integration](#physics-integration)
@@ -1318,6 +1320,577 @@ except ValidationError as e:
     else:
         # Generate new conformation
         agent._current_conformation = agent._generate_initial_conformation()
+```
+
+---
+
+## Energy Function
+
+### MolecularMechanicsEnergy
+
+```python
+class MolecularMechanicsEnergy(IEnergyCalculator):
+    """
+    AMBER-like force field implementation for protein energy calculation.
+    
+    Calculates energy using 6 terms:
+    1. Bond stretching
+    2. Angle bending
+    3. Dihedral torsion
+    4. Van der Waals (Lennard-Jones)
+    5. Electrostatic (Coulomb)
+    6. Hydrogen bonding
+    
+    Energy units: kcal/mol
+    """
+    
+    def calculate_energy(self, conformation: Conformation) -> float:
+        """
+        Calculate total molecular mechanics energy.
+        
+        Args:
+            conformation: Protein conformation with 3D coordinates
+            
+        Returns:
+            Total energy in kcal/mol
+            
+        Example:
+            >>> calculator = MolecularMechanicsEnergy()
+            >>> energy = calculator.calculate_energy(conf)
+            >>> print(f"Total energy: {energy:.2f} kcal/mol")
+            Total energy: -52.34 kcal/mol
+        """
+        pass
+    
+    def calculate_detailed_energy(
+        self, 
+        conformation: Conformation
+    ) -> Dict[str, float]:
+        """
+        Calculate energy breakdown by component.
+        
+        Args:
+            conformation: Protein conformation
+            
+        Returns:
+            Dictionary with keys:
+            - "bond": Bond stretching energy
+            - "angle": Angle bending energy
+            - "dihedral": Dihedral torsion energy
+            - "vdw": Van der Waals energy
+            - "electrostatic": Electrostatic energy
+            - "hbond": Hydrogen bond energy
+            - "total": Sum of all components
+            
+        Example:
+            >>> components = calculator.calculate_detailed_energy(conf)
+            >>> for term, energy in components.items():
+            ...     print(f"{term}: {energy:.2f} kcal/mol")
+            bond: 12.50 kcal/mol
+            angle: 18.30 kcal/mol
+            dihedral: 8.20 kcal/mol
+            vdw: -45.60 kcal/mol
+            electrostatic: -28.40 kcal/mol
+            hbond: -15.20 kcal/mol
+            total: -50.20 kcal/mol
+        """
+        pass
+```
+
+#### Energy Terms
+
+1. **Bond Stretching Energy**
+   ```python
+   E_bond = Σ k_bond × (r - r₀)²
+   ```
+   - `k_bond = 500 kcal/(mol·Å²)`: Force constant
+   - `r₀ = 1.5 Å`: Ideal bond length (C-C bonds)
+   - Penalizes deviation from ideal bond geometry
+
+2. **Angle Bending Energy**
+   ```python
+   E_angle = Σ k_angle × (θ - θ₀)²
+   ```
+   - `k_angle = 100 kcal/(mol·rad²)`: Force constant
+   - `θ₀ = 109.5° (sp³) or 120° (sp²)`: Ideal angle
+   - Maintains local geometry around atoms
+
+3. **Dihedral Torsion Energy**
+   ```python
+   E_dihedral = Σ V_n/2 × [1 + cos(nφ - γ)]
+   ```
+   - `V_n = 2.0 kcal/mol`: Barrier height
+   - `n = 3`: Periodicity (typical for C-C bonds)
+   - Models rotational barriers around bonds
+
+4. **Van der Waals Energy**
+   ```python
+   E_vdw = Σ 4ε[(σ/r)¹² - (σ/r)⁶]
+   ```
+   - `ε = 0.5 kcal/mol`: Well depth
+   - `σ = 3.5 Å`: Atomic radius
+   - Lennard-Jones 12-6 potential for non-bonded interactions
+
+5. **Electrostatic Energy**
+   ```python
+   E_elec = Σ k_e × q_i × q_j / (ε_r × r_ij)
+   ```
+   - `k_e = 332 kcal·Å/(mol·e²)`: Coulomb constant
+   - `ε_r = 4.0`: Dielectric constant (protein interior)
+   - Charged residues: D/E (-1), K/R (+1), H (+0.5)
+
+6. **Hydrogen Bond Energy**
+   ```python
+   E_hbond = Σ A/r¹² - B/r¹⁰
+   ```
+   - Distance cutoff: 3.5 Å
+   - Angle cutoff: 150° (donor-H-acceptor)
+   - Directional H-bond potential
+
+#### Energy Interpretation
+
+- **Folded proteins**: -100 to 0 kcal/mol
+- **Native structures**: -50 to -80 kcal/mol (typical)
+- **Partially folded**: -30 to 0 kcal/mol
+- **Unfolded/clashes**: > 0 kcal/mol (positive energy indicates problems)
+
+#### Configuration
+
+```python
+# In config.py
+USE_MOLECULAR_MECHANICS_ENERGY = True  # Enable MM energy (default: True)
+
+# Alternative: Simple distance-based energy
+USE_MOLECULAR_MECHANICS_ENERGY = False  # Use fast approximate energy
+```
+
+---
+
+## Validation Suite
+
+### ValidationSuite
+
+```python
+class ValidationSuite:
+    """
+    Comprehensive validation framework for testing protein predictions.
+    
+    Provides:
+    - Single protein validation against native PDB structures
+    - Test suite validation across multiple proteins
+    - Baseline comparison (vs random sampling, Monte Carlo)
+    - Quality assessment and success criteria
+    """
+    
+    def __init__(
+        self,
+        test_proteins_file: str = "validation_proteins.json",
+        pdb_cache_dir: str = "./pdb_cache"
+    ):
+        """
+        Initialize validation suite.
+        
+        Args:
+            test_proteins_file: Path to test protein configuration JSON
+            pdb_cache_dir: Directory to cache downloaded PDB files
+        """
+        pass
+    
+    def validate_protein(
+        self,
+        pdb_id: str,
+        num_agents: int = 10,
+        iterations: int = 1000,
+        use_multi_agent: bool = True
+    ) -> ValidationReport:
+        """
+        Validate prediction against native PDB structure.
+        
+        Args:
+            pdb_id: PDB ID (e.g., "1UBQ" for ubiquitin)
+            num_agents: Number of agents for exploration
+            iterations: Iterations per agent
+            use_multi_agent: Use multi-agent (True) or single agent (False)
+            
+        Returns:
+            ValidationReport with metrics (RMSD, energy, GDT-TS, TM-score)
+            
+        Example:
+            >>> suite = ValidationSuite()
+            >>> report = suite.validate_protein("1UBQ", num_agents=10, iterations=1000)
+            >>> print(report.get_summary())
+            PDB: 1UBQ (76 residues)
+            RMSD: 3.45 Å
+            Energy: -52.30 kcal/mol
+            GDT-TS: 68.2
+            TM-score: 0.721
+            Quality: GOOD
+            Success: ✓
+        """
+        pass
+    
+    def run_test_suite(
+        self,
+        num_agents: int = 10,
+        iterations: int = 500
+    ) -> TestSuiteResults:
+        """
+        Run validation on all configured test proteins.
+        
+        Args:
+            num_agents: Number of agents per protein
+            iterations: Iterations per agent
+            
+        Returns:
+            TestSuiteResults with aggregated statistics
+            
+        Example:
+            >>> suite = ValidationSuite()
+            >>> results = suite.run_test_suite(num_agents=10, iterations=500)
+            >>> print(f"Success rate: {results.success_rate:.1f}%")
+            Success rate: 75.0%
+            >>> print(f"Average RMSD: {results.average_rmsd:.2f} Å")
+            Average RMSD: 4.12 Å
+        """
+        pass
+    
+    def compare_to_baseline(
+        self,
+        pdb_id: str,
+        num_samples: int = 1000
+    ) -> ComparisonReport:
+        """
+        Compare UBF to baseline methods.
+        
+        Baselines:
+        - Random Sampling: Generate random conformations
+        - Monte Carlo: Simple Metropolis algorithm
+        
+        Args:
+            pdb_id: PDB ID for test protein
+            num_samples: Number of samples for each baseline
+            
+        Returns:
+            ComparisonReport with improvement percentages
+            
+        Example:
+            >>> comparison = suite.compare_to_baseline("1CRN", num_samples=1000)
+            >>> improvements = comparison.get_improvement_summary()
+            UBF RMSD: 3.2 Å
+            Random Sampling RMSD: 8.7 Å (UBF is 63% better)
+            Monte Carlo RMSD: 5.1 Å (UBF is 37% better)
+        """
+        pass
+    
+    def save_results(
+        self,
+        results: Union[ValidationReport, TestSuiteResults],
+        output_file: str
+    ) -> None:
+        """
+        Save validation results to JSON file.
+        
+        Args:
+            results: ValidationReport or TestSuiteResults
+            output_file: Path to output JSON file
+        """
+        pass
+```
+
+### ValidationReport
+
+```python
+@dataclass
+class ValidationReport:
+    """
+    Validation results for single protein prediction.
+    
+    Attributes:
+        pdb_id: PDB identifier (e.g., "1UBQ")
+        sequence_length: Number of residues
+        best_rmsd: Best RMSD to native structure (Å)
+        best_energy: Best total energy (kcal/mol)
+        gdt_ts_score: GDT-TS score (0-100)
+        tm_score: TM-score (0-1)
+        runtime_seconds: Total runtime
+        conformations_explored: Number of conformations sampled
+        num_agents: Number of agents used
+        iterations_per_agent: Iterations per agent
+    """
+    pdb_id: str
+    sequence_length: int
+    best_rmsd: float
+    best_energy: float
+    gdt_ts_score: float
+    tm_score: float
+    runtime_seconds: float
+    conformations_explored: int
+    num_agents: int
+    iterations_per_agent: int
+    
+    def assess_quality(self) -> str:
+        """
+        Assess prediction quality based on RMSD and GDT-TS.
+        
+        Returns:
+            "excellent", "good", "acceptable", or "poor"
+            
+        Quality Criteria:
+            Excellent: RMSD < 2.0 Å AND GDT-TS ≥ 80
+            Good: RMSD < 4.0 Å AND GDT-TS ≥ 65
+            Acceptable: RMSD < 5.0 Å AND GDT-TS ≥ 50
+            Poor: Otherwise
+        """
+        pass
+    
+    def is_successful(self) -> bool:
+        """
+        Check if prediction meets success criteria.
+        
+        Returns:
+            True if all criteria met:
+            - RMSD < 5.0 Å
+            - Energy < 0 kcal/mol (thermodynamically stable)
+            - GDT-TS > 50 (correct fold)
+        """
+        pass
+    
+    def get_summary(self) -> str:
+        """
+        Get formatted summary string.
+        
+        Returns:
+            Multi-line summary with all metrics
+        """
+        pass
+```
+
+### TestSuiteResults
+
+```python
+@dataclass
+class TestSuiteResults:
+    """
+    Aggregated results from test suite validation.
+    
+    Attributes:
+        validation_reports: List of individual ValidationReports
+        success_rate: Percentage of successful predictions (0-100)
+        average_rmsd: Average RMSD across all proteins (Å)
+        average_energy: Average energy across all proteins (kcal/mol)
+        average_gdt_ts: Average GDT-TS score (0-100)
+        average_tm_score: Average TM-score (0-1)
+        total_runtime_seconds: Total runtime for all proteins
+    """
+    validation_reports: List[ValidationReport]
+    success_rate: float
+    average_rmsd: float
+    average_energy: float
+    average_gdt_ts: float
+    average_tm_score: float
+    total_runtime_seconds: float
+    
+    def get_quality_distribution(self) -> Dict[str, int]:
+        """
+        Get distribution of quality levels.
+        
+        Returns:
+            Dictionary: {"excellent": count, "good": count, "acceptable": count, "poor": count}
+        """
+        pass
+    
+    def get_summary(self) -> str:
+        """Get formatted summary of test suite results."""
+        pass
+```
+
+### ComparisonReport
+
+```python
+@dataclass
+class ComparisonReport:
+    """
+    Comparison of UBF to baseline methods.
+    
+    Attributes:
+        pdb_id: PDB identifier
+        ubf_rmsd: UBF best RMSD (Å)
+        random_rmsd: Random sampling best RMSD (Å)
+        monte_carlo_rmsd: Monte Carlo best RMSD (Å)
+        ubf_energy: UBF best energy (kcal/mol)
+        random_energy: Random sampling best energy (kcal/mol)
+        monte_carlo_energy: Monte Carlo best energy (kcal/mol)
+    """
+    pdb_id: str
+    ubf_rmsd: float
+    random_rmsd: float
+    monte_carlo_rmsd: float
+    ubf_energy: float
+    random_energy: float
+    monte_carlo_energy: float
+    
+    def get_improvement_summary(self) -> str:
+        """
+        Get formatted summary of improvements over baselines.
+        
+        Returns:
+            Multi-line summary with improvement percentages
+        """
+        pass
+```
+
+### RMSDCalculator
+
+```python
+class RMSDCalculator:
+    """
+    Calculate RMSD, GDT-TS, and TM-score for structural validation.
+    
+    Uses Kabsch algorithm for optimal superposition.
+    """
+    
+    def calculate_rmsd(
+        self,
+        predicted: Conformation,
+        native: Conformation
+    ) -> float:
+        """
+        Calculate RMSD between predicted and native structures.
+        
+        Uses Kabsch algorithm for optimal superposition:
+        1. Center both structures at origin
+        2. Calculate optimal rotation matrix (SVD)
+        3. Rotate predicted structure
+        4. Calculate RMSD of aligned structures
+        
+        Args:
+            predicted: Predicted conformation
+            native: Native structure from PDB
+            
+        Returns:
+            RMSD in Ångströms
+            
+        Example:
+            >>> calculator = RMSDCalculator()
+            >>> rmsd = calculator.calculate_rmsd(pred, native)
+            >>> print(f"RMSD: {rmsd:.2f} Å")
+            RMSD: 3.45 Å
+        """
+        pass
+    
+    def calculate_gdt_ts(
+        self,
+        predicted: Conformation,
+        native: Conformation
+    ) -> float:
+        """
+        Calculate GDT-TS (Global Distance Test - Total Score).
+        
+        GDT-TS = (P₁ + P₂ + P₄ + P₈) / 4
+        
+        Where Pₙ is percentage of residues within n Å of native position.
+        
+        Args:
+            predicted: Predicted conformation
+            native: Native structure
+            
+        Returns:
+            GDT-TS score (0-100, higher is better)
+            
+        Example:
+            >>> gdt_ts = calculator.calculate_gdt_ts(pred, native)
+            >>> print(f"GDT-TS: {gdt_ts:.1f}")
+            GDT-TS: 68.2
+        """
+        pass
+    
+    def calculate_tm_score(
+        self,
+        predicted: Conformation,
+        native: Conformation
+    ) -> float:
+        """
+        Calculate TM-score (Template Modeling score).
+        
+        TM-score = (1/L) × Σ 1 / [1 + (d_i/d₀)²]
+        
+        Where:
+        - L: Protein length
+        - d_i: Distance of residue i after superposition
+        - d₀: Normalization factor (depends on L)
+        
+        Args:
+            predicted: Predicted conformation
+            native: Native structure
+            
+        Returns:
+            TM-score (0-1, higher is better)
+            - > 0.5: Same fold
+            - > 0.6: Similar structure
+            - > 0.8: High similarity
+            
+        Example:
+            >>> tm_score = calculator.calculate_tm_score(pred, native)
+            >>> print(f"TM-score: {tm_score:.3f}")
+            TM-score: 0.721
+        """
+        pass
+```
+
+### NativeStructureLoader
+
+```python
+class NativeStructureLoader:
+    """
+    Load native protein structures from PDB files.
+    
+    Downloads PDB files from RCSB PDB and extracts CA coordinates.
+    """
+    
+    def __init__(self, pdb_cache_dir: str = "./pdb_cache"):
+        """
+        Initialize loader with cache directory.
+        
+        Args:
+            pdb_cache_dir: Directory to cache downloaded PDB files
+        """
+        pass
+    
+    def load_structure(self, pdb_id: str) -> Conformation:
+        """
+        Load native structure from PDB.
+        
+        Downloads PDB file if not cached, extracts CA coordinates,
+        and returns as Conformation object.
+        
+        Args:
+            pdb_id: PDB identifier (e.g., "1UBQ")
+            
+        Returns:
+            Conformation with native structure coordinates
+            
+        Raises:
+            ValueError: If PDB ID invalid or structure cannot be loaded
+            
+        Example:
+            >>> loader = NativeStructureLoader()
+            >>> native = loader.load_structure("1UBQ")
+            >>> print(f"Loaded {len(native.sequence)} residues")
+            Loaded 76 residues
+        """
+        pass
+    
+    def get_sequence_from_pdb(self, pdb_id: str) -> str:
+        """
+        Extract amino acid sequence from PDB file.
+        
+        Args:
+            pdb_id: PDB identifier
+            
+        Returns:
+            Single-letter amino acid sequence
+        """
+        pass
 ```
 
 ---

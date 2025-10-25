@@ -1,0 +1,75 @@
+{
+  "metadata": {
+    "sequence": "ACDEFGH",
+    "sequence_length": 7,
+    "num_agents": 2,
+    "iterations_per_agent": 3,
+    "total_iterations": 3,
+    "diversity_profile": "balanced",
+    "total_runtime_seconds": 0.004288196563720703,
+    "avg_time_per_iteration_ms": 1.4293988545735676,
+    "native_structure": null
+  },
+  "best_results": {
+    "best_energy": -12.361077406420124,
+    "energy_is_negative": true,
+    "best_rmsd": Infinity,
+    "total_conformations_explored": 6,
+    "best_gdt_ts": null,
+    "best_tm_score": null,
+    "validation_quality": null
+  },
+  "energy_components": {
+    "total_energy": -12.361077406420124,
+    "bond_energy": -35.0,
+    "angle_energy": 22.920511609408706,
+    "dihedral_energy": -0.32248842242977016,
+    "vdw_energy": -0.03319914141383405,
+    "electrostatic_energy": 0.07409854801477378,
+    "hbond_energy": 0.0,
+    "compactness_bonus": -0.0
+  },
+  "collective_learning": {
+    "collective_learning_benefit": 0.0,
+    "shared_memories_created": 0,
+    "avg_learning_improvement": 0.0
+  },
+  "agent_summary": {
+    "total_agents": 2,
+    "avg_conformations_per_agent": 3.0,
+    "avg_memories_per_agent": 1.0,
+    "avg_decision_time_ms": 0.6957451502482096,
+    "total_stuck_events": 0,
+    "total_escapes": 0
+  },
+  "per_agent_metrics": [
+    {
+      "agent_id": "agent_0",
+      "iterations": 3,
+      "conformations": 4,
+      "memories": 1,
+      "best_energy": -12.361077406420124,
+      "best_rmsd": Infinity,
+      "best_gdt_ts": null,
+      "best_tm_score": null,
+      "learning_improvement": 0.0,
+      "decision_time_ms": 1.0712941487630208,
+      "stuck_count": 0,
+      "escape_count": 0
+    },
+    {
+      "agent_id": "agent_1",
+      "iterations": 3,
+      "conformations": 4,
+      "memories": 1,
+      "best_energy": -12.361077406420124,
+      "best_rmsd": Infinity,
+      "best_gdt_ts": null,
+      "best_tm_score": null,
+      "learning_improvement": 0.0,
+      "decision_time_ms": 0.32019615173339844,
+      "stuck_count": 0,
+      "escape_count": 0
+    }
+  ]
+}

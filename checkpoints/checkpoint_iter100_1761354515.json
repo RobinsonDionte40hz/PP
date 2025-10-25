@@ -1,0 +1,1317 @@
+{
+  "version": "1.0.0",
+  "timestamp": 1761354515,
+  "iteration": 100,
+  "metadata": {
+    "protein_sequence": "ACDEFGHIKLMNPQRSTVWY",
+    "agent_count": 5,
+    "best_energy": -18.28831474073848,
+    "best_rmsd": Infinity,
+    "auto_save": true,
+    "auto_save_interval": 50
+  },
+  "agents": [
+    {
+      "agent_id": "agent_1580951190368",
+      "protein_sequence": "ACDEFGHIKLMNPQRSTVWY",
+      "current_conformation": {
+        "conformation_id": "conf_100_sidechain_adjust_9823_5",
+        "sequence": "ACDEFGHIKLMNPQRSTVWY",
+        "atom_coordinates": [
+          [
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            3.8,
+            0.0,
+            0.0
+          ],
+          [
+            7.6,
+            0.0,
+            0.0
+          ],
+          [
+            11.399999999999999,
+            0.0,
+            0.0
+          ],
+          [
+            15.2,
+            0.0,
+            0.0
+          ],
+          [
+            19.0,
+            0.0,
+            0.0
+          ],
+          [
+            22.799999999999997,
+            0.0,
+            0.0
+          ],
+          [
+            26.599999999999998,
+            0.0,
+            0.0
+          ],
+          [
+            30.4,
+            0.0,
+            0.0
+          ],
+          [
+            34.199999999999996,
+            0.0,
+            0.0
+          ],
+          [
+            38.0,
+            0.0,
+            0.0
+          ],
+          [
+            41.8,
+            0.0,
+            0.0
+          ],
+          [
+            45.599999999999994,
+            0.0,
+            0.0
+          ],
+          [
+            49.4,
+            0.0,
+            0.0
+          ],
+          [
+            53.199999999999996,
+            0.0,
+            0.0
+          ],
+          [
+            57.0,
+            0.0,
+            0.0
+          ],
+          [
+            60.8,
+            0.0,
+            0.0
+          ],
+          [
+            64.6,
+            0.0,
+            0.0
+          ],
+          [
+            68.39999999999999,
+            0.0,
+            0.0
+          ],
+          [
+            72.2,
+            0.0,
+            0.0
+          ]
+        ],
+        "energy": -18.28831474073848,
+        "rmsd_to_native": null,
+        "secondary_structure": [
+          "C",
+          "C",
+          "C",
+          "C",
+          "C",
+          "C",
+          "C",
+          "C",
+          "C",
+          "C",
+          "C",
+          "C",
+          "C",
+          "C",
+          "C",
+          "C",
+          "C",
+          "C",
+          "C",
+          "C"
+        ],
+        "phi_angles": [
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0
+        ],
+        "psi_angles": [
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0
+        ],
+        "available_move_types": [
+          "backbone_rotation",
+          "sidechain_adjust"
+        ],
+        "structural_constraints": {}
+      },
+      "consciousness": {
+        "frequency": 15.0,
+        "coherence": 0.2,
+        "last_update_timestamp": 1761354515714
+      },
+      "behavioral": {
+        "exploration_energy": 1.0,
+        "structural_focus": 0.20000000000000048,
+        "conformational_bias": 0.9999999999999993,
+        "hydrophobic_drive": 1.0,
+        "risk_tolerance": 1.0,
+        "native_state_ambition": 0.3000000000000007,
+        "cached_timestamp": 1761354515402
+      },
+      "memories": {
+        "sidechain_adjust": [
+          {
+            "memory_id": "e6da9e0f-035d-47fc-a4d2-af77474d6fa6",
+            "move_type": "sidechain_adjust",
+            "significance": 1.0,
+            "energy_change": -1018.2883147407384,
+            "rmsd_change": 101.82883147407385,
+            "success": true,
+            "timestamp": 0,
+            "consciousness_state": {
+              "frequency": 15.0,
+              "coherence": 0.2,
+              "last_update_timestamp": 1761354515714
+            },
+            "behavioral_state": {
+              "exploration_energy": 0.3378233148930074,
+              "structural_focus": 0.9687775584645194,
+              "conformational_bias": -0.6231486331876419,
+              "hydrophobic_drive": 0.38173497233951104,
+              "risk_tolerance": 0.17564662978601472,
+              "native_state_ambition": 0.6833640429726816,
+              "cached_timestamp": 1761354515351
+            }
+          }
+        ]
+      },
+      "memory_count": 1,
+      "metrics": {
+        "iterations_completed": 100,
+        "conformations_explored": 101,
+        "memories_created": 1,
+        "best_energy": -18.28831474073848,
+        "best_rmsd": Infinity,
+        "stuck_in_minima_count": 88,
+        "successful_escapes": 0,
+        "validation_failures": 0,
+        "repair_attempts": 0,
+        "repair_successes": 0
+      },
+      "adaptive_config": {
+        "size_class": "small",
+        "residue_count": 20,
+        "initial_frequency_range": [
+          3.0,
+          15.0
+        ],
+        "initial_coherence_range": [
+          0.2,
+          1.0
+        ],
+        "stuck_detection_window": 13,
+        "stuck_detection_threshold": 5.0,
+        "memory_significance_threshold": 0.3,
+        "max_memories_per_agent": 30,
+        "convergence_energy_threshold": 5.0,
+        "convergence_rmsd_threshold": 1.5,
+        "max_iterations": 1000,
+        "checkpoint_interval": 50
+      },
+      "enable_visualization": false,
+      "max_snapshots": 1000
+    },
+    {
+      "agent_id": "agent_1580952358256",
+      "protein_sequence": "ACDEFGHIKLMNPQRSTVWY",
+      "current_conformation": {
+        "conformation_id": "conf_100_energy_minimization_6627_5",
+        "sequence": "ACDEFGHIKLMNPQRSTVWY",
+        "atom_coordinates": [
+          [
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            3.8,
+            0.0,
+            0.0
+          ],
+          [
+            7.6,
+            0.0,
+            0.0
+          ],
+          [
+            11.399999999999999,
+            0.0,
+            0.0
+          ],
+          [
+            15.2,
+            0.0,
+            0.0
+          ],
+          [
+            19.0,
+            0.0,
+            0.0
+          ],
+          [
+            22.799999999999997,
+            0.0,
+            0.0
+          ],
+          [
+            26.599999999999998,
+            0.0,
+            0.0
+          ],
+          [
+            30.4,
+            0.0,
+            0.0
+          ],
+          [
+            34.199999999999996,
+            0.0,
+            0.0
+          ],
+          [
+            38.0,
+            0.0,
+            0.0
+          ],
+          [
+            41.8,
+            0.0,
+            0.0
+          ],
+          [
+            45.599999999999994,
+            0.0,
+            0.0
+          ],
+          [
+            49.4,
+            0.0,
+            0.0
+          ],
+          [
+            53.199999999999996,
+            0.0,
+            0.0
+          ],
+          [
+            57.0,
+            0.0,
+            0.0
+          ],
+          [
+            60.8,
+            0.0,
+            0.0
+          ],
+          [
+            64.6,
+            0.0,
+            0.0
+          ],
+          [
+            68.39999999999999,
+            0.0,
+            0.0
+          ],
+          [
+            72.2,
+            0.0,
+            0.0
+          ]
+        ],
+        "energy": -18.28831474073848,
+        "rmsd_to_native": null,
+        "secondary_structure": [
+          "C",
+          "C",
+          "C",
+          "C",
+          "C",
+          "C",
+          "C",
+          "C",
+          "C",
+          "C",
+          "C",
+          "C",
+          "C",
+          "C",
+          "C",
+          "C",
+          "C",
+          "C",
+          "C",
+          "C"
+        ],
+        "phi_angles": [
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0
+        ],
+        "psi_angles": [
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0
+        ],
+        "available_move_types": [
+          "backbone_rotation",
+          "sidechain_adjust"
+        ],
+        "structural_constraints": {}
+      },
+      "consciousness": {
+        "frequency": 15.0,
+        "coherence": 0.2,
+        "last_update_timestamp": 1761354515714
+      },
+      "behavioral": {
+        "exploration_energy": 1.0,
+        "structural_focus": 0.20000000000000048,
+        "conformational_bias": 0.9999999999999993,
+        "hydrophobic_drive": 1.0,
+        "risk_tolerance": 1.0,
+        "native_state_ambition": 0.3000000000000007,
+        "cached_timestamp": 1761354515403
+      },
+      "memories": {
+        "energy_minimization": [
+          {
+            "memory_id": "7eaf89ad-382a-45bd-b3c8-0e0376342d0c",
+            "move_type": "energy_minimization",
+            "significance": 1.0,
+            "energy_change": -1018.2883147407384,
+            "rmsd_change": 101.82883147407385,
+            "success": true,
+            "timestamp": 0,
+            "consciousness_state": {
+              "frequency": 15.0,
+              "coherence": 0.2,
+              "last_update_timestamp": 1761354515714
+            },
+            "behavioral_state": {
+              "exploration_energy": 0.20078131807700936,
+              "structural_focus": 0.9865852089384188,
+              "conformational_bias": -0.7824501930960142,
+              "hydrophobic_drive": 0.17617197711551402,
+              "risk_tolerance": 0.0,
+              "native_state_ambition": 0.5336810170566505,
+              "cached_timestamp": 1761354515352
+            }
+          }
+        ]
+      },
+      "memory_count": 1,
+      "metrics": {
+        "iterations_completed": 100,
+        "conformations_explored": 101,
+        "memories_created": 1,
+        "best_energy": -18.28831474073848,
+        "best_rmsd": Infinity,
+        "stuck_in_minima_count": 88,
+        "successful_escapes": 0,
+        "validation_failures": 0,
+        "repair_attempts": 0,
+        "repair_successes": 0
+      },
+      "adaptive_config": {
+        "size_class": "small",
+        "residue_count": 20,
+        "initial_frequency_range": [
+          3.0,
+          15.0
+        ],
+        "initial_coherence_range": [
+          0.2,
+          1.0
+        ],
+        "stuck_detection_window": 13,
+        "stuck_detection_threshold": 5.0,
+        "memory_significance_threshold": 0.3,
+        "max_memories_per_agent": 30,
+        "convergence_energy_threshold": 5.0,
+        "convergence_rmsd_threshold": 1.5,
+        "max_iterations": 1000,
+        "checkpoint_interval": 50
+      },
+      "enable_visualization": false,
+      "max_snapshots": 1000
+    },
+    {
+      "agent_id": "agent_1580952358592",
+      "protein_sequence": "ACDEFGHIKLMNPQRSTVWY",
+      "current_conformation": {
+        "conformation_id": "conf_100_hydrophobic_collapse_5521_5",
+        "sequence": "ACDEFGHIKLMNPQRSTVWY",
+        "atom_coordinates": [
+          [
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            3.8,
+            0.0,
+            0.0
+          ],
+          [
+            7.6,
+            0.0,
+            0.0
+          ],
+          [
+            11.399999999999999,
+            0.0,
+            0.0
+          ],
+          [
+            15.2,
+            0.0,
+            0.0
+          ],
+          [
+            19.0,
+            0.0,
+            0.0
+          ],
+          [
+            22.799999999999997,
+            0.0,
+            0.0
+          ],
+          [
+            26.599999999999998,
+            0.0,
+            0.0
+          ],
+          [
+            30.4,
+            0.0,
+            0.0
+          ],
+          [
+            34.199999999999996,
+            0.0,
+            0.0
+          ],
+          [
+            38.0,
+            0.0,
+            0.0
+          ],
+          [
+            41.8,
+            0.0,
+            0.0
+          ],
+          [
+            45.599999999999994,
+            0.0,
+            0.0
+          ],
+          [
+            49.4,
+            0.0,
+            0.0
+          ],
+          [
+            53.199999999999996,
+            0.0,
+            0.0
+          ],
+          [
+            57.0,
+            0.0,
+            0.0
+          ],
+          [
+            60.8,
+            0.0,
+            0.0
+          ],
+          [
+            64.6,
+            0.0,
+            0.0
+          ],
+          [
+            68.39999999999999,
+            0.0,
+            0.0
+          ],
+          [
+            72.2,
+            0.0,
+            0.0
+          ]
+        ],
+        "energy": -18.28831474073848,
+        "rmsd_to_native": null,
+        "secondary_structure": [
+          "C",
+          "C",
+          "E",
+          "E",
+          "E",
+          "E",
+          "E",
+          "E",
+          "E",
+          "E",
+          "E",
+          "E",
+          "E",
+          "E",
+          "E",
+          "E",
+          "E",
+          "E",
+          "E",
+          "E"
+        ],
+        "phi_angles": [
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0
+        ],
+        "psi_angles": [
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0
+        ],
+        "available_move_types": [
+          "backbone_rotation",
+          "sidechain_adjust"
+        ],
+        "structural_constraints": {}
+      },
+      "consciousness": {
+        "frequency": 15.0,
+        "coherence": 0.2,
+        "last_update_timestamp": 1761354515715
+      },
+      "behavioral": {
+        "exploration_energy": 1.0,
+        "structural_focus": 0.20000000000000048,
+        "conformational_bias": 0.9999999999999993,
+        "hydrophobic_drive": 1.0,
+        "risk_tolerance": 1.0,
+        "native_state_ambition": 0.3000000000000007,
+        "cached_timestamp": 1761354515403
+      },
+      "memories": {
+        "sheet_formation": [
+          {
+            "memory_id": "64ccf32a-2b98-4d40-8b9f-a5a2bab51115",
+            "move_type": "sheet_formation",
+            "significance": 1.0,
+            "energy_change": -1018.2883147407384,
+            "rmsd_change": 101.82883147407385,
+            "success": true,
+            "timestamp": 0,
+            "consciousness_state": {
+              "frequency": 15.0,
+              "coherence": 0.2,
+              "last_update_timestamp": 1761354515715
+            },
+            "behavioral_state": {
+              "exploration_energy": 0.38696358590556695,
+              "structural_focus": 0.7637386369522158,
+              "conformational_bias": -0.3177097102847028,
+              "hydrophobic_drive": 0.45544537885835046,
+              "risk_tolerance": 0.27392717181113396,
+              "native_state_ambition": 0.5837684410652559,
+              "cached_timestamp": 1761354515352
+            }
+          }
+        ]
+      },
+      "memory_count": 1,
+      "metrics": {
+        "iterations_completed": 100,
+        "conformations_explored": 101,
+        "memories_created": 1,
+        "best_energy": -18.28831474073848,
+        "best_rmsd": Infinity,
+        "stuck_in_minima_count": 88,
+        "successful_escapes": 0,
+        "validation_failures": 0,
+        "repair_attempts": 0,
+        "repair_successes": 0
+      },
+      "adaptive_config": {
+        "size_class": "small",
+        "residue_count": 20,
+        "initial_frequency_range": [
+          3.0,
+          15.0
+        ],
+        "initial_coherence_range": [
+          0.2,
+          1.0
+        ],
+        "stuck_detection_window": 13,
+        "stuck_detection_threshold": 5.0,
+        "memory_significance_threshold": 0.3,
+        "max_memories_per_agent": 30,
+        "convergence_energy_threshold": 5.0,
+        "convergence_rmsd_threshold": 1.5,
+        "max_iterations": 1000,
+        "checkpoint_interval": 50
+      },
+      "enable_visualization": false,
+      "max_snapshots": 1000
+    },
+    {
+      "agent_id": "agent_1580952358928",
+      "protein_sequence": "ACDEFGHIKLMNPQRSTVWY",
+      "current_conformation": {
+        "conformation_id": "conf_100_turn_formation_6902_4",
+        "sequence": "ACDEFGHIKLMNPQRSTVWY",
+        "atom_coordinates": [
+          [
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            3.8,
+            0.0,
+            0.0
+          ],
+          [
+            7.6,
+            0.0,
+            0.0
+          ],
+          [
+            11.399999999999999,
+            0.0,
+            0.0
+          ],
+          [
+            15.2,
+            0.0,
+            0.0
+          ],
+          [
+            19.0,
+            0.0,
+            0.0
+          ],
+          [
+            22.799999999999997,
+            0.0,
+            0.0
+          ],
+          [
+            26.599999999999998,
+            0.0,
+            0.0
+          ],
+          [
+            30.4,
+            0.0,
+            0.0
+          ],
+          [
+            34.199999999999996,
+            0.0,
+            0.0
+          ],
+          [
+            38.0,
+            0.0,
+            0.0
+          ],
+          [
+            41.8,
+            0.0,
+            0.0
+          ],
+          [
+            45.599999999999994,
+            0.0,
+            0.0
+          ],
+          [
+            49.4,
+            0.0,
+            0.0
+          ],
+          [
+            53.199999999999996,
+            0.0,
+            0.0
+          ],
+          [
+            57.0,
+            0.0,
+            0.0
+          ],
+          [
+            60.8,
+            0.0,
+            0.0
+          ],
+          [
+            64.6,
+            0.0,
+            0.0
+          ],
+          [
+            68.39999999999999,
+            0.0,
+            0.0
+          ],
+          [
+            72.2,
+            0.0,
+            0.0
+          ]
+        ],
+        "energy": -18.28831474073848,
+        "rmsd_to_native": null,
+        "secondary_structure": [
+          "C",
+          "C",
+          "C",
+          "C",
+          "C",
+          "C",
+          "C",
+          "C",
+          "C",
+          "C",
+          "C",
+          "C",
+          "C",
+          "C",
+          "C",
+          "C",
+          "C",
+          "C",
+          "C",
+          "C"
+        ],
+        "phi_angles": [
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0
+        ],
+        "psi_angles": [
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0
+        ],
+        "available_move_types": [
+          "backbone_rotation",
+          "sidechain_adjust"
+        ],
+        "structural_constraints": {}
+      },
+      "consciousness": {
+        "frequency": 15.0,
+        "coherence": 0.2,
+        "last_update_timestamp": 1761354515715
+      },
+      "behavioral": {
+        "exploration_energy": 1.0,
+        "structural_focus": 0.3000000000000005,
+        "conformational_bias": 0.8749999999999993,
+        "hydrophobic_drive": 1.0,
+        "risk_tolerance": 1.0,
+        "native_state_ambition": 0.45000000000000073,
+        "cached_timestamp": 1761354515401
+      },
+      "memories": {
+        "turn_formation": [
+          {
+            "memory_id": "dd55d54e-9e0b-42cc-8c59-fa6c814b5736",
+            "move_type": "turn_formation",
+            "significance": 1.0,
+            "energy_change": -1018.2883147407384,
+            "rmsd_change": 101.82883147407385,
+            "success": true,
+            "timestamp": 0,
+            "consciousness_state": {
+              "frequency": 15.0,
+              "coherence": 0.2,
+              "last_update_timestamp": 1761354515715
+            },
+            "behavioral_state": {
+              "exploration_energy": 0.4450558571513133,
+              "structural_focus": 0.8617777508973731,
+              "conformational_bias": -0.3821663314704031,
+              "hydrophobic_drive": 0.54258378572697,
+              "risk_tolerance": 0.39011171430262664,
+              "native_state_ambition": 0.7187804079886856,
+              "cached_timestamp": 1761354515353
+            }
+          }
+        ]
+      },
+      "memory_count": 1,
+      "metrics": {
+        "iterations_completed": 100,
+        "conformations_explored": 101,
+        "memories_created": 1,
+        "best_energy": -18.28831474073848,
+        "best_rmsd": Infinity,
+        "stuck_in_minima_count": 88,
+        "successful_escapes": 0,
+        "validation_failures": 0,
+        "repair_attempts": 0,
+        "repair_successes": 0
+      },
+      "adaptive_config": {
+        "size_class": "small",
+        "residue_count": 20,
+        "initial_frequency_range": [
+          3.0,
+          15.0
+        ],
+        "initial_coherence_range": [
+          0.2,
+          1.0
+        ],
+        "stuck_detection_window": 13,
+        "stuck_detection_threshold": 5.0,
+        "memory_significance_threshold": 0.3,
+        "max_memories_per_agent": 30,
+        "convergence_energy_threshold": 5.0,
+        "convergence_rmsd_threshold": 1.5,
+        "max_iterations": 1000,
+        "checkpoint_interval": 50
+      },
+      "enable_visualization": false,
+      "max_snapshots": 1000
+    },
+    {
+      "agent_id": "agent_1580952359264",
+      "protein_sequence": "ACDEFGHIKLMNPQRSTVWY",
+      "current_conformation": {
+        "conformation_id": "conf_100_energy_minimization_6543_5",
+        "sequence": "ACDEFGHIKLMNPQRSTVWY",
+        "atom_coordinates": [
+          [
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            3.8,
+            0.0,
+            0.0
+          ],
+          [
+            7.6,
+            0.0,
+            0.0
+          ],
+          [
+            11.399999999999999,
+            0.0,
+            0.0
+          ],
+          [
+            15.2,
+            0.0,
+            0.0
+          ],
+          [
+            19.0,
+            0.0,
+            0.0
+          ],
+          [
+            22.799999999999997,
+            0.0,
+            0.0
+          ],
+          [
+            26.599999999999998,
+            0.0,
+            0.0
+          ],
+          [
+            30.4,
+            0.0,
+            0.0
+          ],
+          [
+            34.199999999999996,
+            0.0,
+            0.0
+          ],
+          [
+            38.0,
+            0.0,
+            0.0
+          ],
+          [
+            41.8,
+            0.0,
+            0.0
+          ],
+          [
+            45.599999999999994,
+            0.0,
+            0.0
+          ],
+          [
+            49.4,
+            0.0,
+            0.0
+          ],
+          [
+            53.199999999999996,
+            0.0,
+            0.0
+          ],
+          [
+            57.0,
+            0.0,
+            0.0
+          ],
+          [
+            60.8,
+            0.0,
+            0.0
+          ],
+          [
+            64.6,
+            0.0,
+            0.0
+          ],
+          [
+            68.39999999999999,
+            0.0,
+            0.0
+          ],
+          [
+            72.2,
+            0.0,
+            0.0
+          ]
+        ],
+        "energy": -18.28831474073848,
+        "rmsd_to_native": null,
+        "secondary_structure": [
+          "C",
+          "C",
+          "C",
+          "C",
+          "C",
+          "C",
+          "C",
+          "C",
+          "C",
+          "C",
+          "C",
+          "C",
+          "C",
+          "C",
+          "C",
+          "C",
+          "C",
+          "C",
+          "C",
+          "C"
+        ],
+        "phi_angles": [
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0,
+          -60.0
+        ],
+        "psi_angles": [
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0,
+          -40.0
+        ],
+        "available_move_types": [
+          "backbone_rotation",
+          "sidechain_adjust"
+        ],
+        "structural_constraints": {}
+      },
+      "consciousness": {
+        "frequency": 15.0,
+        "coherence": 0.2,
+        "last_update_timestamp": 1761354515715
+      },
+      "behavioral": {
+        "exploration_energy": 1.0,
+        "structural_focus": 0.40000000000000047,
+        "conformational_bias": 0.7499999999999993,
+        "hydrophobic_drive": 1.0,
+        "risk_tolerance": 1.0,
+        "native_state_ambition": 0.6000000000000008,
+        "cached_timestamp": 1761354515400
+      },
+      "memories": {
+        "energy_minimization": [
+          {
+            "memory_id": "5a6ff7c1-d197-470f-b50f-110cc3f4cf14",
+            "move_type": "energy_minimization",
+            "significance": 1.0,
+            "energy_change": -1018.2883147407384,
+            "rmsd_change": 101.82883147407385,
+            "success": true,
+            "timestamp": 0,
+            "consciousness_state": {
+              "frequency": 15.0,
+              "coherence": 0.2,
+              "last_update_timestamp": 1761354515715
+            },
+            "behavioral_state": {
+              "exploration_energy": 0.9016310276297134,
+              "structural_focus": 0.46401858931451845,
+              "conformational_bias": 0.5716077909865653,
+              "hydrophobic_drive": 1.0,
+              "risk_tolerance": 1.0,
+              "native_state_ambition": 0.6412538458218826,
+              "cached_timestamp": 1761354515353
+            }
+          }
+        ]
+      },
+      "memory_count": 1,
+      "metrics": {
+        "iterations_completed": 100,
+        "conformations_explored": 101,
+        "memories_created": 1,
+        "best_energy": -18.28831474073848,
+        "best_rmsd": Infinity,
+        "stuck_in_minima_count": 88,
+        "successful_escapes": 0,
+        "validation_failures": 0,
+        "repair_attempts": 0,
+        "repair_successes": 0
+      },
+      "adaptive_config": {
+        "size_class": "small",
+        "residue_count": 20,
+        "initial_frequency_range": [
+          3.0,
+          15.0
+        ],
+        "initial_coherence_range": [
+          0.2,
+          1.0
+        ],
+        "stuck_detection_window": 13,
+        "stuck_detection_threshold": 5.0,
+        "memory_significance_threshold": 0.3,
+        "max_memories_per_agent": 30,
+        "convergence_energy_threshold": 5.0,
+        "convergence_rmsd_threshold": 1.5,
+        "max_iterations": 1000,
+        "checkpoint_interval": 50
+      },
+      "enable_visualization": false,
+      "max_snapshots": 1000
+    }
+  ],
+  "shared_pool": {
+    "memories": [],
+    "memory_count": 0,
+    "max_pool_size": 10000,
+    "share_threshold": 0.7
+  },
+  "integrity_hash": "b7f6c9a6e7c70029ba04a5dce7a7814fe2e65121501d4af1c6c132c584aabe03"
+}
