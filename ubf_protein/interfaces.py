@@ -89,6 +89,7 @@ class MoveType(Enum):
     HYDROPHOBIC_COLLAPSE = "hydrophobic_collapse"
     SALT_BRIDGE = "salt_bridge"
     DISULFIDE_BOND = "disulfide_bond"
+    DISULFIDE_CONSTRAINT = "disulfide_constraint"
     ENERGY_MINIMIZATION = "energy_minimization"
     LARGE_CONFORMATIONAL_JUMP = "large_jump"
 

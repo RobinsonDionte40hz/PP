@@ -2,13 +2,14 @@
 Structural validation and repair system for UBF protein system.
 
 This module implements validation of protein conformations and repair
-mechanisms for common structural issues.
+mechanisms for common structural issues, including disulfide bond
+constraint validation.
 """
 
 from typing import List, Tuple, Optional, Dict, Any
 import math
 
-from .models import Conformation
+from .models import Conformation, DisulfideBond
 
 
 class ValidationResult:
@@ -57,7 +58,11 @@ class StructuralValidation:
         """Initialize structural validator."""
         pass
     
-    def validate_conformation(self, conformation: Conformation) -> ValidationResult:
+    def validate_conformation(
+        self, 
+        conformation: Conformation,
+        disulfide_bonds: Optional[List[DisulfideBond]] = None
+    ) -> ValidationResult:
         """
         Validate a protein conformation for structural integrity.
         
@@ -66,9 +71,11 @@ class StructuralValidation:
         - Steric clashes between non-consecutive residues
         - Backbone continuity
         - Coordinate validity (no NaN, inf, or extreme values)
+        - Disulfide bond constraints (if provided)
         
         Args:
             conformation: Conformation to validate
+            disulfide_bonds: Optional list of disulfide bonds to validate
             
         Returns:
             ValidationResult with validity status and issue descriptions
@@ -91,8 +98,95 @@ class StructuralValidation:
         continuity_issues = self._check_backbone_continuity(conformation)
         issues.extend(continuity_issues)
         
+        # Check disulfide bond constraints if provided
+        if disulfide_bonds:
+            disulfide_issues = self._check_disulfide_bonds(conformation, disulfide_bonds)
+            issues.extend(disulfide_issues)
+        
         is_valid = len(issues) == 0
         return ValidationResult(is_valid, issues)
+    
+    def validate_disulfide_bonds(
+        self,
+        conformation: Conformation,
+        disulfide_bonds: List[DisulfideBond]
+    ) -> Tuple[bool, List[str]]:
+        """
+        Validate disulfide bond constraints for a conformation.
+        
+        Checks that CA-CA distances for all disulfide-bonded cysteine pairs
+        are within the acceptable range (target ± tolerance).
+        
+        This is a standalone method that can be called independently or
+        as part of the full validate_conformation() workflow.
+        
+        Args:
+            conformation: Conformation to validate
+            disulfide_bonds: List of disulfide bonds to check
+            
+        Returns:
+            Tuple of (is_valid, violation_messages)
+            - is_valid: True if all bonds satisfy constraints
+            - violation_messages: List of specific violations (empty if valid)
+            
+        Performance:
+            Completes in <5ms for typical proteins (<300 residues, <10 bonds)
+            
+        Example:
+            >>> validator = StructuralValidation()
+            >>> bonds = [DisulfideBond(residue_i=5, residue_j=55)]
+            >>> is_valid, violations = validator.validate_disulfide_bonds(conf, bonds)
+            >>> if not is_valid:
+            ...     print(f"Violations: {violations}")
+        """
+        violations = self._check_disulfide_bonds(conformation, disulfide_bonds)
+        is_valid = len(violations) == 0
+        return is_valid, violations
+    
+    def _check_disulfide_bonds(
+        self,
+        conformation: Conformation,
+        disulfide_bonds: List[DisulfideBond]
+    ) -> List[str]:
+        """
+        Internal method to check disulfide bond constraints.
+        
+        Args:
+            conformation: Conformation to check
+            disulfide_bonds: List of disulfide bonds to validate
+            
+        Returns:
+            List of violation descriptions (empty if all satisfied)
+        """
+        violations = []
+        coords = conformation.atom_coordinates
+        seq_len = len(coords)
+        
+        for bond in disulfide_bonds:
+            # Check that indices are within bounds
+            if bond.residue_i >= seq_len or bond.residue_j >= seq_len:
+                violations.append(
+                    f"Disulfide bond {bond.residue_i}-{bond.residue_j}: "
+                    f"Index out of bounds (sequence length: {seq_len})"
+                )
+                continue
+            
+            # Calculate CA-CA distance
+            ca_i = coords[bond.residue_i]
+            ca_j = coords[bond.residue_j]
+            distance = self._calculate_distance(ca_i, ca_j)
+            
+            # Check if bond constraint is satisfied
+            if not bond.is_satisfied(distance):
+                violation_mag = bond.get_violation(distance)
+                violations.append(
+                    f"Disulfide bond CYS{bond.residue_i}-CYS{bond.residue_j}: "
+                    f"Distance {distance:.2f} Å violates constraint "
+                    f"(target {bond.distance:.1f}±{bond.tolerance:.1f} Å, "
+                    f"violation: {violation_mag:.2f} Å)"
+                )
+        
+        return violations
     
     def repair_conformation(self, conformation: Conformation) -> Tuple[Conformation, bool]:
         """

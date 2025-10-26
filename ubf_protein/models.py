@@ -21,6 +21,172 @@ except ImportError:
     # Fall back to absolute imports from ubf_protein package
     from ubf_protein.interfaces import MoveType
 
+# ============================================================================
+# Disulfide Bond Model
+# ============================================================================
+
+@dataclass(frozen=True)
+class DisulfideBond:
+    """
+    Immutable representation of a disulfide bond between two cysteine residues.
+    
+    Disulfide bonds are covalent S-S bonds that provide critical structural
+    constraints in protein folding. This model represents the bond with:
+    - Residue indices of the bonded cysteines
+    - Target CA-CA distance (typically 3.8 Angstroms)
+    - Tolerance for constraint satisfaction
+    
+    Attributes:
+        residue_i: Index of first cysteine residue (0-based)
+        residue_j: Index of second cysteine residue (0-based)
+        distance: Target CA-CA distance in Angstroms (default: 3.8)
+        tolerance: Acceptable deviation from target distance in Angstroms (default: 1.0)
+    
+    Example:
+        >>> bond = DisulfideBond(residue_i=5, residue_j=55)
+        >>> bond.is_satisfied(3.9)  # Distance within tolerance
+        True
+        >>> bond.is_satisfied(5.2)  # Distance exceeds tolerance
+        False
+    """
+    residue_i: int
+    residue_j: int
+    distance: float = 3.8  # Angstroms - typical S-S bond CA-CA distance
+    tolerance: float = 1.0  # Angstroms - acceptable deviation
+    
+    def __post_init__(self):
+        """Validate disulfide bond parameters."""
+        if self.residue_i < 0:
+            raise ValueError(f"residue_i must be non-negative, got {self.residue_i}")
+        if self.residue_j < 0:
+            raise ValueError(f"residue_j must be non-negative, got {self.residue_j}")
+        if self.residue_i == self.residue_j:
+            raise ValueError(f"residue_i and residue_j must be different, both are {self.residue_i}")
+        if self.distance <= 0:
+            raise ValueError(f"distance must be positive, got {self.distance}")
+        if self.tolerance < 0:
+            raise ValueError(f"tolerance must be non-negative, got {self.tolerance}")
+    
+    def is_satisfied(self, ca_distance: float) -> bool:
+        """
+        Check if bond constraint is satisfied at given CA-CA distance.
+        
+        Args:
+            ca_distance: Measured CA-CA distance in Angstroms
+            
+        Returns:
+            True if distance is within tolerance of target, False otherwise
+        """
+        return abs(ca_distance - self.distance) <= self.tolerance
+    
+    def get_violation(self, ca_distance: float) -> float:
+        """
+        Calculate magnitude of constraint violation.
+        
+        Args:
+            ca_distance: Measured CA-CA distance in Angstroms
+            
+        Returns:
+            Absolute deviation from allowed range (0.0 if satisfied)
+        """
+        deviation = abs(ca_distance - self.distance)
+        return max(0.0, deviation - self.tolerance)
+    
+    def __str__(self) -> str:
+        """String representation for debugging."""
+        return f"DisulfideBond(CYS{self.residue_i} ↔ CYS{self.residue_j}, target={self.distance:.1f}±{self.tolerance:.1f}Å)"
+
+# ============================================================================
+# Side-Chain Field Model
+# ============================================================================
+
+@dataclass(frozen=True)
+class SideChainField:
+    """
+    Immutable representation of a side-chain electromagnetic/steric field.
+    
+    Each amino acid side-chain generates a field with physical properties that
+    influence interactions with nearby residues. This model captures:
+    - Position in 3D space (typically CA or side-chain centroid)
+    - Chemical properties (charge, hydrophobicity, volume)
+    - Field strength for interaction calculations
+    
+    The field follows a Gaussian decay model with sigma=2.0 Å, representing
+    the effective interaction range of the side-chain.
+    
+    Attributes:
+        residue_index: Index of residue in sequence (0-based)
+        amino_acid: Single-letter amino acid code
+        position: 3D coordinates (x, y, z) in Angstroms
+        charge: Electrostatic charge (-1.0, 0.0, +1.0 for standard amino acids)
+        hydrophobicity: Kyte-Doolittle hydrophobicity scale value
+        volume: Van der Waals volume in Ų
+        field_strength: Base field strength (default 1.0, scaled by properties)
+    
+    Example:
+        >>> field = SideChainField(
+        ...     residue_index=5,
+        ...     amino_acid='W',
+        ...     position=(10.5, 20.3, 15.7),
+        ...     charge=0.0,
+        ...     hydrophobicity=0.81,
+        ...     volume=237.6,
+        ...     field_strength=1.0
+        ... )
+        >>> field.amino_acid
+        'W'
+    """
+    residue_index: int
+    amino_acid: str
+    position: Tuple[float, float, float]
+    charge: float
+    hydrophobicity: float
+    volume: float
+    field_strength: float = 1.0
+    
+    def __post_init__(self):
+        """Validate side-chain field parameters."""
+        if self.residue_index < 0:
+            raise ValueError(f"residue_index must be non-negative, got {self.residue_index}")
+        if len(self.amino_acid) != 1:
+            raise ValueError(f"amino_acid must be single character, got '{self.amino_acid}'")
+        if not self.amino_acid.isupper():
+            raise ValueError(f"amino_acid must be uppercase, got '{self.amino_acid}'")
+        if len(self.position) != 3:
+            raise ValueError(f"position must be 3D tuple, got {len(self.position)} dimensions")
+        if abs(self.charge) > 2.0:
+            raise ValueError(f"charge magnitude should be ≤2.0, got {self.charge}")
+        if self.volume <= 0:
+            raise ValueError(f"volume must be positive, got {self.volume}")
+        if self.field_strength <= 0:
+            raise ValueError(f"field_strength must be positive, got {self.field_strength}")
+    
+    def calculate_distance_to(self, other_position: Tuple[float, float, float]) -> float:
+        """
+        Calculate Euclidean distance to another position.
+        
+        Args:
+            other_position: Target 3D coordinates (x, y, z)
+            
+        Returns:
+            Distance in Angstroms
+        """
+        import math
+        dx = other_position[0] - self.position[0]
+        dy = other_position[1] - self.position[1]
+        dz = other_position[2] - self.position[2]
+        return math.sqrt(dx**2 + dy**2 + dz**2)
+    
+    def __str__(self) -> str:
+        """String representation for debugging."""
+        return (f"SideChainField({self.amino_acid}{self.residue_index}, "
+                f"pos=({self.position[0]:.1f},{self.position[1]:.1f},{self.position[2]:.1f}), "
+                f"q={self.charge:+.1f}, h={self.hydrophobicity:+.2f})")
+
+# ============================================================================
+# Conformational Memory Models
+# ============================================================================
+
 @dataclass
 class ConformationalMemory:
     """Memory of a significant conformational state"""

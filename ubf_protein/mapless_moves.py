@@ -20,13 +20,13 @@ if parent_dir not in sys.path:
 try:
     # Try package-relative imports first
     from .interfaces import IMoveGenerator, IMoveEvaluator
-    from .models import Conformation, ConformationalMove, MoveType
+    from .models import Conformation, ConformationalMove, MoveType, DisulfideBond
     from .physics_integration import QAAPCalculator, ResonanceCouplingCalculator, WaterShieldingCalculator
     from .qcpp_integration import QCPPIntegrationAdapter, QCPPMetrics
 except ImportError:
     # Fall back to absolute imports from ubf_protein package
     from ubf_protein.interfaces import IMoveGenerator, IMoveEvaluator
-    from ubf_protein.models import Conformation, ConformationalMove, MoveType
+    from ubf_protein.models import Conformation, ConformationalMove, MoveType, DisulfideBond
     from ubf_protein.physics_integration import QAAPCalculator, ResonanceCouplingCalculator, WaterShieldingCalculator
     from ubf_protein.qcpp_integration import QCPPIntegrationAdapter, QCPPMetrics
 
@@ -50,12 +50,14 @@ class MaplessMoveGenerator(IMoveGenerator):
             MoveType.ENERGY_MINIMIZATION
         ]
 
-    def generate_moves(self, current_conformation: Conformation) -> List[ConformationalMove]:
+    def generate_moves(self, current_conformation: Conformation,
+                      disulfide_bonds: Optional[List[DisulfideBond]] = None) -> List[ConformationalMove]:
         """
         Generate all feasible moves from current state (mapless - no pathfinding).
 
         Args:
             current_conformation: Current protein conformation
+            disulfide_bonds: Optional list of disulfide bonds for constraint satisfaction
 
         Returns:
             List of feasible conformational moves
@@ -69,6 +71,11 @@ class MaplessMoveGenerator(IMoveGenerator):
                 move = self._create_move(move_type, current_conformation)
                 if move:
                     moves.append(move)
+
+        # Generate disulfide constraint satisfaction moves if bonds provided
+        if disulfide_bonds:
+            disulfide_moves = self._generate_disulfide_moves(current_conformation, disulfide_bonds)
+            moves.extend(disulfide_moves)
 
         return moves
 
@@ -230,6 +237,88 @@ class MaplessMoveGenerator(IMoveGenerator):
         # Scale by size
         return base_barrier * (n_residues / 5.0)
 
+    def _generate_disulfide_moves(self, conformation: Conformation,
+                                  disulfide_bonds: List[DisulfideBond]) -> List[ConformationalMove]:
+        """
+        Generate constraint satisfaction moves for unsatisfied disulfide bonds.
+
+        For each unsatisfied bond, generates a move that pulls the two cysteines closer
+        together by 0.5 Å steps toward the target distance (3.8 Å).
+
+        Args:
+            conformation: Current protein conformation
+            disulfide_bonds: List of disulfide bonds to check
+
+        Returns:
+            List of ConformationalMove objects for unsatisfied bonds
+        """
+        moves = []
+
+        for bond in disulfide_bonds:
+            # Validate residue indices
+            if bond.residue_i >= len(conformation.sequence) or bond.residue_j >= len(conformation.sequence):
+                continue
+
+            # Calculate current CA-CA distance
+            # Each residue has multiple atoms; for simplicity, assume CA is the first atom
+            # In a more complete implementation, we'd identify CA specifically
+            if bond.residue_i >= len(conformation.atom_coordinates) or bond.residue_j >= len(conformation.atom_coordinates):
+                continue
+
+            coord_i = conformation.atom_coordinates[bond.residue_i]
+            coord_j = conformation.atom_coordinates[bond.residue_j]
+
+            # Calculate Euclidean distance
+            dx = coord_j[0] - coord_i[0]
+            dy = coord_j[1] - coord_i[1]
+            dz = coord_j[2] - coord_i[2]
+            ca_distance = math.sqrt(dx**2 + dy**2 + dz**2)
+
+            # Check if bond is already satisfied
+            if bond.is_satisfied(ca_distance):
+                continue
+
+            # Get current violation (distance - target)
+            violation = bond.get_violation(ca_distance)
+
+            # Target both residues involved in the bond
+            target_residues = [bond.residue_i, bond.residue_j]
+
+            # Estimate energy change (negative = favorable, pulling toward bond formation)
+            # Use violation magnitude to determine how stabilizing the move would be
+            energy_change = -abs(violation) * 2.0  # 2 kJ/mol per Å of violation
+
+            # Estimate RMSD change (proportional to step size)
+            step_size = 0.5  # Å
+            rmsd_change = step_size
+
+            # This move requires the ability to rotate backbone
+            required_capabilities = {'can_rotate_backbone': True}
+
+            # Structural feasibility is high for constraint satisfaction
+            structural_feasibility = 0.9
+
+            # Energy barrier scales with violation (harder to move when far apart)
+            energy_barrier = abs(violation) * 3.0  # kJ/mol
+
+            # Generate unique move ID
+            move_id = f"disulfide_constraint_{bond.residue_i}_{bond.residue_j}_{random.randint(1000, 9999)}"
+
+            move = ConformationalMove(
+                move_id=move_id,
+                move_type=MoveType.DISULFIDE_CONSTRAINT,
+                target_residues=target_residues,
+                estimated_energy_change=energy_change,
+                estimated_rmsd_change=rmsd_change,
+                required_capabilities=required_capabilities,
+                energy_barrier=energy_barrier,
+                structural_feasibility=structural_feasibility
+            )
+
+            moves.append(move)
+
+        return moves
+
 
 class CapabilityBasedMoveEvaluator(IMoveEvaluator):
     """
@@ -366,6 +455,9 @@ class CapabilityBasedMoveEvaluator(IMoveEvaluator):
         Returns:
             Quantum alignment factor in range [0.5, 1.5]
         """
+        # This method is only called when qcpp_integration is not None (checked in caller)
+        assert self.qcpp_integration is not None, "QCPP integration must be available"
+        
         # Note: In a full implementation, we would need to predict the resulting
         # conformation after the move and analyze it with QCPP. For now, we use
         # a simplified approach based on move characteristics.
