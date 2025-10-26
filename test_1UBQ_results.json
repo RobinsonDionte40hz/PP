@@ -1,0 +1,30 @@
+{
+  "protein_info": {
+    "pdb_id": "1UBQ",
+    "sequence_length": 76,
+    "category": "medium"
+  },
+  "test_config": {
+    "num_agents": 20,
+    "iterations_per_agent": 200,
+    "total_conformations": 4000
+  },
+  "exploration_results": {
+    "best_energy": -306.243783141206,
+    "estimated_rmsd": 6.28146759005779,
+    "rmsd_quality": "FAIR",
+    "exploration_time_s": 24.62716245651245,
+    "throughput_conf_per_s": 162.42228503033377
+  },
+  "qcpp_integration": {
+    "total_analyses": 706,
+    "cache_hit_rate": 28.328611898016998,
+    "avg_calculation_time_ms": 74.89867048290566
+  },
+  "rmse_validation": {
+    "temperature_rmse": 5.436104300540904,
+    "dg_rmse": 0.7072208601081806,
+    "quality": "GOOD"
+  },
+  "timestamp": "2025-10-26T11:16:43.563585"
+}
