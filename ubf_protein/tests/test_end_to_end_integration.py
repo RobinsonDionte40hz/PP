@@ -13,11 +13,11 @@ from pathlib import Path
 from typing import List, Tuple
 
 try:
-    import psutil
+    import psutil  # type: ignore[import-not-found]
     HAS_PSUTIL = True
 except ImportError:
     HAS_PSUTIL = False
-    psutil = None  # type: ignore
+    psutil = None  # type: ignore[assignment]
 
 # Import UBF components
 import sys

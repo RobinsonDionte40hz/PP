@@ -36,10 +36,11 @@ except ImportError:
     HAS_BIOPYTHON = False
 
 try:
-    import psutil
+    import psutil  # type: ignore[import-not-found]
     HAS_PSUTIL = True
 except ImportError:
     HAS_PSUTIL = False
+    psutil = None  # type: ignore[assignment]
 
 
 class KnownProteinTester:
@@ -90,9 +91,16 @@ class KnownProteinTester:
             parser = PDBParser(QUIET=True)
             structure = parser.get_structure(self.pdb_id, str(self.pdb_file))
             
+            # Validate structure was parsed successfully
+            if structure is None or len(structure) == 0:
+                raise ValueError(f"No structure found in {self.pdb_file}")
+            
             # Get first model and chain
             model = structure[0]
-            chain = list(model.get_chains())[0]
+            chains = list(model.get_chains())
+            if not chains:
+                raise ValueError(f"No chains found in structure {self.pdb_id}")
+            chain = chains[0]
             
             # Three-letter to one-letter amino acid code
             aa_map = {
