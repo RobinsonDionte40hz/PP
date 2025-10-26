@@ -21,6 +21,7 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 from datetime import datetime
+from typing import Optional
 
 # Add ubf_protein to path
 sys.path.insert(0, str(Path(__file__).parent / "ubf_protein"))
@@ -108,14 +109,14 @@ def download_pdb(pdb_id: str) -> Path:
     
     print(f"📥 Downloading PDB {pdb_id}...")
     try:
-        from Bio.PDB import PDBList
+        from Bio.PDB.PDBList import PDBList  # Correct import path
         pdbl = PDBList()
         pdbl.retrieve_pdb_file(pdb_id, pdir=str(cache_dir), file_format='pdb')
         print(f"✓ Downloaded to: {pdb_file}")
         return pdb_file
     except Exception as e:
         print(f"❌ Failed to download PDB {pdb_id}: {e}")
-        return None
+        raise RuntimeError(f"Failed to download PDB {pdb_id}") from e
 
 
 def load_sequence_from_pdb(pdb_file: Path) -> str:
@@ -123,7 +124,16 @@ def load_sequence_from_pdb(pdb_file: Path) -> str:
     aa_map = dict(zip(aa3, aa1))
     parser = PDBParser(QUIET=True)
     structure = parser.get_structure('protein', str(pdb_file))
-    chain = list(structure.get_chains())[0]
+    
+    if structure is None:
+        raise ValueError(f"Failed to parse PDB structure from: {pdb_file}")
+    
+    chains = list(structure.get_chains())
+    
+    if not chains:
+        raise ValueError(f"No chains found in PDB file: {pdb_file}")
+    
+    chain = chains[0]
     residues = list(chain.get_residues())
     
     sequence = ""
@@ -136,6 +146,25 @@ def load_sequence_from_pdb(pdb_file: Path) -> str:
                 sequence += 'X'
     
     return sequence
+
+
+def detect_disulfide_bonds(pdb_file: Path) -> list:
+    """
+    Detect disulfide bonds from PDB file (Task 11).
+    
+    Returns:
+        List of DisulfideBond objects or empty list if none found
+    """
+    try:
+        from ubf_protein.disulfide_detector import DisulfideDetector
+        
+        detector = DisulfideDetector()
+        disulfide_bonds = detector.detect_from_pdb(str(pdb_file))
+        
+        return disulfide_bonds
+    except Exception as e:
+        print(f"⚠️  Could not detect disulfide bonds: {e}")
+        return []
 
 
 def get_optimal_settings(sequence_length: int) -> dict:
@@ -154,7 +183,7 @@ def get_optimal_settings(sequence_length: int) -> dict:
         return {"agents": 50, "iterations": 300, "category": "very_large"}
 
 
-def load_experimental_data(pdb_id: str) -> dict:
+def load_experimental_data(pdb_id: str) -> Optional[dict]:
     """Load experimental data if available."""
     exp_file = Path("experimental_stability.csv")
     if not exp_file.exists():
@@ -175,13 +204,27 @@ def load_experimental_data(pdb_id: str) -> dict:
         return None
 
 
-def run_protein_test(sequence: str, pdb_file: Path = None, pdb_id: str = None, 
-                     custom_agents: int = None, custom_iterations: int = None):
-    """Run complete protein test with QCPP-UBF integration."""
+def run_protein_test(sequence: str, pdb_file: Optional[Path] = None, pdb_id: Optional[str] = None, 
+                     custom_agents: Optional[int] = None, custom_iterations: Optional[int] = None,
+                     use_enhanced_energy: bool = False,
+                     enable_side_chains: bool = True,
+                     enable_solvent: bool = True,
+                     enable_entropic: bool = True,
+                     enable_refinement: bool = False):
+    """Run complete protein test with QCPP-UBF integration (Task 11: Enhanced physics support)."""
     
     print("\n" + "="*70)
     print("QCPP-UBF PROTEIN STRUCTURE PREDICTION")
     print("="*70)
+    
+    # Task 11: Detect disulfide bonds from PDB file
+    disulfide_bonds = []
+    if pdb_file:
+        disulfide_bonds = detect_disulfide_bonds(pdb_file)
+        if disulfide_bonds:
+            print(f"\n🔗 Disulfide Bonds Detected: {len(disulfide_bonds)}")
+            for bond in disulfide_bonds:
+                print(f"   C{bond.residue_i} - C{bond.residue_j} (target: {bond.distance:.1f} Å)")
     
     # Get optimal settings
     settings = get_optimal_settings(len(sequence))
@@ -196,6 +239,21 @@ def run_protein_test(sequence: str, pdb_file: Path = None, pdb_id: str = None,
     print(f"  - Total Conformations: {num_agents * iterations:,}")
     if pdb_id:
         print(f"  - PDB ID: {pdb_id.upper()}")
+    
+    # Task 11: Display physics enhancements status
+    if use_enhanced_energy:
+        print(f"\n⚡ Enhanced Physics:")
+        print(f"  - Enhanced Energy Calculator: ENABLED")
+        print(f"  - Side-chain Interactions: {'ON' if enable_side_chains else 'OFF'}")
+        print(f"  - Solvent Corrections: {'ON' if enable_solvent else 'OFF'}")
+        print(f"  - Entropic Corrections: {'ON' if enable_entropic else 'OFF'}")
+        print(f"  - Local Refinement: {'ON' if enable_refinement else 'OFF'}")
+        if disulfide_bonds:
+            print(f"  - Disulfide Constraints: {len(disulfide_bonds)} bonds")
+    else:
+        print(f"\n⚡ Enhanced Physics: DISABLED (baseline mode)")
+        if disulfide_bonds:
+            print(f"  Note: {len(disulfide_bonds)} disulfide bonds detected but not used in baseline mode")
     
     # Load experimental data if available
     exp_data = None
@@ -217,7 +275,13 @@ def run_protein_test(sequence: str, pdb_file: Path = None, pdb_id: str = None,
     print(f"\n[2/5] Creating multi-agent coordinator...")
     coordinator = MultiAgentCoordinator(
         protein_sequence=sequence,
-        qcpp_integration=qcpp_adapter
+        qcpp_integration=qcpp_adapter,
+        disulfide_bonds=disulfide_bonds if use_enhanced_energy else [],
+        use_enhanced_energy=use_enhanced_energy,
+        enable_side_chains=enable_side_chains,
+        enable_solvent=enable_solvent,
+        enable_entropic=enable_entropic,
+        enable_refinement=enable_refinement
     )
     
     coordinator.initialize_agents(
@@ -325,6 +389,17 @@ def run_protein_test(sequence: str, pdb_file: Path = None, pdb_id: str = None,
     print(f"  - Cache Hit Rate: {cache_stats['cache_hit_rate']:.1f}%")
     print(f"  - Avg Analysis Time: {cache_stats['avg_calculation_time_ms']:.2f}ms")
     
+    # Task 11: Display enhanced physics status
+    if use_enhanced_energy:
+        print(f"\n⚡ ENHANCED PHYSICS:")
+        print(f"  - Enhanced Energy: ENABLED")
+        print(f"  - Side-chain Interactions: {'ON' if enable_side_chains else 'OFF'}")
+        print(f"  - Solvent Corrections: {'ON' if enable_solvent else 'OFF'}")
+        print(f"  - Entropic Corrections: {'ON' if enable_entropic else 'OFF'}")
+        print(f"  - Local Refinement: {'ON' if enable_refinement else 'OFF'}")
+        if disulfide_bonds:
+            print(f"  - Disulfide Bonds: {len(disulfide_bonds)} constraints applied")
+    
     if rmse_results:
         print(f"\n🎯 PREDICTION ACCURACY:")
         print(f"  - Temperature RMSE: {rmse_results['temperature_rmse']:.2f} °C")
@@ -352,12 +427,20 @@ def run_protein_test(sequence: str, pdb_file: Path = None, pdb_id: str = None,
         'protein_info': {
             'pdb_id': pdb_id,
             'sequence_length': len(sequence),
-            'category': settings['category']
+            'category': settings['category'],
+            'disulfide_bonds': len(disulfide_bonds) if disulfide_bonds else 0
         },
         'test_config': {
             'num_agents': num_agents,
             'iterations_per_agent': iterations,
-            'total_conformations': total_conformations
+            'total_conformations': total_conformations,
+            'enhanced_physics': {
+                'enabled': use_enhanced_energy,
+                'side_chains': enable_side_chains if use_enhanced_energy else False,
+                'solvent': enable_solvent if use_enhanced_energy else False,
+                'entropic': enable_entropic if use_enhanced_energy else False,
+                'refinement': enable_refinement if use_enhanced_energy else False
+            }
         },
         'exploration_results': {
             'best_energy': results.best_energy,
@@ -428,6 +511,11 @@ Examples:
   python test_protein.py --list                         # Show available proteins
   python test_protein.py --quick                        # Quick test (small protein)
   python test_protein.py --pdb 1UBQ --agents 30        # Custom agent count
+  
+Enhanced Physics (Task 11):
+  python test_protein.py --pdb 1CRN --enhanced          # Enable all enhancements
+  python test_protein.py --pdb 1CRN --enhanced --no-sidechains  # Disable side-chains
+  python test_protein.py --pdb 1CRN --enhanced --refinement     # Enable refinement
         """
     )
     
@@ -437,6 +525,13 @@ Examples:
     parser.add_argument('--iterations', type=int, help='Iterations per agent (optional, auto-configured)')
     parser.add_argument('--list', action='store_true', help='List available test proteins')
     parser.add_argument('--quick', action='store_true', help='Quick test on Villin (35 residues)')
+    
+    # Task 11: Enhanced physics flags
+    parser.add_argument('--enhanced', action='store_true', help='Enable enhanced energy calculator with all physics features')
+    parser.add_argument('--no-sidechains', action='store_true', help='Disable side-chain interactions (requires --enhanced)')
+    parser.add_argument('--no-solvent', action='store_true', help='Disable solvent corrections (requires --enhanced)')
+    parser.add_argument('--no-entropic', action='store_true', help='Disable entropic corrections (requires --enhanced)')
+    parser.add_argument('--refinement', action='store_true', help='Enable local refinement (experimental, requires --enhanced)')
     
     args = parser.parse_args()
     
@@ -457,6 +552,18 @@ Examples:
         print("   Example: python test_protein.py --pdb 1UBQ")
         print("   Or use: python test_protein.py --list")
         sys.exit(1)
+    
+    # Task 11: Parse enhanced physics flags
+    use_enhanced = args.enhanced
+    enable_sidechains = not args.no_sidechains if use_enhanced else False
+    enable_solvent = not args.no_solvent if use_enhanced else False
+    enable_entropic = not args.no_entropic if use_enhanced else False
+    enable_refinement = args.refinement if use_enhanced else False
+    
+    # Warn if enhancement flags used without --enhanced
+    if not use_enhanced and (args.no_sidechains or args.no_solvent or args.no_entropic or args.refinement):
+        print("\n⚠️  Warning: Enhancement flags require --enhanced to be set")
+        print("   Using baseline mode (no enhancements)")
     
     # Test with PDB ID
     if args.pdb:
@@ -481,13 +588,18 @@ Examples:
         sequence = load_sequence_from_pdb(pdb_file)
         print(f"✓ Loaded sequence: {len(sequence)} residues")
         
-        # Run test
+        # Run test with enhanced physics support
         run_protein_test(
             sequence=sequence,
             pdb_file=pdb_file,
             pdb_id=pdb_id,
             custom_agents=args.agents,
-            custom_iterations=args.iterations
+            custom_iterations=args.iterations,
+            use_enhanced_energy=use_enhanced,
+            enable_side_chains=enable_sidechains,
+            enable_solvent=enable_solvent,
+            enable_entropic=enable_entropic,
+            enable_refinement=enable_refinement
         )
     
     # Test with custom sequence
@@ -498,7 +610,12 @@ Examples:
         run_protein_test(
             sequence=sequence,
             custom_agents=args.agents,
-            custom_iterations=args.iterations
+            custom_iterations=args.iterations,
+            use_enhanced_energy=use_enhanced,
+            enable_side_chains=enable_sidechains,
+            enable_solvent=enable_solvent,
+            enable_entropic=enable_entropic,
+            enable_refinement=enable_refinement
         )
 
 

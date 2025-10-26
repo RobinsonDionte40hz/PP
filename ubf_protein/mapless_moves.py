@@ -493,40 +493,61 @@ class CapabilityBasedMoveEvaluator(IMoveEvaluator):
         """
         Calculate quantum alignment using QAAP (fallback when QCPP unavailable).
         
-        This is the original QAAP-based calculation for backward compatibility.
+        Incorporates disulfide bond constraints when present, guiding agents
+        to prefer moves that bring bonded cysteines closer together.
         
         Args:
             move: The conformational move to evaluate
-            physics_factors: Optional pre-calculated physics factors
+            physics_factors: Optional pre-calculated physics factors (includes disulfide_constraint)
             
         Returns:
-            Quantum alignment factor
+            Quantum alignment factor (range depends on whether disulfide bonds present)
         """
         if physics_factors:
             # Use provided factors if available
             qaap = physics_factors.get('qaap', 0.5)
             resonance = physics_factors.get('resonance', 0.5)
             water_shielding = physics_factors.get('water_shielding', 0.5)
+            disulfide_constraint = physics_factors.get('disulfide_constraint', 0.5)
         else:
             # Placeholder values - in real implementation would calculate from conformation
             qaap = 0.5
             resonance = 0.5
             water_shielding = 0.5
+            disulfide_constraint = 0.5
 
-        # Combine with specified weights from requirements
-        # QAAP: 0.7-1.3 range contributes 40%
-        qaap_weight = 0.4
-        qaap_contribution = qaap_weight * (0.7 + 0.6 * qaap)  # Maps 0-1 to 0.7-1.3
-
-        # Resonance: 0.9-1.2 range contributes 35%
-        resonance_weight = 0.35
-        resonance_contribution = resonance_weight * (0.9 + 0.3 * resonance)  # Maps 0-1 to 0.9-1.2
-
-        # Water shielding: 0.95-1.05 range contributes 25%
-        shielding_weight = 0.25
-        shielding_contribution = shielding_weight * (0.95 + 0.1 * water_shielding)  # Maps 0-1 to 0.95-1.05
-
-        return qaap_contribution + resonance_contribution + shielding_contribution
+        # Check if disulfide bonds are present (indicated by non-neutral constraint value)
+        has_disulfide_bonds = disulfide_constraint != 0.5
+        
+        if has_disulfide_bonds:
+            # Adjust weights to include disulfide constraint influence
+            # Disulfide constraint becomes important (15%), reducing others proportionally
+            qaap_weight = 0.35  # Reduced from 0.40
+            resonance_weight = 0.30  # Reduced from 0.35
+            shielding_weight = 0.20  # Reduced from 0.25
+            disulfide_weight = 0.15  # New: guides moves towards satisfying bonds
+            
+            qaap_contribution = qaap_weight * (0.7 + 0.6 * qaap)
+            resonance_contribution = resonance_weight * (0.9 + 0.3 * resonance)
+            shielding_contribution = shielding_weight * (0.95 + 0.1 * water_shielding)
+            
+            # Disulfide contribution: high impact when close to target distance
+            # Maps 0.0 (far) → 0.5, 1.0 (near target) → 1.3 for strong gradient
+            disulfide_contribution = disulfide_weight * (0.5 + 0.8 * disulfide_constraint)
+            
+            return (qaap_contribution + resonance_contribution + 
+                    shielding_contribution + disulfide_contribution)
+        else:
+            # Original weights when no disulfide bonds present
+            qaap_weight = 0.4
+            resonance_weight = 0.35
+            shielding_weight = 0.25
+            
+            qaap_contribution = qaap_weight * (0.7 + 0.6 * qaap)
+            resonance_contribution = resonance_weight * (0.9 + 0.3 * resonance)
+            shielding_contribution = shielding_weight * (0.95 + 0.1 * water_shielding)
+            
+            return qaap_contribution + resonance_contribution + shielding_contribution
     
     def _estimate_qcp_from_move(self, move: ConformationalMove) -> float:
         """

@@ -60,7 +60,9 @@ class ProteinAgent(IProteinAgent):
                  enable_visualization: bool = False,
                  max_snapshots: int = 1000,
                  native_structure: Optional[Conformation] = None,
-                 qcpp_integration: Optional[Any] = None):
+                 qcpp_integration: Optional[Any] = None,
+                 energy_calculator: Optional[IPhysicsCalculator] = None,
+                 disulfide_bonds: Optional[List[Any]] = None):
         """
         Initialize protein agent with consciousness coordinates and protein sequence.
 
@@ -74,6 +76,8 @@ class ProteinAgent(IProteinAgent):
             max_snapshots: Maximum snapshots to store (prevents memory overflow)
             native_structure: Optional native structure for RMSD validation (Task 5)
             qcpp_integration: Optional QCPP integration adapter for physics-grounded exploration
+            energy_calculator: Optional energy calculator instance (Task 10: for enhanced energy)
+            disulfide_bonds: Optional list of DisulfideBond objects (Task 10: for constraint enforcement)
         """
         # Create adaptive config if not provided
         if adaptive_config is None:
@@ -129,9 +133,18 @@ class ProteinAgent(IProteinAgent):
                 logger.error(f"Error initializing RMSDCalculator: {e}")
                 logger.warning("Native structure validation will be disabled")
         
-        # Initialize energy calculator (if enabled)
-        self._energy_calculator: Optional[IPhysicsCalculator] = None
-        if config_module.USE_MOLECULAR_MECHANICS_ENERGY:
+        # Task 10: Store disulfide bonds for constraint enforcement
+        self._disulfide_bonds = disulfide_bonds or []
+        if self._disulfide_bonds:
+            logger.info(f"Agent initialized with {len(self._disulfide_bonds)} disulfide bonds")
+        
+        # Initialize energy calculator (Task 10: use provided calculator if available)
+        if energy_calculator is not None:
+            # Use externally provided energy calculator (from coordinator)
+            self._energy_calculator = energy_calculator
+            logger.info(f"Using provided energy calculator: {type(energy_calculator).__name__}")
+        elif config_module.USE_MOLECULAR_MECHANICS_ENERGY:
+            # Create default energy calculator
             try:
                 from .energy_function import MolecularMechanicsEnergy
                 self._energy_calculator = MolecularMechanicsEnergy()
@@ -139,9 +152,13 @@ class ProteinAgent(IProteinAgent):
             except ImportError as e:
                 logger.warning(f"Failed to import MolecularMechanicsEnergy: {e}")
                 logger.warning("Falling back to simplified energy calculation")
+                self._energy_calculator = None
             except Exception as e:
                 logger.error(f"Error initializing MolecularMechanicsEnergy: {e}")
                 logger.warning("Falling back to simplified energy calculation")
+                self._energy_calculator = None
+        else:
+            self._energy_calculator = None
 
         # Store protein sequence and config
         self._protein_sequence = protein_sequence
@@ -337,7 +354,7 @@ class ProteinAgent(IProteinAgent):
                             
                             # Update physics-grounded consciousness from QCPP metrics
                             if hasattr(self._consciousness, 'update_from_qcpp_metrics'):
-                                self._consciousness.update_from_qcpp_metrics(qcpp_metrics)
+                                self._consciousness.update_from_qcpp_metrics(qcpp_metrics)  # type: ignore
                                 logger.debug(
                                     f"Updated consciousness from QCPP: "
                                     f"QCP={qcpp_metrics.qcp_score:.2f}, "
@@ -366,8 +383,13 @@ class ProteinAgent(IProteinAgent):
                             logger.warning(f"Error in QCPP analysis/adjustment: {e}")
                             # Continue execution - QCPP integration is non-critical
                     
-                    # Store qcpp_metrics for memory creation
-                    outcome._qcpp_metrics = qcpp_metrics
+                    # Store qcpp_metrics for memory creation (dynamic attribute for frozen dataclass)
+                    if qcpp_metrics is not None:
+                        try:
+                            object.__setattr__(outcome, '_qcpp_metrics', qcpp_metrics)
+                        except (AttributeError, TypeError):
+                            # Can't add attribute to frozen dataclass - that's okay
+                            pass
 
         except Exception as e:
             logger.error(f"Critical error in explore_step: {e}", exc_info=True)
@@ -581,21 +603,65 @@ class ProteinAgent(IProteinAgent):
         """
         Get physics factors for move evaluation.
 
-        This is a placeholder implementation. In the full system,
-        this would calculate actual QAAP, resonance, and water shielding.
+        Calculates physics-based factors including disulfide bond awareness.
+        Agents use this to understand spatial constraints and prefer moves
+        that bring disulfide-bonded cysteines closer together.
 
         Args:
             move: The move to evaluate
 
         Returns:
-            Dictionary with physics factors
+            Dictionary with physics factors including disulfide constraint information
         """
-        # Placeholder values - in real implementation would calculate from conformation
-        return {
+        # Base physics factors (placeholder - could be enhanced with actual QAAP calculations)
+        factors = {
             'qaap': 0.5,  # 0-1 scale
             'resonance': 0.5,  # 0-1 scale
             'water_shielding': 0.5  # 0-1 scale
         }
+        
+        # Add disulfide bond awareness if bonds are present
+        if self._disulfide_bonds and self._current_conformation.atom_coordinates:
+            coords = self._current_conformation.atom_coordinates
+            move_residues = set(move.target_residues)
+            
+            # Check if this move affects any disulfide-bonded residues
+            disulfide_impact = 0.0
+            affected_bonds = 0
+            
+            for bond in self._disulfide_bonds:
+                # Check if move involves either residue in the bond
+                if bond.residue_i in move_residues or bond.residue_j in move_residues:
+                    affected_bonds += 1
+                    
+                    # Calculate current distance between bond partners
+                    if bond.residue_i < len(coords) and bond.residue_j < len(coords):
+                        pos_i = coords[bond.residue_i]
+                        pos_j = coords[bond.residue_j]
+                        current_dist = ((pos_i[0] - pos_j[0])**2 + 
+                                      (pos_i[1] - pos_j[1])**2 + 
+                                      (pos_i[2] - pos_j[2])**2)**0.5
+                        
+                        # Calculate how far from target distance (3.8 Å)
+                        target_dist = bond.distance
+                        dist_error = abs(current_dist - target_dist)
+                        
+                        # Convert to impact factor: 0.0 = far apart, 1.0 = near target
+                        # Use sigmoid-like function for smooth gradient
+                        # Within 5Å of target = high impact (>0.7)
+                        # More than 20Å away = low impact (<0.3)
+                        impact = 1.0 / (1.0 + (dist_error / 10.0)**2)
+                        disulfide_impact += impact
+            
+            # Average impact across affected bonds
+            if affected_bonds > 0:
+                factors['disulfide_constraint'] = disulfide_impact / affected_bonds
+            else:
+                factors['disulfide_constraint'] = 0.5  # Neutral if no bonds affected
+        else:
+            factors['disulfide_constraint'] = 0.5  # Neutral if no disulfide bonds
+        
+        return factors
 
     def _execute_move(self, move) -> Conformation:
         """

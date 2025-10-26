@@ -19,6 +19,7 @@ from .memory_system import SharedMemoryPool
 from .adaptive_config import get_default_configurator, AdaptiveConfigurator
 from .config import AGENT_DIVERSITY_PROFILES, AGENT_PROFILE_CAUTIOUS_RATIO, AGENT_PROFILE_BALANCED_RATIO, AGENT_PROFILE_AGGRESSIVE_RATIO
 from .checkpoint import CheckpointManager
+from .enhanced_physics_config import EnhancedPhysicsConfig
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +39,15 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
                  adaptive_config: Optional[AdaptiveConfig] = None,
                  enable_checkpointing: bool = True,
                  checkpoint_dir: str = "checkpoints",
-                 qcpp_integration: Optional[Any] = None):
+                 qcpp_integration: Optional[Any] = None,
+                 physics_config: Optional[EnhancedPhysicsConfig] = None,
+                 # Legacy parameters (deprecated - use physics_config instead)
+                 disulfide_bonds: Optional[List[Any]] = None,
+                 use_enhanced_energy: bool = False,
+                 enable_side_chains: bool = True,
+                 enable_solvent: bool = True,
+                 enable_entropic: bool = True,
+                 enable_refinement: bool = False):
         """
         Initialize multi-agent coordinator with protein sequence.
 
@@ -49,10 +58,62 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
             enable_checkpointing: Whether to enable automatic checkpointing
             checkpoint_dir: Directory for checkpoint files
             qcpp_integration: Optional QCPP integration adapter for physics-grounded exploration
+            physics_config: Optional EnhancedPhysicsConfig for centralized physics configuration
+            
+            # Legacy parameters (deprecated - use physics_config instead):
+            disulfide_bonds: Optional list of DisulfideBond objects (deprecated)
+            use_enhanced_energy: Whether to use EnhancedEnergyCalculator (deprecated)
+            enable_side_chains: Enable side-chain field interactions (deprecated)
+            enable_solvent: Enable solvent field corrections (deprecated)
+            enable_entropic: Enable entropic corrections (deprecated)
+            enable_refinement: Enable local refinement (deprecated)
         """
         self._protein_sequence = protein_sequence
         self._agents: List[IProteinAgent] = []
         self._shared_memory_pool: ISharedMemoryPool = SharedMemoryPool()
+
+        # Task 12: Enhanced physics configuration
+        if physics_config is not None:
+            # Use provided configuration
+            self._physics_config = physics_config
+            logger.info("Using provided EnhancedPhysicsConfig")
+            
+            # Warn if legacy parameters also provided
+            if any([disulfide_bonds, use_enhanced_energy != False, 
+                   enable_side_chains != True, enable_solvent != True, 
+                   enable_entropic != True, enable_refinement != False]):
+                logger.warning("Both physics_config and legacy parameters provided. physics_config takes precedence.")
+        else:
+            # Build config from legacy parameters (backward compatibility)
+            if any([disulfide_bonds, use_enhanced_energy, 
+                   not enable_side_chains, not enable_solvent, 
+                   not enable_entropic, enable_refinement]):
+                logger.warning("Using legacy parameters. Consider migrating to EnhancedPhysicsConfig for better control.")
+            
+            # Create config from legacy parameters
+            from .models import DisulfideBond  # Import here to avoid circular dependency
+            
+            self._physics_config = EnhancedPhysicsConfig(
+                use_enhanced_energy=use_enhanced_energy,
+                enable_side_chains=enable_side_chains,
+                enable_solvent=enable_solvent,
+                enable_entropic=enable_entropic,
+                enable_refinement=enable_refinement,
+                disulfide_bonds=disulfide_bonds or []
+            )
+        
+        # Validate configuration
+        try:
+            self._physics_config.validate()
+        except ValueError as e:
+            logger.error(f"Invalid physics configuration: {e}")
+            raise
+        
+        # Log enhancement configuration
+        bond_count = len(self._physics_config.disulfide_bonds) if self._physics_config.disulfide_bonds else 0
+        logger.info(f"Physics configuration: {bond_count} disulfide bonds, "
+                   f"enhanced={self._physics_config.use_enhanced_energy}, "
+                   f"refinement={self._physics_config.enable_refinement}")
 
         # QCPP Integration (Task 7: Store QCPP integration reference)
         self._qcpp_integration = qcpp_integration
@@ -89,6 +150,62 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
         self._best_energy = float('inf')
         self._best_rmsd = float('inf')
 
+    def _create_energy_calculator(self) -> Optional[Any]:
+        """
+        Create appropriate energy calculator based on configuration.
+        
+        Returns:
+            Energy calculator instance or None if not enabled
+            
+        Notes:
+            - Returns EnhancedEnergyCalculator if use_enhanced_energy=True
+            - Returns MolecularMechanicsEnergy otherwise (backward compatible)
+            - Returns None if energy calculation is disabled
+        """
+        from . import config as config_module
+        
+        if not config_module.USE_MOLECULAR_MECHANICS_ENERGY:
+            return None
+        
+        if self._physics_config.use_enhanced_energy:
+            # Use enhanced energy calculator with physics enhancements
+            try:
+                from .enhanced_energy_calculator import EnhancedEnergyCalculator
+                
+                calculator = EnhancedEnergyCalculator(
+                    sequence=self._protein_sequence,
+                    disulfide_bonds=self._physics_config.disulfide_bonds,
+                    enable_sidechains=self._physics_config.enable_side_chains,
+                    enable_solvent=self._physics_config.enable_solvent,
+                    enable_entropic=self._physics_config.enable_entropic
+                )
+                
+                bond_count = len(self._physics_config.disulfide_bonds) if self._physics_config.disulfide_bonds else 0
+                logger.info(f"EnhancedEnergyCalculator created with {bond_count} disulfide bonds")
+                return calculator
+                
+            except ImportError as e:
+                logger.error(f"Failed to import EnhancedEnergyCalculator: {e}")
+                logger.warning("Falling back to MolecularMechanicsEnergy")
+                # Fall through to baseline calculator
+            except Exception as e:
+                logger.error(f"Error creating EnhancedEnergyCalculator: {e}")
+                logger.warning("Falling back to MolecularMechanicsEnergy")
+                # Fall through to baseline calculator
+        
+        # Use baseline molecular mechanics energy calculator
+        try:
+            from .energy_function import MolecularMechanicsEnergy
+            calculator = MolecularMechanicsEnergy()
+            logger.info("MolecularMechanicsEnergy calculator created")
+            return calculator
+        except ImportError as e:
+            logger.warning(f"Failed to import MolecularMechanicsEnergy: {e}")
+            return None
+        except Exception as e:
+            logger.error(f"Error creating MolecularMechanicsEnergy: {e}")
+            return None
+
     def initialize_agents(self, count: int, diversity_profile: str = "balanced") -> List[IProteinAgent]:
         """
         Initialize agents with diversity: 33% cautious, 34% balanced, 33% aggressive.
@@ -120,6 +237,10 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
             agent_configs = [(diversity_profile, count)]
 
         self._agents = []
+        
+        # Task 10: Create energy calculator once and share across all agents
+        energy_calculator = self._create_energy_calculator()
+        
         for profile_name, profile_count in agent_configs:
             if profile_name not in AGENT_DIVERSITY_PROFILES:
                 raise ValueError(f"Unknown diversity profile: {profile_name}")
@@ -137,14 +258,15 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
                     profile['coherence_range'][1]
                 )
 
-                # Create agent with adaptive configuration
-                # Task 7: Pass QCPP integration to agents during initialization
+                # Task 10: Create agent with enhanced physics support
                 agent = ProteinAgent(
                     protein_sequence=self._protein_sequence,
                     initial_frequency=frequency,
                     initial_coherence=coherence,
                     adaptive_config=self._adaptive_config,
-                    qcpp_integration=self._qcpp_integration
+                    qcpp_integration=self._qcpp_integration,
+                    energy_calculator=energy_calculator,
+                    disulfide_bonds=self._physics_config.disulfide_bonds
                 )
 
                 self._agents.append(agent)
