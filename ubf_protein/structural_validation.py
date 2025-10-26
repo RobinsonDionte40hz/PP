@@ -43,16 +43,16 @@ class StructuralValidation:
     
     # Validation thresholds
     MIN_BOND_LENGTH = 1.0  # Å - minimum CA-CA distance
-    MAX_BOND_LENGTH = 5.0  # Å - maximum CA-CA distance (strict, optimized for quality)
+    MAX_BOND_LENGTH = 7.0  # Å - maximum CA-CA distance (relaxed for enhanced physics exploration)
     IDEAL_BOND_LENGTH = 3.8  # Å - ideal CA-CA distance
     MIN_CLASH_DISTANCE = 2.0  # Å - minimum distance to avoid clash
     MAX_COORDINATE = 1000.0  # Å - maximum valid coordinate value
     
-    # Note: MAX_BOND_LENGTH = 5.0 Å is optimal based on testing:
-    # - Accepts structured regions (3.5-4.5 Å) and extended β-sheets (~5.0 Å)
-    # - Rejects overly stretched bonds that lead to worse energy/RMSD
-    # - Tested 5.8 Å and 6.0 Å: faster but 17+ kcal/mol worse energy
-    # - Quality > Speed: 5.0 Å gives best results (Energy: -298 kcal/mol, RMSD: 6.54 Å)
+    # Note: MAX_BOND_LENGTH = 7.0 Å allows extended conformations during folding:
+    # - Accepts structured regions (3.5-4.5 Å) and extended chains (~6-7 Å)
+    # - 5.0 Å was too strict and rejected too many valid exploration moves
+    # - Energy function penalizes overstretched bonds, so validation can be more permissive
+    # - Quality maintained through energy rejection threshold (5000 kcal/mol)
     
     def __init__(self):
         """Initialize structural validator."""

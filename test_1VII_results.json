@@ -1,0 +1,34 @@
+{
+  "protein_info": {
+    "pdb_id": "1VII",
+    "sequence_length": 36,
+    "category": "small",
+    "disulfide_bonds": 0
+  },
+  "test_config": {
+    "num_agents": 5,
+    "iterations_per_agent": 1500,
+    "total_conformations": 7500,
+    "enhanced_physics": {
+      "enabled": true,
+      "side_chains": true,
+      "solvent": true,
+      "entropic": true,
+      "refinement": false
+    }
+  },
+  "exploration_results": {
+    "best_energy": -140.8559647874911,
+    "estimated_rmsd": 14.96662610962147,
+    "rmsd_quality": "NEEDS IMPROVEMENT",
+    "exploration_time_s": 201.29834127426147,
+    "throughput_conf_per_s": 37.25813115261357
+  },
+  "qcpp_integration": {
+    "total_analyses": 5707,
+    "cache_hit_rate": 99.91238829507623,
+    "avg_calculation_time_ms": 1.5292214453272588
+  },
+  "rmse_validation": null,
+  "timestamp": "2025-10-26T08:24:02.202846"
+}

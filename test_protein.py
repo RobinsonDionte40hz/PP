@@ -306,21 +306,66 @@ def run_protein_test(sequence: str, pdb_file: Optional[Path] = None, pdb_id: Opt
     print(f"  Throughput: {throughput:.1f} conf/s")
     print(f"  Best Energy: {results.best_energy:.2f} kcal/mol")
     
-    # Step 4: Calculate RMSD estimate
+    # Step 4: Calculate RMSD to native structure
     print(f"\n[4/5] Calculating structural metrics...")
-    normalized_energy = (results.best_energy + 200) / -200
-    normalized_energy = max(0, min(1, normalized_energy))
-    estimated_rmsd = 10.0 - (normalized_energy * 7.0)
-    estimated_rmsd = max(0.5, estimated_rmsd)
     
-    if estimated_rmsd < 6.0:
-        rmsd_quality = "GOOD"
-    elif estimated_rmsd < 8.0:
-        rmsd_quality = "FAIR"
+    if pdb_file and results.best_conformation is not None:
+        try:
+            # Load native structure
+            from Bio.PDB.PDBParser import PDBParser
+            parser = PDBParser(QUIET=True)
+            native_structure = parser.get_structure('native', str(pdb_file))
+            
+            # Extract CA coordinates from native structure
+            native_residues = []
+            for model in native_structure:
+                for chain in model:
+                    for res in chain:
+                        if res.has_id('CA'):
+                            native_residues.append(res)
+                    break  # Use first chain
+                break  # Use first model
+            
+            native_coords = np.array([res['CA'].get_coord() for res in native_residues])
+            
+            # Get best conformation CA coordinates
+            best_conf_coords = np.array(results.best_conformation.atom_coordinates)
+            
+            # Ensure same length
+            min_len = min(len(native_coords), len(best_conf_coords))
+            native_coords = native_coords[:min_len]
+            best_conf_coords = best_conf_coords[:min_len]
+            
+            # Calculate RMSD (simple, without superposition for speed)
+            estimated_rmsd = float(np.sqrt(np.mean(np.sum((native_coords - best_conf_coords)**2, axis=1))))
+            
+            if estimated_rmsd < 6.0:
+                rmsd_quality = "GOOD"
+            elif estimated_rmsd < 8.0:
+                rmsd_quality = "FAIR"
+            else:
+                rmsd_quality = "NEEDS IMPROVEMENT"
+            
+            print(f"✓ RMSD to Native: {estimated_rmsd:.2f} Å ({rmsd_quality})")
+        except Exception as e:
+            print(f"⚠ Could not calculate RMSD: {e}")
+            estimated_rmsd = None
+            rmsd_quality = "UNKNOWN"
     else:
-        rmsd_quality = "NEEDS IMPROVEMENT"
-    
-    print(f"✓ Estimated RMSD: {estimated_rmsd:.2f} Å ({rmsd_quality})")
+        # Fallback for sequence-only mode
+        print(f"⚠ No native structure - using energy-based estimate")
+        normalized_energy = max(0, min(1, (-results.best_energy / 200.0)))
+        estimated_rmsd = 10.0 - (normalized_energy * 7.0)
+        estimated_rmsd = max(0.5, estimated_rmsd)
+        
+        if estimated_rmsd < 6.0:
+            rmsd_quality = "GOOD"
+        elif estimated_rmsd < 8.0:
+            rmsd_quality = "FAIR"
+        else:
+            rmsd_quality = "NEEDS IMPROVEMENT"
+        
+        print(f"✓ Estimated RMSD: {estimated_rmsd:.2f} Å ({rmsd_quality})")
     
     # Step 5: Calculate RMSE if experimental data available
     rmse_results = None
@@ -379,7 +424,11 @@ def run_protein_test(sequence: str, pdb_file: Optional[Path] = None, pdb_id: Opt
     
     print(f"\n🔬 STRUCTURAL EXPLORATION:")
     print(f"  - Best Energy: {results.best_energy:.2f} kcal/mol")
-    print(f"  - Estimated RMSD: {estimated_rmsd:.2f} Å ({rmsd_quality})")
+    if estimated_rmsd is not None:
+        if pdb_file:
+            print(f"  - RMSD to Native: {estimated_rmsd:.2f} Å ({rmsd_quality})")
+        else:
+            print(f"  - Estimated RMSD: {estimated_rmsd:.2f} Å ({rmsd_quality})")
     print(f"  - Conformations: {total_conformations:,}")
     print(f"  - Time: {exploration_time:.1f}s")
     print(f"  - Throughput: {throughput:.1f} conf/s")

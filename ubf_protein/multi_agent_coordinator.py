@@ -177,11 +177,17 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
                     disulfide_bonds=self._physics_config.disulfide_bonds,
                     enable_sidechains=self._physics_config.enable_side_chains,
                     enable_solvent=self._physics_config.enable_solvent,
-                    enable_entropic=self._physics_config.enable_entropic
+                    enable_entropic=self._physics_config.enable_entropic,
+                    disulfide_spring_constant=self._physics_config.disulfide_spring_constant,
+                    disulfide_ramp_schedule=self._physics_config.disulfide_ramp_schedule
                 )
                 
                 bond_count = len(self._physics_config.disulfide_bonds) if self._physics_config.disulfide_bonds else 0
-                logger.info(f"EnhancedEnergyCalculator created with {bond_count} disulfide bonds")
+                if self._physics_config.disulfide_ramp_schedule:
+                    ramp_str = " -> ".join([f"k={k}" for _, k in self._physics_config.disulfide_ramp_schedule])
+                    logger.info(f"EnhancedEnergyCalculator created with {bond_count} disulfide bonds, RAMP: {ramp_str}")
+                else:
+                    logger.info(f"EnhancedEnergyCalculator created with {bond_count} disulfide bonds, k={self._physics_config.disulfide_spring_constant} kcal/mol/Ų")
                 return calculator
                 
             except ImportError as e:

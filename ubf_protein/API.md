@@ -2337,9 +2337,1044 @@ class DynamicParameterAdjuster:
 
 ---
 
+## Physics Enhancements
+
+Comprehensive physics enhancements for improved protein folding accuracy, including disulfide bond constraints, side-chain field interactions, solvent corrections, entropic contributions, and local refinement.
+
+### DisulfideDetector
+
+```python
+class DisulfideDetector:
+    """
+    Detect and manage disulfide bond constraints in protein structures.
+    
+    Provides two detection methods:
+    1. PDB parsing: Extract SSBOND records from PDB files
+    2. Sequence prediction: Predict likely disulfide bonds from Cys positions
+    
+    Disulfide bonds enforce spatial constraints (CA-CA distance ≈ 3.8 Å)
+    for proper protein folding.
+    """
+    
+    def __init__(self):
+        """Initialize disulfide detector."""
+        pass
+    
+    def detect_from_pdb(self, pdb_file: str) -> List['DisulfideBond']:
+        """
+        Extract disulfide bonds from PDB SSBOND records.
+        
+        Parses PDB file for SSBOND records which specify cysteine pairs
+        forming disulfide bridges. Each bond enforces CA-CA distance
+        constraint of 3.8 Å.
+        
+        Args:
+            pdb_file: Path to PDB file
+            
+        Returns:
+            List of DisulfideBond objects with residue indices
+            
+        Example:
+            >>> detector = DisulfideDetector()
+            >>> bonds = detector.detect_from_pdb("1CRN.pdb")
+            >>> print(f"Found {len(bonds)} disulfide bonds")
+            Found 3 disulfide bonds
+            >>> for bond in bonds:
+            ...     print(f"CYS{bond.residue_i}-CYS{bond.residue_j}")
+            CYS3-CYS40
+            CYS4-CYS32
+            CYS16-CYS26
+        """
+        pass
+    
+    def predict_from_sequence(self, sequence: str) -> List['DisulfideBond']:
+        """
+        Predict disulfide bonds from amino acid sequence.
+        
+        Uses heuristic: pair cysteines that are:
+        - At least 2 residues apart in sequence
+        - Closest in sequence position (greedy pairing)
+        
+        Note: This is a simple prediction. Real disulfide bonds
+        depend on 3D structure. Use detect_from_pdb() when possible.
+        
+        Args:
+            sequence: Amino acid sequence (single-letter codes)
+            
+        Returns:
+            List of predicted DisulfideBond objects
+            
+        Example:
+            >>> sequence = "ACDEFGHCIKLMNPCQRST"
+            >>> bonds = detector.predict_from_sequence(sequence)
+            >>> print(f"Predicted {len(bonds)} disulfide bonds")
+            Predicted 1 disulfide bonds
+            >>> print(f"CYS{bonds[0].residue_i}-CYS{bonds[0].residue_j}")
+            CYS1-CYS7
+        """
+        pass
+    
+    def check_satisfaction(
+        self,
+        bonds: List['DisulfideBond'],
+        coordinates: List[Tuple[float, float, float]]
+    ) -> Tuple[bool, List[str]]:
+        """
+        Check if disulfide bonds are satisfied in current conformation.
+        
+        A bond is satisfied if CA-CA distance is within tolerance
+        of target distance (3.8 Å ± 0.5 Å).
+        
+        Args:
+            bonds: List of disulfide bonds to check
+            coordinates: CA coordinates (x, y, z) for all residues
+            
+        Returns:
+            Tuple of (all_satisfied, violation_messages)
+            
+        Example:
+            >>> satisfied, violations = detector.check_satisfaction(bonds, coords)
+            >>> if not satisfied:
+            ...     for msg in violations:
+            ...         print(f"⚠️  {msg}")
+            ⚠️  CYS3-CYS40: distance 38.2 Å (target 3.8 Å, tolerance 0.5 Å)
+        """
+        pass
+```
+
+### DisulfideBond
+
+```python
+@dataclass(frozen=True)
+class DisulfideBond:
+    """
+    Immutable disulfide bond constraint.
+    
+    Represents a covalent bond between two cysteine residues,
+    enforcing spatial constraint on CA-CA distance.
+    
+    Attributes:
+        residue_i: First cysteine residue index (0-based)
+        residue_j: Second cysteine residue index (0-based)
+        distance: Target CA-CA distance (typically 3.8 Å)
+        tolerance: Acceptable distance deviation (typically 0.5 Å)
+    """
+    residue_i: int
+    residue_j: int
+    distance: float = 3.8  # Angstroms
+    tolerance: float = 0.5  # Angstroms
+    
+    def __post_init__(self):
+        """Validate bond parameters."""
+        assert self.residue_i < self.residue_j, "residue_i must be < residue_j"
+        assert self.distance > 0, "distance must be positive"
+        assert self.tolerance > 0, "tolerance must be positive"
+    
+    def is_satisfied(self, current_distance: float) -> bool:
+        """
+        Check if bond is satisfied at given distance.
+        
+        Args:
+            current_distance: Current CA-CA distance (Angstroms)
+            
+        Returns:
+            True if within tolerance
+        """
+        return abs(current_distance - self.distance) <= self.tolerance
+    
+    def violation_energy(self, current_distance: float) -> float:
+        """
+        Calculate harmonic violation energy.
+        
+        Uses harmonic potential: E = 0.5 * k * (r - r₀)²
+        where k = 50.0 kcal/mol/Ų
+        
+        Args:
+            current_distance: Current CA-CA distance (Angstroms)
+            
+        Returns:
+            Energy penalty (kcal/mol), 0 if satisfied
+        """
+        if self.is_satisfied(current_distance):
+            return 0.0
+        k = 50.0  # kcal/mol/Ų
+        deviation = current_distance - self.distance
+        return 0.5 * k * deviation ** 2
+```
+
+### SideChainFieldCalculator
+
+```python
+class SideChainFieldCalculator:
+    """
+    Calculate side-chain field representations for all residues.
+    
+    Models each side-chain as a Gaussian field with physical properties:
+    - Hydrophobicity (Kyte-Doolittle scale)
+    - Van der Waals volume
+    - Charge state
+    
+    Field interactions include:
+    - Steric repulsion (overlapping fields)
+    - Hydrophobic attraction (like-like pairs)
+    - Hydrophobic-hydrophilic repulsion
+    - Electrostatic interactions (charged residues)
+    """
+    
+    def __init__(self, sigma: float = 2.0):
+        """
+        Initialize side-chain field calculator.
+        
+        Args:
+            sigma: Gaussian field width (Angstroms), default 2.0 Å
+        """
+        pass
+    
+    def create_fields(
+        self,
+        sequence: str,
+        coordinates: List[Tuple[float, float, float]]
+    ) -> List['SideChainField']:
+        """
+        Create side-chain fields for all residues.
+        
+        Args:
+            sequence: Amino acid sequence (single-letter codes)
+            coordinates: CA coordinates (x, y, z) for all residues
+            
+        Returns:
+            List of SideChainField objects
+            
+        Example:
+            >>> calculator = SideChainFieldCalculator()
+            >>> fields = calculator.create_fields("ACDEFGH", coords)
+            >>> for field in fields:
+            ...     print(f"{field.residue_type}: hydro={field.hydrophobicity:.2f}")
+            A: hydro=1.80
+            C: hydro=2.50
+            D: hydro=-3.50
+            ...
+        """
+        pass
+    
+    def calculate_field_interactions(
+        self,
+        fields: List['SideChainField'],
+        cutoff: float = 15.0
+    ) -> float:
+        """
+        Calculate total energy from all side-chain field interactions.
+        
+        Includes 4 interaction types:
+        1. Steric repulsion: Prevents field overlap
+        2. Hydrophobic attraction: Hydrophobic core formation
+        3. Hydrophobic-hydrophilic repulsion: Surface preference
+        4. Electrostatic: Coulomb interaction for charged residues
+        
+        Args:
+            fields: List of side-chain fields
+            cutoff: Distance cutoff for interactions (Angstroms)
+            
+        Returns:
+            Total side-chain interaction energy (kcal/mol)
+            
+        Example:
+            >>> energy = calculator.calculate_field_interactions(fields)
+            >>> print(f"Side-chain energy: {energy:.2f} kcal/mol")
+            Side-chain energy: -12.45 kcal/mol
+        """
+        pass
+    
+    def calculate_pairwise_interaction(
+        self,
+        field_i: 'SideChainField',
+        field_j: 'SideChainField'
+    ) -> float:
+        """
+        Calculate interaction energy between two fields.
+        
+        Args:
+            field_i: First side-chain field
+            field_j: Second side-chain field
+            
+        Returns:
+            Interaction energy (kcal/mol)
+        """
+        pass
+```
+
+### SideChainField
+
+```python
+@dataclass(frozen=True)
+class SideChainField:
+    """
+    Immutable side-chain field representation.
+    
+    Attributes:
+        residue_index: Residue position in sequence (0-based)
+        residue_type: Single-letter amino acid code
+        center: Field center coordinates (x, y, z) in Angstroms
+        hydrophobicity: Kyte-Doolittle hydrophobicity (-4.5 to +4.5)
+        vdw_volume: Van der Waals volume (ų)
+        charge: Formal charge at pH 7.0 (-1, 0, +1, +0.5)
+        sigma: Gaussian field width (Angstroms)
+    """
+    residue_index: int
+    residue_type: str
+    center: Tuple[float, float, float]
+    hydrophobicity: float
+    vdw_volume: float
+    charge: float
+    sigma: float = 2.0
+    
+    def field_strength_at(self, position: Tuple[float, float, float]) -> float:
+        """
+        Calculate Gaussian field strength at given position.
+        
+        Uses formula: strength = exp(-r² / (2σ²))
+        where r is distance from field center.
+        
+        Args:
+            position: Query position (x, y, z)
+            
+        Returns:
+            Field strength (0-1)
+        """
+        pass
+    
+    def is_hydrophobic(self) -> bool:
+        """Check if residue is hydrophobic (hydrophobicity > 0)."""
+        return self.hydrophobicity > 0
+    
+    def is_charged(self) -> bool:
+        """Check if residue is charged (charge != 0)."""
+        return abs(self.charge) > 0.01
+```
+
+### SolventFieldCorrection
+
+```python
+class SolventFieldCorrection:
+    """
+    Apply solvent screening corrections to electrostatic interactions.
+    
+    Implements two corrections:
+    1. Distance-dependent dielectric: ε(r) increases with distance
+    2. Burial factor: Buried residues have lower dielectric (ε≈4),
+       surface residues have higher dielectric (ε≈80)
+    
+    This accounts for solvent shielding of electrostatic interactions.
+    """
+    
+    def __init__(
+        self,
+        screening_length: float = 3.0,
+        burial_radius: float = 8.0
+    ):
+        """
+        Initialize solvent correction calculator.
+        
+        Args:
+            screening_length: Distance-dependent screening length (Angstroms)
+            burial_radius: Radius for neighbor counting (Angstroms)
+        """
+        pass
+    
+    def calculate_dielectric(
+        self,
+        distance: float,
+        burial_factor_i: float,
+        burial_factor_j: float
+    ) -> float:
+        """
+        Calculate effective dielectric constant.
+        
+        Combines:
+        - Distance effect: ε increases with distance (Debye screening)
+        - Burial effect: Buried residues have ε≈4, surface has ε≈80
+        
+        Args:
+            distance: Pairwise distance (Angstroms)
+            burial_factor_i: Burial factor for residue i (0=surface, 1=buried)
+            burial_factor_j: Burial factor for residue j (0=surface, 1=buried)
+            
+        Returns:
+            Effective dielectric constant (4-80)
+            
+        Example:
+            >>> corrector = SolventFieldCorrection()
+            >>> # Two surface residues far apart
+            >>> eps = corrector.calculate_dielectric(20.0, 0.0, 0.0)
+            >>> print(f"Dielectric: {eps:.1f}")
+            Dielectric: 80.0
+            >>> # Two buried residues close together
+            >>> eps = corrector.calculate_dielectric(5.0, 1.0, 1.0)
+            >>> print(f"Dielectric: {eps:.1f}")
+            Dielectric: 4.2
+        """
+        pass
+    
+    def calculate_burial_factor(
+        self,
+        residue_index: int,
+        coordinates: List[Tuple[float, float, float]]
+    ) -> float:
+        """
+        Calculate burial factor for residue based on neighbor count.
+        
+        Counts neighbors within burial_radius and applies sigmoid
+        to map [0, 15] neighbors → [0, 1] burial factor.
+        
+        Args:
+            residue_index: Residue to analyze
+            coordinates: All CA coordinates
+            
+        Returns:
+            Burial factor (0=surface, 1=buried)
+            
+        Example:
+            >>> burial = corrector.calculate_burial_factor(10, coords)
+            >>> if burial > 0.8:
+            ...     print("Buried residue")
+            >>> elif burial < 0.2:
+            ...     print("Surface residue")
+            >>> else:
+            ...     print("Intermediate burial")
+        """
+        pass
+    
+    def apply_correction(
+        self,
+        base_energy: float,
+        distance: float,
+        burial_factor_i: float,
+        burial_factor_j: float
+    ) -> float:
+        """
+        Apply solvent correction to electrostatic energy.
+        
+        Args:
+            base_energy: Uncorrected electrostatic energy (kcal/mol)
+            distance: Pairwise distance (Angstroms)
+            burial_factor_i: Burial factor for residue i
+            burial_factor_j: Burial factor for residue j
+            
+        Returns:
+            Corrected energy (kcal/mol)
+        """
+        pass
+```
+
+### EntropicCalculator
+
+```python
+class EntropicCalculator:
+    """
+    Calculate entropic contributions to free energy.
+    
+    Implements two entropic terms:
+    1. Coherence entropy: From QCP value variance (quantum coherence)
+    2. Configurational entropy: From RMSD diversity over trajectory window
+    
+    Both contribute to free energy: G = H - T×S
+    where T=300K by default.
+    """
+    
+    def __init__(self, temperature: float = 300.0, window_size: int = 50):
+        """
+        Initialize entropic calculator.
+        
+        Args:
+            temperature: Temperature in Kelvin (default 300K)
+            window_size: Trajectory window for configurational entropy
+        """
+        pass
+    
+    def calculate_coherence_entropy(
+        self,
+        qcp_values: List[float]
+    ) -> float:
+        """
+        Calculate entropy from QCP variance.
+        
+        Uses Boltzmann formula: S = k_B × ln(variance + 1)
+        where k_B = 0.001987 kcal/(mol·K)
+        
+        Variance is normalized to maximum of 10.0 to prevent
+        extreme entropy values.
+        
+        Args:
+            qcp_values: QCP values for all residues
+            
+        Returns:
+            Coherence entropy contribution to free energy (kcal/mol)
+            
+        Example:
+            >>> calculator = EntropicCalculator()
+            >>> # Low variance (ordered structure)
+            >>> qcp = [4.5, 4.6, 4.5, 4.7, 4.5]
+            >>> entropy = calculator.calculate_coherence_entropy(qcp)
+            >>> print(f"Coherence entropy: {entropy:.3f} kcal/mol")
+            Coherence entropy: -0.032 kcal/mol
+            >>> # High variance (disordered structure)
+            >>> qcp = [2.0, 5.0, 3.0, 7.0, 4.0]
+            >>> entropy = calculator.calculate_coherence_entropy(qcp)
+            >>> print(f"Coherence entropy: {entropy:.3f} kcal/mol")
+            Coherence entropy: -0.215 kcal/mol
+        """
+        pass
+    
+    def calculate_configurational_entropy(
+        self,
+        trajectory_snapshots: List['ConformationSnapshot']
+    ) -> float:
+        """
+        Calculate entropy from conformational diversity.
+        
+        Uses RMSD variance over trajectory window:
+        S = k_B × ln(rmsd_variance + 1)
+        
+        Higher diversity (more conformations explored) increases entropy.
+        
+        Args:
+            trajectory_snapshots: Recent conformational trajectory
+            
+        Returns:
+            Configurational entropy contribution (kcal/mol)
+            
+        Example:
+            >>> # Diverse exploration
+            >>> snapshots = [snap1, snap2, snap3, ...]  # RMSDs vary widely
+            >>> entropy = calculator.calculate_configurational_entropy(snapshots)
+            >>> print(f"Configurational entropy: {entropy:.3f} kcal/mol")
+            Configurational entropy: -0.180 kcal/mol
+        """
+        pass
+    
+    def calculate_total_entropic_contribution(
+        self,
+        qcp_values: List[float],
+        trajectory_snapshots: List['ConformationSnapshot']
+    ) -> float:
+        """
+        Calculate total entropic contribution to free energy.
+        
+        Combines coherence and configurational entropy:
+        ΔG_entropic = -(S_coherence + S_configurational)
+        
+        Args:
+            qcp_values: QCP values for current conformation
+            trajectory_snapshots: Recent trajectory
+            
+        Returns:
+            Total entropic free energy contribution (kcal/mol)
+            
+        Example:
+            >>> total = calculator.calculate_total_entropic_contribution(
+            ...     qcp_values, snapshots
+            ... )
+            >>> print(f"Entropic contribution: {total:.3f} kcal/mol")
+            Entropic contribution: -0.412 kcal/mol
+        """
+        pass
+```
+
+### EnhancedEnergyCalculator
+
+```python
+class EnhancedEnergyCalculator(IPhysicsCalculator):
+    """
+    Enhanced energy calculator with all physics improvements.
+    
+    Combines 5 energy components:
+    1. Base molecular mechanics (bonds, angles, dihedrals, VdW, electrostatics)
+    2. Side-chain field interactions
+    3. Disulfide bond constraints
+    4. Entropic contributions (coherence + configurational)
+    5. Solvent screening corrections
+    
+    Optimized for <50ms calculation time on 300-residue proteins.
+    """
+    
+    def __init__(
+        self,
+        sequence: str,
+        disulfide_bonds: Optional[List[DisulfideBond]] = None,
+        enable_side_chains: bool = True,
+        enable_solvent: bool = True,
+        enable_entropic: bool = True,
+        trajectory_window: int = 50
+    ):
+        """
+        Initialize enhanced energy calculator.
+        
+        Args:
+            sequence: Amino acid sequence
+            disulfide_bonds: Optional disulfide bond constraints
+            enable_side_chains: Enable side-chain field interactions
+            enable_solvent: Enable solvent screening corrections
+            enable_entropic: Enable entropic contributions
+            trajectory_window: Window size for configurational entropy
+            
+        Example:
+            >>> calculator = EnhancedEnergyCalculator(
+            ...     sequence="ACDEFGH",
+            ...     disulfide_bonds=[DisulfideBond(1, 6)],
+            ...     enable_side_chains=True,
+            ...     enable_solvent=True,
+            ...     enable_entropic=True
+            ... )
+        """
+        pass
+    
+    def calculate_energy(
+        self,
+        conformation: 'Conformation',
+        trajectory_snapshots: Optional[List['ConformationSnapshot']] = None
+    ) -> float:
+        """
+        Calculate total enhanced energy.
+        
+        Args:
+            conformation: Current protein conformation
+            trajectory_snapshots: Optional trajectory for entropic calculation
+            
+        Returns:
+            Total energy (kcal/mol)
+            
+        Example:
+            >>> energy = calculator.calculate_energy(conformation, snapshots)
+            >>> print(f"Total energy: {energy:.2f} kcal/mol")
+            Total energy: -87.32 kcal/mol
+        """
+        pass
+    
+    def calculate_energy_breakdown(
+        self,
+        conformation: 'Conformation',
+        trajectory_snapshots: Optional[List['ConformationSnapshot']] = None
+    ) -> Dict[str, float]:
+        """
+        Calculate detailed energy breakdown by component.
+        
+        Args:
+            conformation: Current protein conformation
+            trajectory_snapshots: Optional trajectory for entropic calculation
+            
+        Returns:
+            Dictionary with keys:
+            - "base_mm": Base molecular mechanics energy
+            - "side_chains": Side-chain interaction energy
+            - "disulfide": Disulfide bond constraint energy
+            - "entropic": Entropic free energy contribution
+            - "total": Sum of all components
+            
+        Example:
+            >>> breakdown = calculator.calculate_energy_breakdown(conf, snaps)
+            >>> for component, energy in breakdown.items():
+            ...     print(f"{component}: {energy:.2f} kcal/mol")
+            base_mm: -65.20 kcal/mol
+            side_chains: -12.45 kcal/mol
+            disulfide: 8.20 kcal/mol
+            entropic: -0.87 kcal/mol
+            total: -70.32 kcal/mol
+        """
+        pass
+```
+
+### LocalRefinement
+
+```python
+class LocalRefinement:
+    """
+    Local energy minimization using gradient descent.
+    
+    Optimizes conformation by iteratively moving atoms in direction
+    of negative energy gradient. Uses:
+    - Central difference numerical gradients
+    - Adaptive step size (reduces on geometry violations)
+    - Geometry validation after each step
+    - Convergence detection (energy change < threshold)
+    
+    Typical refinement: 20-50 steps, 23 kcal/mol improvement.
+    """
+    
+    def __init__(
+        self,
+        energy_calculator: 'IPhysicsCalculator',
+        max_iterations: int = 100,
+        convergence_threshold: float = 0.001,
+        initial_step_size: float = 0.01
+    ):
+        """
+        Initialize local refinement optimizer.
+        
+        Args:
+            energy_calculator: Energy calculator for gradient evaluation
+            max_iterations: Maximum optimization steps
+            convergence_threshold: Energy change threshold (kcal/mol)
+            initial_step_size: Initial gradient descent step size (Angstroms)
+            
+        Example:
+            >>> refiner = LocalRefinement(
+            ...     energy_calculator=enhanced_calculator,
+            ...     max_iterations=100,
+            ...     convergence_threshold=0.001
+            ... )
+        """
+        pass
+    
+    def refine(
+        self,
+        conformation: 'Conformation',
+        trajectory_snapshots: Optional[List['ConformationSnapshot']] = None
+    ) -> Tuple['Conformation', Dict[str, Any]]:
+        """
+        Refine conformation by gradient descent.
+        
+        Iteratively:
+        1. Calculate numerical gradient (central differences, ε=0.01 Å)
+        2. Move atoms along negative gradient
+        3. Validate geometry (bonds, angles within limits)
+        4. Accept if energy decreases, reduce step size otherwise
+        5. Check convergence (energy change < threshold)
+        
+        Args:
+            conformation: Starting conformation
+            trajectory_snapshots: Optional trajectory for entropic terms
+            
+        Returns:
+            Tuple of (refined_conformation, refinement_stats)
+            
+        refinement_stats contains:
+            - "iterations": Number of steps taken
+            - "initial_energy": Starting energy (kcal/mol)
+            - "final_energy": Final energy (kcal/mol)
+            - "energy_improvement": Energy decrease (kcal/mol)
+            - "converged": Whether convergence threshold met
+            - "final_step_size": Final step size (Angstroms)
+            
+        Example:
+            >>> refined, stats = refiner.refine(conformation, snapshots)
+            >>> print(f"Refined in {stats['iterations']} steps")
+            >>> print(f"Energy: {stats['initial_energy']:.2f} → {stats['final_energy']:.2f}")
+            >>> print(f"Improvement: {stats['energy_improvement']:.2f} kcal/mol")
+            Refined in 42 steps
+            Energy: -9.76 → -33.01
+            Improvement: 23.25 kcal/mol
+        """
+        pass
+    
+    def calculate_numerical_gradient(
+        self,
+        conformation: 'Conformation',
+        trajectory_snapshots: Optional[List['ConformationSnapshot']] = None,
+        epsilon: float = 0.01
+    ) -> List[Tuple[float, float, float]]:
+        """
+        Calculate numerical gradient using central differences.
+        
+        For each coordinate x:
+        ∂E/∂x ≈ (E(x+ε) - E(x-ε)) / (2ε)
+        
+        Args:
+            conformation: Current conformation
+            trajectory_snapshots: Optional trajectory
+            epsilon: Finite difference step size (Angstroms)
+            
+        Returns:
+            Gradient vector [(∂E/∂x, ∂E/∂y, ∂E/∂z), ...] for all atoms
+        """
+        pass
+```
+
+### EnhancedPhysicsConfig
+
+```python
+@dataclass(frozen=True)
+class EnhancedPhysicsConfig:
+    """
+    Immutable configuration for all physics enhancements.
+    
+    Contains 25+ tunable parameters for:
+    - Disulfide constraints
+    - Side-chain field interactions
+    - Solvent corrections
+    - Entropic contributions
+    - Local refinement
+    - Performance optimization
+    
+    Use factory methods for common presets:
+    - baseline(): No enhancements (backward compatible)
+    - enhanced_default(): Balanced enhancements
+    - small_protein(): Optimized for <50 residues
+    - medium_protein(): Optimized for 50-150 residues
+    - large_protein(): Optimized for >150 residues
+    - auto_adapt(): Automatic size-based selection
+    """
+    
+    # Feature toggles
+    use_enhanced_energy: bool = False
+    enable_side_chains: bool = False
+    enable_solvent: bool = False
+    enable_entropic: bool = False
+    enable_refinement: bool = False
+    
+    # Disulfide parameters
+    disulfide_bonds: List[DisulfideBond] = field(default_factory=list)
+    disulfide_spring_constant: float = 50.0  # kcal/mol/Ų
+    disulfide_target_distance: float = 3.8  # Angstroms
+    disulfide_tolerance: float = 0.5  # Angstroms
+    
+    # Side-chain parameters
+    sidechain_sigma: float = 2.0  # Angstroms
+    sidechain_cutoff: float = 15.0  # Angstroms
+    steric_weight: float = 1.0
+    hydrophobic_weight: float = 1.0
+    electrostatic_weight: float = 1.0
+    
+    # Solvent parameters
+    screening_length: float = 3.0  # Angstroms
+    burial_radius: float = 8.0  # Angstroms
+    buried_dielectric: float = 4.0
+    surface_dielectric: float = 80.0
+    
+    # Entropic parameters
+    temperature: float = 300.0  # Kelvin
+    trajectory_window: int = 50
+    max_entropy_variance: float = 10.0
+    
+    # Refinement parameters
+    refinement_max_iterations: int = 100
+    refinement_convergence_threshold: float = 0.001  # kcal/mol
+    refinement_step_size: float = 0.01  # Angstroms
+    
+    # Performance parameters
+    enable_caching: bool = True
+    sequence_separation_filter: int = 3  # Skip pairs within N positions
+    
+    @staticmethod
+    def baseline() -> 'EnhancedPhysicsConfig':
+        """
+        Baseline configuration (no enhancements).
+        
+        Use for:
+        - Backward compatibility testing
+        - Performance comparisons
+        - Establishing baselines
+        
+        Returns:
+            Config with all enhancements disabled
+        """
+        return EnhancedPhysicsConfig()
+    
+    @staticmethod
+    def enhanced_default() -> 'EnhancedPhysicsConfig':
+        """
+        Default enhanced configuration (all features enabled).
+        
+        Balanced settings suitable for most proteins (50-150 residues).
+        
+        Returns:
+            Config with all enhancements enabled at default parameters
+        """
+        return EnhancedPhysicsConfig(
+            use_enhanced_energy=True,
+            enable_side_chains=True,
+            enable_solvent=True,
+            enable_entropic=True,
+            enable_refinement=True
+        )
+    
+    @staticmethod
+    def small_protein(sequence_length: int) -> 'EnhancedPhysicsConfig':
+        """
+        Optimized for small proteins (<50 residues).
+        
+        - Higher refinement iterations (150)
+        - Smaller trajectory window (30)
+        - All enhancements enabled
+        
+        Args:
+            sequence_length: Protein length for validation
+            
+        Returns:
+            Config optimized for small proteins
+        """
+        return EnhancedPhysicsConfig(
+            use_enhanced_energy=True,
+            enable_side_chains=True,
+            enable_solvent=True,
+            enable_entropic=True,
+            enable_refinement=True,
+            refinement_max_iterations=150,
+            trajectory_window=30
+        )
+    
+    @staticmethod
+    def medium_protein(sequence_length: int) -> 'EnhancedPhysicsConfig':
+        """
+        Optimized for medium proteins (50-150 residues).
+        
+        - Default parameters (balanced)
+        - All enhancements enabled
+        
+        Args:
+            sequence_length: Protein length for validation
+            
+        Returns:
+            Config optimized for medium proteins
+        """
+        return EnhancedPhysicsConfig.enhanced_default()
+    
+    @staticmethod
+    def large_protein(sequence_length: int) -> 'EnhancedPhysicsConfig':
+        """
+        Optimized for large proteins (>150 residues).
+        
+        - Reduced refinement iterations (50)
+        - Larger trajectory window (100)
+        - Increased cutoffs for performance
+        
+        Args:
+            sequence_length: Protein length for validation
+            
+        Returns:
+            Config optimized for large proteins
+        """
+        return EnhancedPhysicsConfig(
+            use_enhanced_energy=True,
+            enable_side_chains=True,
+            enable_solvent=True,
+            enable_entropic=True,
+            enable_refinement=True,
+            refinement_max_iterations=50,
+            trajectory_window=100,
+            sidechain_cutoff=12.0  # Reduced for performance
+        )
+    
+    @staticmethod
+    def auto_adapt(sequence: str) -> 'EnhancedPhysicsConfig':
+        """
+        Automatically select configuration based on protein size.
+        
+        Uses sequence length to choose:
+        - <50: small_protein()
+        - 50-150: medium_protein()
+        - >150: large_protein()
+        
+        Args:
+            sequence: Amino acid sequence
+            
+        Returns:
+            Size-appropriate configuration
+            
+        Example:
+            >>> config = EnhancedPhysicsConfig.auto_adapt("ACDEFGH")
+            >>> # Selects small_protein() for 7-residue protein
+        """
+        length = len(sequence)
+        if length < 50:
+            return EnhancedPhysicsConfig.small_protein(length)
+        elif length <= 150:
+            return EnhancedPhysicsConfig.medium_protein(length)
+        else:
+            return EnhancedPhysicsConfig.large_protein(length)
+    
+    @staticmethod
+    def from_environment() -> 'EnhancedPhysicsConfig':
+        """
+        Load configuration from environment variables.
+        
+        Supported variables (UBF_* prefix):
+        - UBF_USE_ENHANCED_ENERGY: "true"/"false"
+        - UBF_ENABLE_SIDE_CHAINS: "true"/"false"
+        - UBF_ENABLE_SOLVENT: "true"/"false"
+        - UBF_ENABLE_ENTROPIC: "true"/"false"
+        - UBF_ENABLE_REFINEMENT: "true"/"false"
+        - UBF_TEMPERATURE: float (Kelvin)
+        - UBF_REFINEMENT_MAX_ITERATIONS: int
+        - ... (all parameters supported)
+        
+        Returns:
+            Config loaded from environment
+            
+        Example:
+            >>> import os
+            >>> os.environ["UBF_USE_ENHANCED_ENERGY"] = "true"
+            >>> os.environ["UBF_TEMPERATURE"] = "310.0"
+            >>> config = EnhancedPhysicsConfig.from_environment()
+            >>> print(config.use_enhanced_energy)  # True
+            >>> print(config.temperature)  # 310.0
+        """
+        pass
+    
+    def with_refinement(self, enable: bool) -> 'EnhancedPhysicsConfig':
+        """
+        Create modified config with refinement toggled.
+        
+        Args:
+            enable: Enable or disable refinement
+            
+        Returns:
+            New config with refinement setting changed
+        """
+        pass
+    
+    def with_disulfide_bonds(
+        self,
+        bonds: List[DisulfideBond]
+    ) -> 'EnhancedPhysicsConfig':
+        """
+        Create modified config with disulfide bonds.
+        
+        Args:
+            bonds: List of disulfide bond constraints
+            
+        Returns:
+            New config with bonds added
+        """
+        pass
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Convert configuration to dictionary.
+        
+        Returns:
+            Dictionary of all parameters
+        """
+        pass
+    
+    def summary(self) -> str:
+        """
+        Get human-readable configuration summary.
+        
+        Returns:
+            Multi-line summary string
+            
+        Example:
+            >>> config = EnhancedPhysicsConfig.enhanced_default()
+            >>> print(config.summary())
+            Enhanced Physics Configuration:
+            ================================
+            Feature Toggles:
+              Enhanced Energy: ✓
+              Side Chains:     ✓
+              Solvent:         ✓
+              Entropic:        ✓
+              Refinement:      ✓
+            ...
+        """
+        pass
+```
+
+---
+
 ## See Also
 
 - [README.md](README.md) - System overview and quick start
 - [EXAMPLES.md](EXAMPLES.md) - Detailed usage examples
 - [tests/](tests/) - Comprehensive test suite demonstrating API usage
 - [examples/integrated_exploration.py](examples/integrated_exploration.py) - Complete QCPP integration example
+- [docs/DISULFIDE_CONSTRAINT_AWARENESS.md](../docs/DISULFIDE_CONSTRAINT_AWARENESS.md) - Disulfide constraint implementation details

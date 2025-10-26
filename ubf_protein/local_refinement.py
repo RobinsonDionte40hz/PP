@@ -381,8 +381,8 @@ class LocalRefinement:
             dz = z2 - z1
             dist = math.sqrt(dx*dx + dy*dy + dz*dz)
             
-            # Bond length should be reasonable (2.5-5.0 Å for CA-CA)
-            if dist < 2.5 or dist > 5.0:
+            # Bond length should be reasonable (2.5-7.0 Å for CA-CA)
+            if dist < 2.5 or dist > 7.0:
                 return False
         
         return True

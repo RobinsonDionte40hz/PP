@@ -1492,4 +1492,676 @@ if __name__ == "__main__":
 
 ---
 
-These examples demonstrate the major features and use cases of the UBF Protein System, including the new QCPP integration capabilities. Each example is self-contained and can be run independently. For more advanced usage and integration examples, see the test suite in `ubf_protein/tests/` and `examples/integrated_exploration.py`.
+## Example 14: Physics Enhancements - Disulfide Detection
+
+Detect and enforce disulfide bond constraints for improved folding accuracy.
+
+```python
+#!/usr/bin/env python3
+"""
+Example 14: Disulfide bond detection and constraint enforcement.
+
+Demonstrates:
+- Detecting disulfide bonds from PDB files
+- Predicting disulfide bonds from sequence
+- Checking bond satisfaction
+- Using disulfide constraints in enhanced energy calculator
+"""
+
+from ubf_protein.disulfide_detector import DisulfideDetector
+from ubf_protein.enhanced_energy_calculator import EnhancedEnergyCalculator
+from ubf_protein.models import DisulfideBond
+from ubf_protein.protein_agent import ProteinAgent
+
+def main():
+    print("="*70)
+    print("EXAMPLE 14: Disulfide Bond Detection and Constraint Enforcement")
+    print("="*70)
+    
+    # Method 1: Detect from PDB file (Crambin - 1CRN)
+    print("\n[1] Detecting disulfide bonds from PDB file...")
+    detector = DisulfideDetector()
+    
+    pdb_file = "pdb_cache/1CRN.pdb"  # Download first if needed
+    try:
+        bonds_from_pdb = detector.detect_from_pdb(pdb_file)
+        print(f"    Found {len(bonds_from_pdb)} disulfide bonds:")
+        for bond in bonds_from_pdb:
+            print(f"      CYS{bond.residue_i+1}-CYS{bond.residue_j+1}: "
+                  f"target {bond.distance:.1f} Å, tolerance ±{bond.tolerance:.1f} Å")
+    except FileNotFoundError:
+        print(f"    ⚠ PDB file not found. Skipping PDB detection.")
+        bonds_from_pdb = []
+    
+    # Method 2: Predict from sequence
+    print("\n[2] Predicting disulfide bonds from sequence...")
+    sequence = "ACDEFGHCIKLMNPCQRST"  # 3 cysteines at positions 1, 7, 14
+    bonds_from_seq = detector.predict_from_sequence(sequence)
+    print(f"    Predicted {len(bonds_from_seq)} disulfide bonds:")
+    for bond in bonds_from_seq:
+        print(f"      CYS{bond.residue_i+1}-CYS{bond.residue_j+1}: "
+              f"target {bond.distance:.1f} Å, tolerance ±{bond.tolerance:.1f} Å")
+    
+    # Method 3: Check satisfaction in conformation
+    print("\n[3] Checking bond satisfaction...")
+    
+    # Create mock coordinates (for demonstration)
+    import random
+    num_residues = len(sequence)
+    coords = [(random.uniform(0, 10), random.uniform(0, 10), random.uniform(0, 10))
+              for _ in range(num_residues)]
+    
+    satisfied, violations = detector.check_satisfaction(bonds_from_seq, coords)
+    
+    if satisfied:
+        print(f"    ✓ All disulfide bonds satisfied!")
+    else:
+        print(f"    ✗ {len(violations)} bond violation(s):")
+        for msg in violations:
+            print(f"      {msg}")
+    
+    # Method 4: Use in enhanced energy calculator
+    print("\n[4] Using disulfide constraints in energy calculator...")
+    
+    calculator = EnhancedEnergyCalculator(
+        sequence=sequence,
+        disulfide_bonds=bonds_from_seq,
+        enable_side_chains=True,
+        enable_solvent=True,
+        enable_entropic=False  # No trajectory yet
+    )
+    
+    print(f"    Created enhanced energy calculator with:")
+    print(f"      • {len(bonds_from_seq)} disulfide constraints")
+    print(f"      • Side-chain field interactions")
+    print(f"      • Solvent screening corrections")
+    
+    # Calculate energy breakdown (mock conformation)
+    from ubf_protein.models import Conformation
+    mock_conf = Conformation(
+        conformation_id="test_001",
+        sequence=sequence,
+        atom_coordinates=coords,
+        secondary_structure=['C'] * num_residues,
+        energy=0.0,
+        rmsd=5.0,
+        phi_angles=[0.0] * num_residues,
+        psi_angles=[0.0] * num_residues
+    )
+    
+    breakdown = calculator.calculate_energy_breakdown(mock_conf)
+    
+    print(f"\n    Energy breakdown:")
+    for component, energy in breakdown.items():
+        print(f"      {component:15s}: {energy:8.2f} kcal/mol")
+    
+    # Method 5: Calculate violation energy
+    print("\n[5] Analyzing individual bond violation energies...")
+    
+    for i, bond in enumerate(bonds_from_seq):
+        # Get CA-CA distance
+        pos_i = coords[bond.residue_i]
+        pos_j = coords[bond.residue_j]
+        distance = ((pos_i[0] - pos_j[0])**2 + 
+                   (pos_i[1] - pos_j[1])**2 + 
+                   (pos_i[2] - pos_j[2])**2) ** 0.5
+        
+        violation_energy = bond.violation_energy(distance)
+        is_satisfied = bond.is_satisfied(distance)
+        
+        print(f"    Bond {i+1} (CYS{bond.residue_i+1}-CYS{bond.residue_j+1}):")
+        print(f"      Current distance: {distance:.2f} Å")
+        print(f"      Target distance: {bond.distance:.2f} Å")
+        print(f"      Satisfied: {is_satisfied}")
+        print(f"      Violation energy: {violation_energy:.2f} kcal/mol")
+    
+    print(f"\n{'='*70}")
+    print("Key Takeaways:")
+    print("  • Disulfide bonds enforce spatial constraints (CA-CA ≈ 3.8 Å)")
+    print("  • PDB detection extracts SSBOND records (most accurate)")
+    print("  • Sequence prediction provides fallback for Cys pairs")
+    print("  • Violation energy penalizes unsatisfied constraints")
+    print("  • Enhanced calculator integrates all constraints automatically")
+    print(f"{'='*70}")
+
+if __name__ == "__main__":
+    main()
+```
+
+---
+
+## Example 15: Physics Enhancements - Enhanced Energy Calculator
+
+Compare baseline vs enhanced energy calculations with all physics improvements.
+
+```python
+#!/usr/bin/env python3
+"""
+Example 15: Enhanced energy calculator with full physics.
+
+Demonstrates:
+- Baseline vs enhanced energy comparison
+- Energy component breakdown
+- Side-chain field interactions
+- Solvent screening corrections
+- Entropic contributions
+- Performance analysis
+"""
+
+from ubf_protein.energy_function import MolecularMechanicsEnergy
+from ubf_protein.enhanced_energy_calculator import EnhancedEnergyCalculator
+from ubf_protein.models import Conformation, DisulfideBond
+import time
+
+def main():
+    print("="*70)
+    print("EXAMPLE 15: Enhanced Energy Calculator - Full Physics Comparison")
+    print("="*70)
+    
+    # Test protein: small peptide with diverse residues
+    sequence = "ACDEFGHIKLMNPQRSTVWY"  # All 20 amino acids
+    num_residues = len(sequence)
+    
+    # Create mock conformation
+    import random
+    random.seed(42)  # Reproducible
+    coords = [(random.uniform(0, 15), random.uniform(0, 15), random.uniform(0, 15))
+              for _ in range(num_residues)]
+    
+    mock_conf = Conformation(
+        conformation_id="comparison_test",
+        sequence=sequence,
+        atom_coordinates=coords,
+        secondary_structure=['C'] * num_residues,
+        energy=0.0,
+        rmsd=5.0,
+        phi_angles=[-60.0] * num_residues,  # Alpha-helix region
+        psi_angles=[-45.0] * num_residues
+    )
+    
+    # Setup disulfide bonds (Cys at position 1)
+    # In real sequence, C is at index 1, no other cysteines
+    disulfide_bonds = []  # No disulfide bonds in this sequence
+    
+    # [1] Baseline energy calculation
+    print("\n[1] Baseline molecular mechanics energy...")
+    baseline_calculator = MolecularMechanicsEnergy()
+    
+    start = time.perf_counter()
+    baseline_energy = baseline_calculator.calculate_energy(mock_conf)
+    baseline_time = (time.perf_counter() - start) * 1000
+    
+    baseline_breakdown = baseline_calculator.calculate_detailed_energy(mock_conf)
+    
+    print(f"    Total energy: {baseline_energy:.2f} kcal/mol")
+    print(f"    Calculation time: {baseline_time:.3f} ms")
+    print(f"\n    Component breakdown:")
+    for component, energy in baseline_breakdown.items():
+        if component != "total":
+            print(f"      {component:15s}: {energy:8.2f} kcal/mol")
+    
+    # [2] Enhanced energy calculation (all features)
+    print("\n[2] Enhanced energy with all physics improvements...")
+    enhanced_calculator = EnhancedEnergyCalculator(
+        sequence=sequence,
+        disulfide_bonds=disulfide_bonds,
+        enable_side_chains=True,
+        enable_solvent=True,
+        enable_entropic=True
+    )
+    
+    # Create mock trajectory for entropic calculation
+    from ubf_protein.models import ConformationSnapshot
+    trajectory = [
+        ConformationSnapshot(
+            iteration=i,
+            conformation_id=f"snap_{i}",
+            energy=baseline_energy + random.uniform(-5, 5),
+            rmsd=5.0 + random.uniform(-1, 1),
+            timestamp=time.time_ns() // 1_000_000,
+            consciousness_frequency=9.0,
+            consciousness_coherence=0.6
+        )
+        for i in range(50)
+    ]
+    
+    start = time.perf_counter()
+    enhanced_energy = enhanced_calculator.calculate_energy(mock_conf, trajectory)
+    enhanced_time = (time.perf_counter() - start) * 1000
+    
+    enhanced_breakdown = enhanced_calculator.calculate_energy_breakdown(mock_conf, trajectory)
+    
+    print(f"    Total energy: {enhanced_energy:.2f} kcal/mol")
+    print(f"    Calculation time: {enhanced_time:.3f} ms")
+    print(f"\n    Component breakdown:")
+    for component, energy in enhanced_breakdown.items():
+        if component != "total":
+            print(f"      {component:15s}: {energy:8.2f} kcal/mol")
+    
+    # [3] Feature ablation study
+    print("\n[3] Feature ablation study (incremental enhancements)...")
+    
+    configs = [
+        ("Baseline only", False, False, False),
+        ("+ Side chains", True, False, False),
+        ("+ Solvent", True, True, False),
+        ("+ Entropic", True, True, True)
+    ]
+    
+    print(f"\n    {'Configuration':<25s} {'Energy (kcal/mol)':>18s} {'Time (ms)':>12s}")
+    print(f"    {'-'*58}")
+    
+    for config_name, side_chains, solvent, entropic in configs:
+        calc = EnhancedEnergyCalculator(
+            sequence=sequence,
+            disulfide_bonds=disulfide_bonds,
+            enable_side_chains=side_chains,
+            enable_solvent=solvent,
+            enable_entropic=entropic
+        )
+        
+        start = time.perf_counter()
+        energy = calc.calculate_energy(mock_conf, trajectory if entropic else None)
+        calc_time = (time.perf_counter() - start) * 1000
+        
+        print(f"    {config_name:<25s} {energy:>18.2f} {calc_time:>12.3f}")
+    
+    # [4] Analysis
+    print(f"\n[4] Comparative analysis...")
+    
+    energy_diff = enhanced_energy - baseline_energy
+    time_overhead = enhanced_time - baseline_time
+    overhead_percent = (time_overhead / baseline_time) * 100 if baseline_time > 0 else 0
+    
+    print(f"\n    Baseline total:   {baseline_energy:.2f} kcal/mol")
+    print(f"    Enhanced total:   {enhanced_energy:.2f} kcal/mol")
+    print(f"    Difference:       {energy_diff:+.2f} kcal/mol")
+    print(f"\n    Baseline time:    {baseline_time:.3f} ms")
+    print(f"    Enhanced time:    {enhanced_time:.3f} ms")
+    print(f"    Overhead:         {time_overhead:+.3f} ms ({overhead_percent:+.1f}%)")
+    
+    # Extract enhancement contributions
+    side_chain_contrib = enhanced_breakdown.get("side_chains", 0.0)
+    entropic_contrib = enhanced_breakdown.get("entropic", 0.0)
+    
+    print(f"\n    Enhancement contributions:")
+    print(f"      Side-chain interactions: {side_chain_contrib:.2f} kcal/mol")
+    print(f"      Entropic correction:     {entropic_contrib:.2f} kcal/mol")
+    print(f"      Solvent screening:       (integrated into base terms)")
+    
+    print(f"\n{'='*70}")
+    print("Key Insights:")
+    print("  • Enhanced energy includes side-chain, solvent, and entropic terms")
+    print("  • Side-chain interactions capture hydrophobic/electrostatic effects")
+    print("  • Solvent corrections reduce buried charge interactions")
+    print("  • Entropic terms account for conformational diversity")
+    print(f"  • Computational overhead: {overhead_percent:.1f}% (acceptable for accuracy gain)")
+    print(f"{'='*70}")
+
+if __name__ == "__main__":
+    main()
+```
+
+---
+
+## Example 16: Physics Enhancements - Local Refinement
+
+Optimize conformations using gradient descent local refinement.
+
+```python
+#!/usr/bin/env python3
+"""
+Example 16: Local refinement with gradient descent.
+
+Demonstrates:
+- Creating local refinement optimizer
+- Refining crude conformation to local minimum
+- Analyzing refinement statistics
+- Convergence behavior
+- Step size adaptation
+"""
+
+from ubf_protein.local_refinement import LocalRefinement
+from ubf_protein.enhanced_energy_calculator import EnhancedEnergyCalculator
+from ubf_protein.models import Conformation
+import random
+import time
+
+def main():
+    print("="*70)
+    print("EXAMPLE 16: Local Refinement with Gradient Descent")
+    print("="*70)
+    
+    # Create test protein
+    sequence = "ACDEFGHIKLMNPQ"  # 14 residues
+    num_residues = len(sequence)
+    
+    # Create deliberately poor initial conformation (random positions)
+    print("\n[1] Creating initial crude conformation...")
+    random.seed(42)
+    coords = [(random.uniform(0, 20), random.uniform(0, 20), random.uniform(0, 20))
+              for _ in range(num_residues)]
+    
+    initial_conf = Conformation(
+        conformation_id="crude_001",
+        sequence=sequence,
+        atom_coordinates=coords,
+        secondary_structure=['C'] * num_residues,
+        energy=0.0,
+        rmsd=10.0,
+        phi_angles=[random.uniform(-180, 180) for _ in range(num_residues)],
+        psi_angles=[random.uniform(-180, 180) for _ in range(num_residues)]
+    )
+    
+    # Setup energy calculator
+    calculator = EnhancedEnergyCalculator(
+        sequence=sequence,
+        enable_side_chains=True,
+        enable_solvent=True,
+        enable_entropic=False  # No trajectory for initial refinement
+    )
+    
+    initial_energy = calculator.calculate_energy(initial_conf)
+    print(f"    Initial energy: {initial_energy:.2f} kcal/mol")
+    print(f"    Initial RMSD: {initial_conf.rmsd:.2f} Å")
+    
+    # [2] Create local refinement optimizer
+    print("\n[2] Initializing local refinement optimizer...")
+    refiner = LocalRefinement(
+        energy_calculator=calculator,
+        max_iterations=100,
+        convergence_threshold=0.001,  # kcal/mol
+        initial_step_size=0.01  # Angstroms
+    )
+    print(f"    Max iterations: 100")
+    print(f"    Convergence threshold: 0.001 kcal/mol")
+    print(f"    Initial step size: 0.01 Å")
+    
+    # [3] Refine conformation
+    print("\n[3] Running gradient descent refinement...")
+    print(f"    (This may take 10-30 seconds...)")
+    
+    start = time.perf_counter()
+    refined_conf, stats = refiner.refine(initial_conf)
+    refinement_time = time.perf_counter() - start
+    
+    print(f"\n    ✓ Refinement complete in {refinement_time:.2f} seconds")
+    
+    # [4] Analyze refinement statistics
+    print("\n[4] Refinement statistics:")
+    print(f"    {'='*50}")
+    print(f"    Iterations completed:   {stats['iterations']}")
+    print(f"    Converged:              {stats['converged']}")
+    print(f"\n    Energy evolution:")
+    print(f"      Initial:              {stats['initial_energy']:.3f} kcal/mol")
+    print(f"      Final:                {stats['final_energy']:.3f} kcal/mol")
+    print(f"      Improvement:          {stats['energy_improvement']:.3f} kcal/mol")
+    print(f"\n    Optimization details:")
+    print(f"      Final step size:      {stats['final_step_size']:.4f} Å")
+    print(f"      Time per iteration:   {refinement_time*1000/stats['iterations']:.2f} ms")
+    print(f"    {'='*50}")
+    
+    # [5] Energy breakdown comparison
+    print("\n[5] Energy breakdown comparison...")
+    
+    initial_breakdown = calculator.calculate_energy_breakdown(initial_conf)
+    refined_breakdown = calculator.calculate_energy_breakdown(refined_conf)
+    
+    print(f"\n    {'Component':<20s} {'Initial':>12s} {'Refined':>12s} {'Change':>12s}")
+    print(f"    {'-'*58}")
+    
+    for component in initial_breakdown.keys():
+        if component == "total":
+            continue
+        init_val = initial_breakdown[component]
+        refined_val = refined_breakdown[component]
+        change = refined_val - init_val
+        
+        print(f"    {component:<20s} {init_val:>12.2f} {refined_val:>12.2f} {change:>12.2f}")
+    
+    print(f"    {'-'*58}")
+    total_init = initial_breakdown["total"]
+    total_refined = refined_breakdown["total"]
+    total_change = total_refined - total_init
+    print(f"    {'TOTAL':<20s} {total_init:>12.2f} {total_refined:>12.2f} {total_change:>12.2f}")
+    
+    # [6] Convergence check
+    print("\n[6] Convergence analysis...")
+    
+    if stats['converged']:
+        print(f"    ✓ Refinement converged successfully")
+        print(f"      Final energy change below threshold: {stats['convergence_threshold']:.4f} kcal/mol")
+    else:
+        print(f"    ⚠ Refinement reached max iterations without convergence")
+        print(f"      Consider increasing max_iterations or loosening threshold")
+    
+    # [7] Geometric validation
+    print("\n[7] Geometric validation...")
+    
+    # Check bond lengths (simplified - just check CA-CA distances)
+    initial_violations = 0
+    refined_violations = 0
+    
+    for i in range(num_residues - 1):
+        # CA-CA distance should be ~3.8 Å for sequential residues
+        init_dist = ((initial_conf.atom_coordinates[i][0] - initial_conf.atom_coordinates[i+1][0])**2 +
+                     (initial_conf.atom_coordinates[i][1] - initial_conf.atom_coordinates[i+1][1])**2 +
+                     (initial_conf.atom_coordinates[i][2] - initial_conf.atom_coordinates[i+1][2])**2) ** 0.5
+        
+        refined_dist = ((refined_conf.atom_coordinates[i][0] - refined_conf.atom_coordinates[i+1][0])**2 +
+                       (refined_conf.atom_coordinates[i][1] - refined_conf.atom_coordinates[i+1][1])**2 +
+                       (refined_conf.atom_coordinates[i][2] - refined_conf.atom_coordinates[i+1][2])**2) ** 0.5
+        
+        # Acceptable range: 3.2 - 4.4 Å
+        if not (3.2 <= init_dist <= 4.4):
+            initial_violations += 1
+        if not (3.2 <= refined_dist <= 4.4):
+            refined_violations += 1
+    
+    print(f"    Sequential CA-CA distance violations:")
+    print(f"      Initial:   {initial_violations}/{num_residues-1}")
+    print(f"      Refined:   {refined_violations}/{num_residues-1}")
+    print(f"      Improvement: {initial_violations - refined_violations} violations resolved")
+    
+    print(f"\n{'='*70}")
+    print("Key Takeaways:")
+    print("  • Local refinement significantly improves crude conformations")
+    print(f"  • Energy improvement: {stats['energy_improvement']:.2f} kcal/mol")
+    print(f"  • Typical refinement: 20-50 iterations, 10-30 seconds")
+    print("  • Adaptive step size prevents geometry violations")
+    print("  • Use after global search for local minimum optimization")
+    print(f"{'='*70}")
+
+if __name__ == "__main__":
+    main()
+```
+
+---
+
+## Example 17: Physics Enhancements - Configuration System
+
+Use `EnhancedPhysicsConfig` for flexible enhancement control.
+
+```python
+#!/usr/bin/env python3
+"""
+Example 17: Enhanced physics configuration system.
+
+Demonstrates:
+- Using factory methods (baseline, enhanced_default, auto_adapt)
+- Size-based configuration (small/medium/large proteins)
+- Environment variable configuration
+- Custom configuration creation
+- Configuration comparison
+"""
+
+from ubf_protein.enhanced_physics_config import EnhancedPhysicsConfig
+from ubf_protein.multi_agent_coordinator import MultiAgentCoordinator
+import os
+
+def main():
+    print("="*70)
+    print("EXAMPLE 17: Enhanced Physics Configuration System")
+    print("="*70)
+    
+    # [1] Factory presets
+    print("\n[1] Using factory method presets...")
+    
+    # Baseline (no enhancements)
+    baseline = EnhancedPhysicsConfig.baseline()
+    print("\n  Baseline configuration:")
+    print(f"    Enhanced energy: {baseline.use_enhanced_energy}")
+    print(f"    Side chains:     {baseline.enable_side_chains}")
+    print(f"    Solvent:         {baseline.enable_solvent}")
+    print(f"    Entropic:        {baseline.enable_entropic}")
+    print(f"    Refinement:      {baseline.enable_refinement}")
+    
+    # Enhanced default
+    enhanced = EnhancedPhysicsConfig.enhanced_default()
+    print("\n  Enhanced default configuration:")
+    print(f"    Enhanced energy: {enhanced.use_enhanced_energy}")
+    print(f"    Side chains:     {enhanced.enable_side_chains}")
+    print(f"    Solvent:         {enhanced.enable_solvent}")
+    print(f"    Entropic:        {enhanced.enable_entropic}")
+    print(f"    Refinement:      {enhanced.enable_refinement}")
+    print(f"    Refinement iterations: {enhanced.refinement_max_iterations}")
+    
+    # [2] Size-based adaptation
+    print("\n[2] Size-based auto-adaptation...")
+    
+    sequences = {
+        "Small": "ACDEFG",                    # 6 residues
+        "Medium": "ACDEFGHIKLMNPQRSTVWY" * 5,  # 100 residues
+        "Large": "ACDEFGHIKLMNPQRSTVWY" * 10   # 200 residues
+    }
+    
+    for size_name, seq in sequences.items():
+        config = EnhancedPhysicsConfig.auto_adapt(seq)
+        print(f"\n  {size_name} protein ({len(seq)} residues):")
+        print(f"    Refinement iterations: {config.refinement_max_iterations}")
+        print(f"    Trajectory window:     {config.trajectory_window}")
+        print(f"    Side-chain cutoff:     {config.sidechain_cutoff:.1f} Å")
+    
+    # [3] Environment variable configuration
+    print("\n[3] Loading from environment variables...")
+    
+    # Set environment variables
+    os.environ["UBF_USE_ENHANCED_ENERGY"] = "true"
+    os.environ["UBF_ENABLE_SIDE_CHAINS"] = "true"
+    os.environ["UBF_ENABLE_SOLVENT"] = "false"
+    os.environ["UBF_TEMPERATURE"] = "310.0"
+    os.environ["UBF_REFINEMENT_MAX_ITERATIONS"] = "150"
+    
+    env_config = EnhancedPhysicsConfig.from_environment()
+    print(f"\n  Configuration from environment:")
+    print(f"    Enhanced energy: {env_config.use_enhanced_energy}")
+    print(f"    Side chains:     {env_config.enable_side_chains}")
+    print(f"    Solvent:         {env_config.enable_solvent}")
+    print(f"    Temperature:     {env_config.temperature:.1f} K")
+    print(f"    Refinement iters: {env_config.refinement_max_iterations}")
+    
+    # Clean up environment
+    for key in list(os.environ.keys()):
+        if key.startswith("UBF_"):
+            del os.environ[key]
+    
+    # [4] Custom configuration
+    print("\n[4] Creating custom configurations...")
+    
+    # Start with default and modify
+    custom = EnhancedPhysicsConfig.enhanced_default()
+    custom = custom.with_refinement(False)  # Disable refinement
+    
+    print(f"\n  Custom configuration (no refinement):")
+    print(f"    Enhanced energy: {custom.use_enhanced_energy}")
+    print(f"    Refinement:      {custom.enable_refinement}")
+    
+    # Add disulfide bonds
+    from ubf_protein.models import DisulfideBond
+    bonds = [DisulfideBond(2, 10), DisulfideBond(5, 15)]
+    custom_with_bonds = custom.with_disulfide_bonds(bonds)
+    
+    print(f"\n  Custom with disulfide bonds:")
+    print(f"    Number of bonds: {len(custom_with_bonds.disulfide_bonds)}")
+    for i, bond in enumerate(custom_with_bonds.disulfide_bonds):
+        print(f"      Bond {i+1}: CYS{bond.residue_i+1}-CYS{bond.residue_j+1}")
+    
+    # [5] Configuration summary
+    print("\n[5] Configuration summaries...")
+    
+    print("\n" + "="*70)
+    print(enhanced.summary())
+    print("="*70)
+    
+    # [6] Using configurations with MultiAgentCoordinator
+    print("\n[6] Using configurations with multi-agent system...")
+    
+    sequence = "ACDEFGHIKLMNPQ"
+    
+    # Baseline run
+    print(f"\n  Creating baseline coordinator...")
+    coordinator_baseline = MultiAgentCoordinator(
+        protein_sequence=sequence,
+        physics_config=baseline
+    )
+    print(f"    ✓ Baseline coordinator created (no enhancements)")
+    
+    # Enhanced run
+    print(f"\n  Creating enhanced coordinator...")
+    coordinator_enhanced = MultiAgentCoordinator(
+        protein_sequence=sequence,
+        physics_config=enhanced
+    )
+    print(f"    ✓ Enhanced coordinator created (full physics)")
+    
+    # Auto-adapted run
+    print(f"\n  Creating auto-adapted coordinator...")
+    auto_config = EnhancedPhysicsConfig.auto_adapt(sequence)
+    coordinator_auto = MultiAgentCoordinator(
+        protein_sequence=sequence,
+        physics_config=auto_config
+    )
+    print(f"    ✓ Auto-adapted coordinator created")
+    print(f"      (optimized for {len(sequence)}-residue protein)")
+    
+    # [7] Configuration comparison
+    print("\n[7] Configuration parameter comparison...")
+    
+    configs_to_compare = {
+        "Baseline": baseline,
+        "Enhanced": enhanced,
+        "Small": EnhancedPhysicsConfig.small_protein(20),
+        "Large": EnhancedPhysicsConfig.large_protein(200)
+    }
+    
+    print(f"\n  {'Parameter':<30s} {'Baseline':>10s} {'Enhanced':>10s} {'Small':>10s} {'Large':>10s}")
+    print(f"  {'-'*74}")
+    
+    params = [
+        ("use_enhanced_energy", lambda c: "Yes" if c.use_enhanced_energy else "No"),
+        ("refinement_max_iterations", lambda c: str(c.refinement_max_iterations)),
+        ("trajectory_window", lambda c: str(c.trajectory_window)),
+        ("sidechain_cutoff", lambda c: f"{c.sidechain_cutoff:.1f}"),
+        ("temperature", lambda c: f"{c.temperature:.0f}"),
+    ]
+    
+    for param_name, getter in params:
+        values = [getter(configs_to_compare[name]) for name in ["Baseline", "Enhanced", "Small", "Large"]]
+        print(f"  {param_name:<30s} {values[0]:>10s} {values[1]:>10s} {values[2]:>10s} {values[3]:>10s}")
+    
+    print(f"\n{'='*70}")
+    print("Key Insights:")
+    print("  • Factory methods provide sensible defaults")
+    print("  • auto_adapt() automatically tunes for protein size")
+    print("  • Environment variables allow external configuration")
+    print("  • Immutable configs ensure thread-safe parallel execution")
+    print("  • Configuration comparison helps optimize for specific cases")
+    print(f"{'='*70}")
+
+if __name__ == "__main__":
+    main()
+```
+
+---
+
+These examples demonstrate the major features and use cases of the UBF Protein System, including both the consciousness-based exploration and the comprehensive physics enhancements. Each example is self-contained and can be run independently. For more advanced usage and integration examples, see the test suite in `ubf_protein/tests/` and the complete documentation in `API.md`.

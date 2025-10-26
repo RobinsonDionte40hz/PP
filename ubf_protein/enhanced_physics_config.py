@@ -7,7 +7,7 @@ including feature toggles, parameter tuning, and size-based adaptation.
 
 import os
 from dataclasses import dataclass, replace
-from typing import Optional, List
+from typing import Optional, List, Tuple
 from ubf_protein.models import DisulfideBond
 
 
@@ -61,6 +61,9 @@ class EnhancedPhysicsConfig:
         disulfide_spring_constant: Harmonic potential spring constant (kcal/mol/Ų)
         disulfide_target_distance: Target CA-CA distance for disulfide bonds (Å)
         disulfide_tolerance: Tolerance for constraint satisfaction (Å)
+        disulfide_ramp_schedule: Optional restraint ramp-up schedule as [(iteration, k), ...]
+                                 Allows gradual increase from gentle (k=1-5) to full strength
+                                 Example: [(0, 2.0), (100, 10.0), (300, 20.0)] for staged minimization
         
         # Adaptive Parameters
         stuck_window: Window size for detecting stuck agents
@@ -106,6 +109,7 @@ class EnhancedPhysicsConfig:
     disulfide_spring_constant: float = 50.0
     disulfide_target_distance: float = 3.8
     disulfide_tolerance: float = 0.5
+    disulfide_ramp_schedule: Optional[List[Tuple[int, float]]] = None  # [(iteration, k_value), ...]
     
     # Adaptive Parameters
     stuck_window: int = 30
@@ -159,6 +163,10 @@ class EnhancedPhysicsConfig:
         Create configuration optimized for small proteins (<50 residues).
         
         Uses shorter windows and fewer iterations for faster exploration.
+        Uses staged restraint ramp-up for gentle disulfide constraint:
+        - Iterations 0-200: k=2.0 (gentle pulling)
+        - Iterations 200-500: k=10.0 (moderate constraint)
+        - Iterations 500+: k=20.0 (full constraint)
         
         Args:
             num_residues: Number of residues in protein
@@ -167,6 +175,12 @@ class EnhancedPhysicsConfig:
         Returns:
             Configuration optimized for small proteins
         """
+        ramp_schedule = [
+            (0, 0.5),      # Start very gentle - just guide exploration
+            (200, 2.0),    # Light constraint after initial exploration
+            (500, 10.0)    # Moderate constraint for refinement
+        ]
+        
         return cls(
             use_enhanced_energy=True,
             enable_side_chains=True,
@@ -174,6 +188,8 @@ class EnhancedPhysicsConfig:
             enable_entropic=True,
             enable_refinement=False,
             disulfide_bonds=disulfide_bonds or [],
+            disulfide_spring_constant=20.0,  # Final target (used if no ramp)
+            disulfide_ramp_schedule=ramp_schedule if disulfide_bonds else None,
             stuck_window=20,
             stuck_threshold=5.0,
             max_iterations=1000,
@@ -186,6 +202,10 @@ class EnhancedPhysicsConfig:
         Create configuration optimized for medium proteins (50-150 residues).
         
         Uses balanced parameters for good accuracy and reasonable speed.
+        Uses staged restraint ramp-up:
+        - Iterations 0-300: k=3.0 (gentle pulling)
+        - Iterations 300-800: k=15.0 (moderate constraint)
+        - Iterations 800+: k=35.0 (full constraint)
         
         Args:
             num_residues: Number of residues in protein
@@ -194,6 +214,12 @@ class EnhancedPhysicsConfig:
         Returns:
             Configuration optimized for medium proteins
         """
+        ramp_schedule = [
+            (0, 1.0),       # Start gentle
+            (300, 5.0),     # Light constraint
+            (800, 15.0)     # Moderate constraint
+        ]
+        
         return cls(
             use_enhanced_energy=True,
             enable_side_chains=True,
@@ -201,6 +227,8 @@ class EnhancedPhysicsConfig:
             enable_entropic=True,
             enable_refinement=False,
             disulfide_bonds=disulfide_bonds or [],
+            disulfide_spring_constant=35.0,  # Final target
+            disulfide_ramp_schedule=ramp_schedule if disulfide_bonds else None,
             stuck_window=30,
             stuck_threshold=10.0,
             max_iterations=2000,
@@ -213,6 +241,10 @@ class EnhancedPhysicsConfig:
         Create configuration optimized for large proteins (>150 residues).
         
         Uses longer windows and more iterations to handle complexity.
+        Uses staged restraint ramp-up:
+        - Iterations 0-500: k=5.0 (gentle pulling)
+        - Iterations 500-1500: k=20.0 (moderate constraint)
+        - Iterations 1500+: k=50.0 (full constraint)
         
         Args:
             num_residues: Number of residues in protein
@@ -221,6 +253,12 @@ class EnhancedPhysicsConfig:
         Returns:
             Configuration optimized for large proteins
         """
+        ramp_schedule = [
+            (0, 2.0),       # Start very gentle for large proteins
+            (500, 10.0),    # Light constraint
+            (1500, 25.0)    # Moderate constraint only late
+        ]
+        
         return cls(
             use_enhanced_energy=True,
             enable_side_chains=True,
@@ -228,6 +266,8 @@ class EnhancedPhysicsConfig:
             enable_entropic=True,
             enable_refinement=False,
             disulfide_bonds=disulfide_bonds or [],
+            disulfide_spring_constant=50.0,  # Final target
+            disulfide_ramp_schedule=ramp_schedule if disulfide_bonds else None,
             stuck_window=40,
             stuck_threshold=15.0,
             max_iterations=5000,

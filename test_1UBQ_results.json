@@ -1,0 +1,38 @@
+{
+  "protein_info": {
+    "pdb_id": "1UBQ",
+    "sequence_length": 76,
+    "category": "medium",
+    "disulfide_bonds": 0
+  },
+  "test_config": {
+    "num_agents": 5,
+    "iterations_per_agent": 100,
+    "total_conformations": 500,
+    "enhanced_physics": {
+      "enabled": true,
+      "side_chains": true,
+      "solvent": true,
+      "entropic": true,
+      "refinement": false
+    }
+  },
+  "exploration_results": {
+    "best_energy": 1439.679811329681,
+    "estimated_rmsd": 46.40577131892842,
+    "rmsd_quality": "NEEDS IMPROVEMENT",
+    "exploration_time_s": 21.55722737312317,
+    "throughput_conf_per_s": 23.194077389719574
+  },
+  "qcpp_integration": {
+    "total_analyses": 600,
+    "cache_hit_rate": 99.16666666666667,
+    "avg_calculation_time_ms": 0.48762162526448566
+  },
+  "rmse_validation": {
+    "temperature_rmse": 5.436104300540904,
+    "dg_rmse": 0.7072208601081806,
+    "quality": "GOOD"
+  },
+  "timestamp": "2025-10-26T09:17:13.640883"
+}

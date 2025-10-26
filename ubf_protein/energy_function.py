@@ -166,9 +166,27 @@ class MolecularMechanicsEnergy(IPhysicsCalculator):
                 
                 epsilon, r_min = 0.2, 3.8  # Adjusted params for CA atoms
                 
-                if r > 0.1:
+                # CRITICAL FIX: Cap energy to prevent numerical explosion
+                # When atoms get very close (r < 2.0 Å), use linear repulsion
+                # to avoid r^-12 blowing up to astronomical values
+                if r < 2.0:
+                    # Linear repulsion below 2.0 Å with very steep slope
+                    # Energy at r=2.0 should match LJ potential for continuity
+                    r_at_switch = 2.0
+                    r_ratio_switch = r_min / r_at_switch
+                    lj_at_switch = epsilon * (r_ratio_switch ** 12 - 2.0 * r_ratio_switch ** 6)
+                    # Linear: E = E(2.0) + slope * (2.0 - r)
+                    # Use large but finite slope to maintain strong repulsion
+                    slope = 500.0  # kcal/mol/Å - very steep but not infinite
+                    lj = lj_at_switch + slope * (r_at_switch - r)
+                    # Cap at maximum to prevent overflow
+                    lj = min(lj, 5000.0)  # Hard cap at 5000 kcal/mol
+                    energy += lj
+                elif r > 0.1:
                     r_ratio = r_min / r
                     lj = epsilon * (r_ratio ** 12 - 2.0 * r_ratio ** 6)
+                    # Also cap normal LJ to be safe
+                    lj = min(max(lj, -50.0), 5000.0)  # Cap between -50 and 5000
                     energy += lj
         
         return energy
@@ -199,6 +217,8 @@ class MolecularMechanicsEnergy(IPhysicsCalculator):
                     # Scale down by factor of 10 to reduce magnitude
                     elec_contrib = (self.params.COULOMB_CONSTANT * charges[i] * charges[j] / 
                                    (epsilon_r * r)) * 0.1
+                    # Cap electrostatic contribution to prevent explosion
+                    elec_contrib = min(max(elec_contrib, -100.0), 100.0)
                     energy += elec_contrib
         
         return energy
@@ -227,6 +247,8 @@ class MolecularMechanicsEnergy(IPhysicsCalculator):
                 if 2.5 < r < self.params.HBOND_CUTOFF and r > 0.1:
                     hb_energy = C / (r ** 12) - D / (r ** 10)
                     # H-bonds should be favorable (negative)
+                    # Cap to prevent numerical issues
+                    hb_energy = min(max(hb_energy, -50.0), 100.0)
                     energy += hb_energy
         
         return energy

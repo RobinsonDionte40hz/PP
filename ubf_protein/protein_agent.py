@@ -25,7 +25,7 @@ from .local_minima_detector import LocalMinimaDetector
 from .structural_validation import StructuralValidation
 from .config import (
     BASE_STUCK_DETECTION_WINDOW, BASE_STUCK_DETECTION_THRESHOLD,
-    ENERGY_VALIDATION_THRESHOLD,
+    ENERGY_ABSOLUTE_MAX, get_energy_threshold,
     INITIAL_TEMPERATURE, TEMPERATURE_DECAY_RATE, MIN_TEMPERATURE, BOLTZMANN_CONSTANT,
     MEMORY_SIGNIFICANCE_THRESHOLD
 )
@@ -163,6 +163,15 @@ class ProteinAgent(IProteinAgent):
         # Store protein sequence and config
         self._protein_sequence = protein_sequence
         self._adaptive_config = adaptive_config
+        
+        # Calculate energy threshold based on protein size and calculator type
+        num_residues = len(protein_sequence)
+        use_enhanced = (energy_calculator is not None and 
+                       type(energy_calculator).__name__ == 'EnhancedEnergyCalculator')
+        self._energy_threshold = get_energy_threshold(num_residues, use_enhanced)
+        logger.info(f"Energy threshold for {num_residues} residues "
+                   f"({'enhanced' if use_enhanced else 'baseline'}): "
+                   f"{self._energy_threshold:.1f} kcal/mol")
         
         # Visualization settings
         self._enable_visualization = enable_visualization
@@ -561,20 +570,57 @@ class ProteinAgent(IProteinAgent):
 
     def _generate_initial_conformation(self) -> Conformation:
         """
-        Generate initial extended conformation with randomization.
+        Generate initial conformation with smart initialization.
 
-        Each agent gets a slightly different starting conformation
-        to enable diverse exploration.
+        Uses ConformationInitializer to create reasonable starting geometry:
+        - Compact sphere initialization (prevents extended 100+ Å chains)
+        - Ideal CA-CA spacing (~3.8 Å)
+        - Disulfide pairs start ~10 Å apart (not 140 Å)
+        - Small random noise for agent diversity
+        
+        This prevents catastrophic energy explosion in enhanced physics mode.
         """
-        # Create placeholder 3D coordinates (extended chain with noise)
         num_residues = len(self._protein_sequence)
-        atom_coordinates = []
-        for i in range(num_residues):
-            # Simple extended chain with random perturbations
-            x = i * 3.8 + random.uniform(-0.5, 0.5)  # ±0.5 Å noise
-            y = random.uniform(-0.5, 0.5)  # ±0.5 Å noise
-            z = random.uniform(-0.5, 0.5)  # ±0.5 Å noise
-            atom_coordinates.append((x, y, z))
+        
+        # Use smart initializer to generate reasonable coordinates
+        try:
+            from .conformation_initializer import create_default_initializer
+            
+            initializer = create_default_initializer(
+                protein_size=num_residues,
+                has_disulfide_bonds=(len(self._disulfide_bonds) > 0)
+            )
+            
+            atom_coordinates = initializer.generate_initial_coordinates(
+                sequence_length=num_residues,
+                disulfide_bonds=self._disulfide_bonds
+            )
+            
+            # Verify initialization quality
+            if len(self._disulfide_bonds) > 0:
+                energy_check = initializer.calculate_initial_energy_estimate(
+                    atom_coordinates,
+                    self._disulfide_bonds
+                )
+                total_disulfide_energy = energy_check['total_disulfide_energy']
+                
+                # Log if initialization looks good
+                if total_disulfide_energy < 1000.0:  # Reasonable threshold
+                    logger.debug(f"Good initialization: disulfide energy = {total_disulfide_energy:.1f} kcal/mol")
+                else:
+                    logger.warning(f"High initial disulfide energy: {total_disulfide_energy:.1f} kcal/mol")
+            
+        except ImportError as e:
+            logger.warning(f"ConformationInitializer not available: {e}")
+            logger.warning("Falling back to extended chain initialization")
+            
+            # Fallback: simple extended chain
+            atom_coordinates = []
+            for i in range(num_residues):
+                x = i * 3.8 + random.uniform(-0.5, 0.5)
+                y = random.uniform(-0.5, 0.5)
+                z = random.uniform(-0.5, 0.5)
+                atom_coordinates.append((x, y, z))
 
         # Placeholder secondary structure (all coil)
         secondary_structure = ['C'] * num_residues
@@ -583,8 +629,29 @@ class ProteinAgent(IProteinAgent):
         phi_angles = [-60.0 + random.uniform(-20, 20) for _ in range(num_residues)]
         psi_angles = [-40.0 + random.uniform(-20, 20) for _ in range(num_residues)]
         
-        # Randomize initial energy slightly (reduces likelihood of all agents finding same minimum)
-        initial_energy = random.uniform(950.0, 1050.0)
+        # Calculate initial energy using energy calculator if available
+        if self._energy_calculator is not None:
+            temp_conf = Conformation(
+                conformation_id="temp",
+                sequence=self._protein_sequence,
+                atom_coordinates=atom_coordinates,
+                energy=0.0,  # Placeholder
+                rmsd_to_native=None,
+                secondary_structure=secondary_structure,
+                phi_angles=phi_angles,
+                psi_angles=psi_angles,
+                available_move_types=["backbone_rotation", "sidechain_adjust"],
+                structural_constraints={}
+            )
+            try:
+                initial_energy = self._energy_calculator.calculate(temp_conf)
+                logger.info(f"Initial conformation energy: {initial_energy:.2f} kcal/mol")
+            except Exception as e:
+                logger.warning(f"Failed to calculate initial energy: {e}")
+                initial_energy = random.uniform(950.0, 1050.0)
+        else:
+            # Randomized placeholder energy
+            initial_energy = random.uniform(950.0, 1050.0)
 
         return Conformation(
             conformation_id="initial",
@@ -740,14 +807,28 @@ class ProteinAgent(IProteinAgent):
                     }
                 else:
                     # Fall back to basic calculate method
+                    # Update iteration for ramp schedule (if using EnhancedEnergyCalculator with ramp)
+                    if hasattr(self._energy_calculator, 'set_iteration'):
+                        self._energy_calculator.set_iteration(self._iterations_completed)
+                    
                     new_conformation.energy = self._energy_calculator.calculate(new_conformation)
                 
                 # Validate energy is physically reasonable
-                if abs(new_conformation.energy) > ENERGY_VALIDATION_THRESHOLD:
+                if abs(new_conformation.energy) > self._energy_threshold:
                     logger.warning(
                         f"Unrealistic energy detected: {new_conformation.energy:.2f} kcal/mol "
-                        f"(threshold: {ENERGY_VALIDATION_THRESHOLD})"
+                        f"(threshold: {self._energy_threshold:.1f}) - REJECTING MOVE"
                     )
+                    # Return unchanged conformation to reject the move
+                    return self._current_conformation
+                
+                # Additional hard cap - something is very wrong if we hit this
+                if abs(new_conformation.energy) > ENERGY_ABSOLUTE_MAX:
+                    logger.error(
+                        f"CRITICAL: Energy {new_conformation.energy:.2f} exceeds absolute maximum "
+                        f"{ENERGY_ABSOLUTE_MAX:.1f} kcal/mol - REJECTING AND FLAGGING"
+                    )
+                    return self._current_conformation
                     
             except Exception as e:
                 logger.warning(f"Error calculating molecular mechanics energy: {e}")

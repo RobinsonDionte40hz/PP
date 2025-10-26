@@ -30,7 +30,39 @@ ESCAPE_COHERENCE_REDUCTION = 0.1
 
 # Energy calculation
 USE_MOLECULAR_MECHANICS_ENERGY = True  # Use MolecularMechanicsEnergy calculator
-ENERGY_VALIDATION_THRESHOLD = 10000.0  # kcal/mol - warn if |energy| exceeds this
+
+# Size-based energy thresholds (kcal/mol) - realistic biological ranges
+# Real proteins: -200 to +200 kcal/mol typical, even large proteins rarely exceed ±500
+ENERGY_THRESHOLD_SMALL = 300.0   # ≤80 residues (small proteins like Villin)
+ENERGY_THRESHOLD_MEDIUM = 500.0  # 81-200 residues (medium proteins like Ubiquitin, Lysozyme)
+ENERGY_THRESHOLD_LARGE = 800.0   # >200 residues (large proteins)
+
+# Hard maximum - NO protein should ever exceed this (prevents numerical errors)
+ENERGY_ABSOLUTE_MAX = 1000.0  # kcal/mol - reject immediately, something is very wrong
+
+def get_energy_threshold(num_residues: int, use_enhanced: bool = False) -> float:
+    """
+    Get appropriate energy validation threshold based on protein size.
+    
+    Args:
+        num_residues: Number of residues in protein
+        use_enhanced: Whether enhanced physics is enabled (adds ~50-100 kcal/mol)
+        
+    Returns:
+        Energy threshold in kcal/mol
+    """
+    if num_residues <= 80:
+        base_threshold = ENERGY_THRESHOLD_SMALL
+    elif num_residues <= 200:
+        base_threshold = ENERGY_THRESHOLD_MEDIUM
+    else:
+        base_threshold = ENERGY_THRESHOLD_LARGE
+    
+    # Enhanced physics adds side-chain, entropic terms - increase threshold slightly
+    if use_enhanced:
+        base_threshold *= 1.5  # Allow 50% higher for enhanced physics terms
+    
+    return min(base_threshold, ENERGY_ABSOLUTE_MAX)
 
 # Move acceptance parameters
 INITIAL_TEMPERATURE = 300.0  # Kelvin - starting temperature for MC acceptance

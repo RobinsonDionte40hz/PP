@@ -75,7 +75,10 @@ class EnhancedEnergyCalculator(IPhysicsCalculator):
     Energy Components:
     1. Base MM energy: bonds, angles, dihedrals, VdW, electrostatics, H-bonds
     2. Side-chain fields: steric, hydrophobic, electrostatic interactions
-    3. Disulfide bonds: harmonic constraint at 3.8 Å with k=50 kcal/mol/Ų
+    3. Disulfide bonds: harmonic constraint at 3.8 Å with size-adaptive spring constant
+       - Small proteins (<50 res): k=20.0 kcal/mol/Ų (softer constraint)
+       - Medium proteins (50-150 res): k=35.0 kcal/mol/Ų (moderate constraint)
+       - Large proteins (>150 res): k=50.0 kcal/mol/Ų (standard constraint)
     4. Entropic: -T*S from coherence and configurational entropy
     5. Solvent: distance and burial-dependent dielectric screening
     
@@ -92,6 +95,7 @@ class EnhancedEnergyCalculator(IPhysicsCalculator):
         enable_disulfide: Enable disulfide bond energy
         enable_entropic: Enable entropic corrections
         enable_solvent: Enable solvent screening
+        disulfide_spring_constant: Spring constant for disulfide harmonic potential
     """
     
     def __init__(self,
@@ -101,7 +105,9 @@ class EnhancedEnergyCalculator(IPhysicsCalculator):
                  enable_disulfide: bool = True,
                  enable_entropic: bool = True,
                  enable_solvent: bool = True,
-                 temperature: float = 300.0):
+                 temperature: float = 300.0,
+                 disulfide_spring_constant: float = 50.0,
+                 disulfide_ramp_schedule: Optional[List[Tuple[int, float]]] = None):
         """
         Initialize enhanced energy calculator.
         
@@ -113,6 +119,12 @@ class EnhancedEnergyCalculator(IPhysicsCalculator):
             enable_entropic: Enable entropic corrections
             enable_solvent: Enable solvent screening corrections
             temperature: Temperature in Kelvin for entropic term (default 300K)
+            disulfide_spring_constant: Harmonic spring constant for disulfide bonds (kcal/mol/Ų)
+                                      Default 50.0 for large proteins
+                                      Recommended: 20.0 for small (<50 res), 35.0 for medium (50-150 res)
+            disulfide_ramp_schedule: Optional staged restraint schedule as [(iteration, k), ...]
+                                     Enables gradual constraint increase for better exploration
+                                     Example: [(0, 2.0), (200, 10.0), (500, 20.0)]
         
         Raises:
             ValueError: If sequence is empty or contains invalid amino acids
@@ -132,6 +144,9 @@ class EnhancedEnergyCalculator(IPhysicsCalculator):
         self.enable_entropic = enable_entropic
         self.enable_solvent = enable_solvent
         self.temperature = temperature
+        self.disulfide_spring_constant = disulfide_spring_constant
+        self.disulfide_ramp_schedule = disulfide_ramp_schedule
+        self._current_iteration = 0  # Track iteration for ramp schedule
         
         # Initialize component calculators
         self.base_calculator = MolecularMechanicsEnergy()
@@ -319,26 +334,74 @@ class EnhancedEnergyCalculator(IPhysicsCalculator):
         
         return energy
     
+    def set_iteration(self, iteration: int) -> None:
+        """
+        Set current iteration for ramp schedule.
+        
+        Updates internal spring constant based on ramp schedule if defined.
+        
+        Args:
+            iteration: Current iteration number
+        """
+        self._current_iteration = iteration
+    
+    def get_current_spring_constant(self) -> float:
+        """
+        Get current spring constant based on ramp schedule.
+        
+        Returns:
+            Current k value (kcal/mol/Ų) for this iteration
+        """
+        if not self.disulfide_ramp_schedule or not self.disulfide_bonds:
+            return self.disulfide_spring_constant
+        
+        # Find appropriate k value from ramp schedule
+        current_k = self.disulfide_ramp_schedule[0][1]  # Start with first value
+        
+        for iteration_threshold, k_value in self.disulfide_ramp_schedule:
+            if self._current_iteration >= iteration_threshold:
+                current_k = k_value
+            else:
+                break
+        
+        return current_k
+    
     def _calculate_disulfide_energy(self, conformation: Conformation) -> float:
         """
-        Calculate disulfide bond constraint energy using harmonic potential.
+        Calculate disulfide bond constraint energy using flat-bottom harmonic potential.
         
-        E_disulfide = Σ (k/2) * (r - r₀)²
+        Uses a hybrid potential that prevents excessive penalties for large deviations:
+        - Flat region (deviation > buffer): Linear penalty capped at reasonable value
+        - Harmonic region (deviation ≤ buffer): Quadratic penalty for fine-tuning
         
-        where k = 50.0 kcal/mol/Ų, r₀ = 3.8 Å
+        E_disulfide = {
+            k * buffer * (deviation - buffer)     if deviation > buffer (flat/linear)
+            0.5 * k * deviation²                   if deviation ≤ buffer (harmonic)
+        }
+        
+        This ensures:
+        - Large deviations (30 Å): 10-50 kcal/mol (gentle guidance, not punishment)
+        - Near target (5 Å): few kcal/mol (moderate constraint)
+        - At target (3.8 Å): 0 kcal/mol (satisfied)
+        
+        Ramp schedule example (staged minimization):
+        - Iterations 0-200: k=2.0 (gentle pulling to guide exploration)
+        - Iterations 200-500: k=10.0 (moderate constraint)  
+        - Iterations 500+: k=20.0 (full constraint for refinement)
         
         Args:
             conformation: Protein conformation
             
         Returns:
-            Disulfide constraint energy in kcal/mol
-            (Near 0 when satisfied, positive penalty when violated)
+            Disulfide constraint energy in kcal/mol (typically < 200 kcal/mol)
         """
         energy = 0.0
         coords = conformation.atom_coordinates
         
-        k_spring = 50.0  # kcal/mol/Ų
+        k_spring = self.get_current_spring_constant()  # Use ramped or fixed value
         r_target = 3.8   # Angstroms
+        buffer = 10.0    # Angstroms - large flat bottom to avoid energy explosion
+                         # Only apply quadratic penalty within 10 Å of target
         
         for bond in self.disulfide_bonds:
             if bond.residue_i >= len(coords) or bond.residue_j >= len(coords):
@@ -347,9 +410,19 @@ class EnhancedEnergyCalculator(IPhysicsCalculator):
             # Calculate CA-CA distance
             r = self._distance(coords[bond.residue_i], coords[bond.residue_j])
             
-            # Harmonic potential
-            deviation = r - r_target
-            bond_energy = 0.5 * k_spring * deviation ** 2
+            # Flat-bottom harmonic potential with soft cap
+            deviation = abs(r - r_target)
+            
+            if deviation > buffer:
+                # Soft-capped region: logarithmic growth to prevent energy explosion
+                # E = k * buffer * ln(1 + (deviation - buffer) / buffer)
+                # This grows much slower than linear, preventing huge penalties
+                excess = deviation - buffer
+                bond_energy = k_spring * buffer * math.log(1.0 + excess / buffer)
+            else:
+                # Harmonic region: quadratic penalty for fine-tuning near target
+                # E = 0.5 * k * deviation²
+                bond_energy = 0.5 * k_spring * deviation ** 2
             
             energy += bond_energy
         
