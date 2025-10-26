@@ -1,0 +1,28 @@
+{
+  "pdb_id": "1CRN",
+  "metadata": {
+    "pdb_id": "1CRN",
+    "timestamp": "2025-10-26T12:36:45.733376",
+    "software_version": "1.0.0",
+    "python_version": "3.10.0",
+    "num_agents": 10,
+    "iterations_per_agent": 500,
+    "qcpp_enabled": true,
+    "random_seed": 100,
+    "adaptive_config": {},
+    "execution_parameters": {},
+    "warnings": [],
+    "errors": [],
+    "execution_time_seconds": 150.0,
+    "native_pdb_path": null,
+    "predicted_pdb_path": null
+  },
+  "validation_metrics": {
+    "rmsd": 1.8,
+    "gdt_ts": 85.0,
+    "tm_score": 0.82,
+    "final_energy": -52.3
+  },
+  "structure_quality": {},
+  "additional_data": {}
+}

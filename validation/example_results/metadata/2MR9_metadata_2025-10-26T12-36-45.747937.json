@@ -1,0 +1,28 @@
+{
+  "pdb_id": "2MR9",
+  "metadata": {
+    "pdb_id": "2MR9",
+    "timestamp": "2025-10-26T12:36:45.747937",
+    "software_version": "1.0.0",
+    "python_version": "3.10.0",
+    "num_agents": 15,
+    "iterations_per_agent": 800,
+    "qcpp_enabled": true,
+    "random_seed": 101,
+    "adaptive_config": {},
+    "execution_parameters": {},
+    "warnings": [],
+    "errors": [],
+    "execution_time_seconds": 150.0,
+    "native_pdb_path": null,
+    "predicted_pdb_path": null
+  },
+  "validation_metrics": {
+    "rmsd": 3.2,
+    "gdt_ts": 68.0,
+    "tm_score": 0.58,
+    "final_energy": -38.5
+  },
+  "structure_quality": {},
+  "additional_data": {}
+}

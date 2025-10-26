@@ -1,0 +1,29 @@
+{
+  "batch_id": "example_batch_checkpoint",
+  "checkpoint_time": "2025-10-26T12:45:46.893472",
+  "total_proteins": 6,
+  "completed_proteins": [
+    "PROTEIN000",
+    "PROTEIN001",
+    "PROTEIN002",
+    "PROTEIN003",
+    "PROTEIN004",
+    "PROTEIN005"
+  ],
+  "failed_proteins": [],
+  "pending_proteins": [],
+  "execution_times": {
+    "PROTEIN000": 0.08028459548950195,
+    "PROTEIN001": 0.09030294418334961,
+    "PROTEIN002": 0.10018277168273926,
+    "PROTEIN003": 0.11021065711975098,
+    "PROTEIN004": 0.12041950225830078,
+    "PROTEIN005": 0.130540132522583
+  },
+  "configuration": {
+    "max_parallel": 2,
+    "checkpoint_interval": 2,
+    "cpu_threshold": 80.0,
+    "memory_threshold": 80.0
+  }
+}

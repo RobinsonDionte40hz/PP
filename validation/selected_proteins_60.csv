@@ -1,0 +1,31 @@
+pdb_id,sequence_length,size_category,structural_class,experimental_method,resolution,missing_residues_pct,organism,description
+1CRN,46,tiny,alpha+beta,X-ray,1.5,0.0,Hordeum vulgare,Crambin
+2MR9,35,tiny,all-beta,X-ray,1.1,0.0,Synthetic,Trp-cage miniprotein
+1VII,36,tiny,all-alpha,NMR,,0.0,Synthetic,Villin headpiece
+1L2Y,20,tiny,all-alpha,NMR,,0.0,Synthetic,Trp-cage TC5b
+1PSV,36,tiny,all-beta,NMR,,0.0,Synthetic,Peptide hairpin
+1UBQ,76,small,alpha+beta,X-ray,1.8,0.0,Homo sapiens,Ubiquitin
+1ROP,56,small,all-alpha,X-ray,1.7,0.0,Escherichia coli,Repressor of primer
+1GB1,56,small,alpha+beta,X-ray,2.0,0.0,Streptococcus,Protein G B1 domain
+1ENH,54,small,all-alpha,NMR,,0.0,Drosophila,Engrailed homeodomain
+1PGB,56,small,alpha+beta,X-ray,1.0,0.0,Streptococcus,Protein G B1 (IgG binding)
+2IGD,61,small,all-beta,X-ray,2.3,0.0,Homo sapiens,Immunoglobulin domain
+1BDD,60,small,all-alpha,X-ray,1.8,0.0,Escherichia coli,B-DNA binding domain
+1UTG,70,small,alpha+beta,X-ray,1.4,0.0,Homo sapiens,Uteroglobin
+1SHG,57,small,all-alpha,NMR,,0.0,Synthetic,SH3 domain
+1HIV,99,small,all-alpha,X-ray,2.5,0.0,HIV-1,HIV-1 protease
+1LYZ,129,medium,alpha+beta,X-ray,1.5,0.0,Gallus gallus,Lysozyme
+1RNB,124,medium,alpha+beta,X-ray,1.5,0.0,Bos taurus,Ribonuclease B
+1MBN,153,medium,all-alpha,X-ray,1.5,0.0,Physeter catodon,Myoglobin
+1AK3,194,medium,alpha+beta,X-ray,2.1,0.0,Escherichia coli,Adenylate kinase
+1SHF,107,medium,all-beta,X-ray,1.8,0.0,Homo sapiens,SH2 domain
+1CRK,118,medium,alpha+beta,X-ray,2.2,0.0,Rattus norvegicus,Creatine kinase
+3SSI,107,medium,all-beta,X-ray,1.8,0.0,Streptomyces,Subtilisin inhibitor
+3CLN,148,medium,all-alpha,X-ray,1.7,0.0,Homo sapiens,Calmodulin
+1CHO,128,medium,alpha-beta,X-ray,2.2,0.0,Bacillus,Chitinase
+1TIM,247,large,alpha-beta,X-ray,1.8,0.0,Gallus gallus,Triosephosphate isomerase
+1HEW,297,large,alpha+beta,X-ray,1.9,0.0,Gallus gallus,Lysozyme C
+2DHB,292,large,all-alpha,X-ray,1.7,0.0,Homo sapiens,Deoxyhemoglobin
+1ATP,247,large,alpha-beta,X-ray,2.0,0.0,Homo sapiens,ATP synthase
+1PFK,320,large,alpha-beta,X-ray,2.4,0.0,Escherichia coli,Phosphofructokinase
+1GCA,246,large,alpha+beta,X-ray,2.5,0.0,Escherichia coli,GTPase

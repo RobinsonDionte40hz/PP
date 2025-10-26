@@ -1,0 +1,6 @@
+2025-01-26 14:30:00 - INFO - Starting prediction for 1UBQ
+2025-01-26 14:30:01 - INFO - Initialized 10 agents
+2025-01-26 14:30:15 - INFO - Agent 1: Energy=-25.3 kcal/mol, RMSD=4.5Å
+2025-01-26 14:31:00 - INFO - Agent 5: Energy=-45.2 kcal/mol, RMSD=2.5Å (best so far)
+2025-01-26 14:32:30 - INFO - Prediction complete
+2025-01-26 14:32:31 - INFO - Final RMSD: 2.5Å, GDT-TS: 75.0

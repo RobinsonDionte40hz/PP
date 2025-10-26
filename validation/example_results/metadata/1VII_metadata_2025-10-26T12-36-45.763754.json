@@ -1,0 +1,28 @@
+{
+  "pdb_id": "1VII",
+  "metadata": {
+    "pdb_id": "1VII",
+    "timestamp": "2025-10-26T12:36:45.763754",
+    "software_version": "1.0.0",
+    "python_version": "3.10.0",
+    "num_agents": 10,
+    "iterations_per_agent": 500,
+    "qcpp_enabled": false,
+    "random_seed": 102,
+    "adaptive_config": {},
+    "execution_parameters": {},
+    "warnings": [],
+    "errors": [],
+    "execution_time_seconds": 150.0,
+    "native_pdb_path": null,
+    "predicted_pdb_path": null
+  },
+  "validation_metrics": {
+    "rmsd": 4.5,
+    "gdt_ts": 55.0,
+    "tm_score": 0.52,
+    "final_energy": -25.1
+  },
+  "structure_quality": {},
+  "additional_data": {}
+}

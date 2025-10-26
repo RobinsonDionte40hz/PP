@@ -1,0 +1,37 @@
+{
+  "batch_id": "example_batch_003",
+  "checkpoint_time": "2025-10-26T12:45:46.557272",
+  "total_proteins": 10,
+  "completed_proteins": [
+    "TEST000",
+    "TEST001",
+    "TEST002",
+    "TEST003",
+    "TEST004",
+    "TEST005",
+    "TEST006",
+    "TEST007",
+    "TEST008",
+    "TEST009"
+  ],
+  "failed_proteins": [],
+  "pending_proteins": [],
+  "execution_times": {
+    "TEST000": 0.10039591789245605,
+    "TEST001": 0.12024998664855957,
+    "TEST002": 0.14031648635864258,
+    "TEST003": 0.16065216064453125,
+    "TEST004": 0.18048977851867676,
+    "TEST005": 0.20032334327697754,
+    "TEST006": 0.22021174430847168,
+    "TEST007": 0.24030160903930664,
+    "TEST008": 0.26058149337768555,
+    "TEST009": 0.28041601181030273
+  },
+  "configuration": {
+    "max_parallel": 3,
+    "checkpoint_interval": 3,
+    "cpu_threshold": 80.0,
+    "memory_threshold": 80.0
+  }
+}

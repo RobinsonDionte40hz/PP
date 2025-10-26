@@ -1,0 +1,5 @@
+PDB_ID,Timestamp,RMSD,GDT-TS,TM-score,Final_Energy,Num_Agents,Iterations_Per_Agent,QCPP_Enabled,Random_Seed,Execution_Time_Seconds,Warnings,Errors
+1UBQ,2025-10-26T12:36:45.722768,2.5,75.0,0.65,-45.2,10,500,True,42,120.5,Minor convergence issue at iteration 250,
+1CRN,2025-10-26T12:36:45.733376,1.8,85.0,0.82,-52.3,10,500,True,100,150.0,,
+2MR9,2025-10-26T12:36:45.747937,3.2,68.0,0.58,-38.5,15,800,True,101,150.0,,
+1VII,2025-10-26T12:36:45.763754,4.5,55.0,0.52,-25.1,10,500,False,102,150.0,,

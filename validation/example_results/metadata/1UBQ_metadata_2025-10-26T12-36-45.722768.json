@@ -1,0 +1,36 @@
+{
+  "pdb_id": "1UBQ",
+  "metadata": {
+    "pdb_id": "1UBQ",
+    "timestamp": "2025-10-26T12:36:45.722768",
+    "software_version": "1.0.0",
+    "python_version": "3.10.0",
+    "num_agents": 10,
+    "iterations_per_agent": 500,
+    "qcpp_enabled": true,
+    "random_seed": 42,
+    "adaptive_config": {
+      "stuck_threshold": 10.0,
+      "stuck_window": 30
+    },
+    "execution_parameters": {
+      "temperature": 1.0,
+      "diversity": "balanced"
+    },
+    "warnings": [
+      "Minor convergence issue at iteration 250"
+    ],
+    "errors": [],
+    "execution_time_seconds": 120.5,
+    "native_pdb_path": "pdb_files/1UBQ.pdb",
+    "predicted_pdb_path": "structures/1UBQ_predicted.pdb"
+  },
+  "validation_metrics": {
+    "rmsd": 2.5,
+    "gdt_ts": 75.0,
+    "tm_score": 0.65,
+    "final_energy": -45.2
+  },
+  "structure_quality": {},
+  "additional_data": {}
+}
