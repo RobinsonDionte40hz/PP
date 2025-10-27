@@ -1,0 +1,21 @@
+{
+  "figure_type": "boxplot",
+  "title": "RMSD by Protein Size Category",
+  "data_by_category": {
+    "small": [
+      3.2,
+      4.8
+    ],
+    "tiny": [
+      6.5
+    ]
+  },
+  "x_label": "Size Category",
+  "y_label": "RMSD (\u00c5)",
+  "colors": [
+    "lightblue",
+    "lightgreen",
+    "lightyellow",
+    "lightcoral"
+  ]
+}

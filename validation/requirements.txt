@@ -1,0 +1,14 @@
+# Requirements for Large-Scale Validation Framework
+
+# Core testing framework
+pytest>=8.0.0
+
+# Resource monitoring for BatchExecutor
+psutil>=5.9.0
+
+# Note: The following are used from the main QCPP-UBF project
+# and don't need to be installed separately if the project is already set up:
+# - biopython (for protein structure handling)
+# - numpy, scipy (for numerical operations)
+# - dataclasses (built-in for Python 3.7+)
+# - typing (built-in for Python 3.5+)

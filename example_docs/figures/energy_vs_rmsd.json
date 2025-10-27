@@ -1,0 +1,28 @@
+{
+  "figure_type": "scatter",
+  "title": "Energy vs RMSD Correlation",
+  "x_data": [
+    3.2,
+    4.8,
+    6.5
+  ],
+  "y_data": [
+    -45.3,
+    -32.1,
+    -18.5
+  ],
+  "x_label": "RMSD (\u00c5)",
+  "y_label": "Energy (kcal/mol)",
+  "show_trendline": true,
+  "highlight_regions": [
+    {
+      "x_min": 0,
+      "x_max": 5.0,
+      "y_min": -100,
+      "y_max": 0,
+      "label": "Success Zone",
+      "alpha": 0.1,
+      "color": "green"
+    }
+  ]
+}

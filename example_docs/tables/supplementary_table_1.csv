@@ -1,0 +1,4 @@
+pdb_id,protein_length,size_category,structural_class,resolution,helix_fraction,sheet_fraction,rmsd,gdt_ts,tm_score,final_energy,num_agents,iterations,success
+1UBQ,76,small,mainly-beta,1.8,0.2,0.5,3.2,65.5,0.72,-45.3,10,1000,Yes
+1CRN,46,small,mainly-alpha,1.5,0.6,0.1,4.8,58.2,0.65,-32.1,10,1000,Yes
+2MR9,35,tiny,mainly-alpha,2.0,0.7,0.0,6.5,42.0,0.48,-18.5,10,1000,No

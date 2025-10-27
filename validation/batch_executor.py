@@ -21,7 +21,7 @@ Key Features:
 import json
 import logging
 import os
-import psutil
+import psutil  # type: ignore
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, Future, as_completed

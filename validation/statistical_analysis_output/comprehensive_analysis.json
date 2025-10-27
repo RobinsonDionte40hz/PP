@@ -1,0 +1,76 @@
+{
+  "correlations": {
+    "size_vs_rmsd": 0.5992695247413483,
+    "size_vs_gdt_ts": -0.5715922698622167,
+    "secondary_structure_vs_rmsd": 0.4783648732349398,
+    "resolution_vs_accuracy": 0.8493308169007351,
+    "correlations": {
+      "size_vs_rmsd": 0.5992695247413483,
+      "size_vs_gdt_ts": -0.5715922698622167,
+      "size_vs_tm_score": -0.5503682533511727,
+      "resolution_vs_rmsd": 0.8493308169007351,
+      "resolution_vs_gdt_ts": -0.8190176900656517,
+      "ss_content_vs_rmsd": 0.4783648732349398,
+      "ss_content_vs_gdt_ts": -0.4304580323876635
+    }
+  },
+  "size_comparison": {
+    "category_means": {
+      "tiny": 2.5,
+      "small": 2.9,
+      "medium": 3.5
+    },
+    "category_stds": {
+      "tiny": 0.7000000000000001,
+      "small": 0.0,
+      "medium": 0.0
+    },
+    "p_values": {
+      "rmsd_overall": 0.1
+    },
+    "effect_sizes": {}
+  },
+  "feature_importance": {
+    "features": [
+      "resolution",
+      "protein_length",
+      "sheet_fraction",
+      "helix_fraction"
+    ],
+    "importance_scores": [
+      1.0,
+      0.7055784540211585,
+      0.5740810703859347,
+      0.5632256168221061
+    ],
+    "predictive_power": {
+      "protein_length": 0.5992695247413483,
+      "resolution": 0.8493308169007351,
+      "helix_fraction": 0.4783648732349398,
+      "sheet_fraction": 0.48758474447813427
+    }
+  },
+  "confidence_intervals": {
+    "rmsd_ci": [
+      2.188730180036221,
+      3.3712698199637794
+    ],
+    "gdt_ts_ci": [
+      66.10072467573586,
+      79.89927532426414
+    ],
+    "tm_score_ci": [
+      0.5470473802362463,
+      0.7369526197637537
+    ],
+    "energy_ci": [
+      -48.1126981996378,
+      -36.28730180036221
+    ]
+  },
+  "summary": {
+    "total_proteins": 5,
+    "size_categories": 3,
+    "features_analyzed": 4
+  }
+}
