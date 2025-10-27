@@ -336,7 +336,8 @@ class LargeScaleValidationCampaign:
             ('phase_manager', self._phase_manager),
             ('batch_executor', self._batch_executor),
             ('results_repository', self._results_repository),
-            ('progress_tracker', self._progress_tracker),
+            # Note: progress_tracker initialized per-phase, not during setup
+            # ('progress_tracker', self._progress_tracker),
             ('statistical_analyzer', self._statistical_analyzer),
             ('failure_analyzer', self._failure_analyzer),
             ('documentation_generator', self._documentation_generator),
@@ -616,7 +617,7 @@ class LargeScaleValidationCampaign:
         
         # Save report to file
         report_path = self.output_dir / f"phase_{phase.phase_number}_report.md"
-        with open(report_path, 'w') as f:
+        with open(report_path, 'w', encoding='utf-8') as f:
             f.write(report_content)
         
         logger.info(f"Interim report saved to {report_path}")

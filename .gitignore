@@ -1,0 +1,9 @@
+
+# Results and temporary files
+results/
+backup_*/
+*.pyc
+__pycache__/
+.pytest_cache/
+*.egg-info/
+temp.pdb

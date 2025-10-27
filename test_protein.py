@@ -21,12 +21,13 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 from datetime import datetime
+from typing import Optional
 
 # Add ubf_protein to path
-sys.path.insert(0, str(Path(__file__).parent / "ubf_protein"))
+sys.path.insert(0, str(Path(__file__).parent.parent / "ubf_protein"))
 
 # Import components
-from protein_predictor import QuantumCoherenceProteinPredictor
+from src.protein_predictor import QuantumCoherenceProteinPredictor
 from ubf_protein.qcpp_integration import QCPPIntegrationAdapter
 from ubf_protein.multi_agent_coordinator import MultiAgentCoordinator
 from Bio.PDB.PDBParser import PDBParser
@@ -95,7 +96,7 @@ KNOWN_PROTEINS = {
 AVAILABLE_PROTEINS = discover_pdb_files()
 
 
-def download_pdb(pdb_id: str) -> Path:
+def download_pdb(pdb_id: str) -> Optional[Path]:
     """Download PDB file if not cached."""
     cache_dir = Path("pdb_cache")
     cache_dir.mkdir(exist_ok=True)
@@ -108,7 +109,7 @@ def download_pdb(pdb_id: str) -> Path:
     
     print(f"📥 Downloading PDB {pdb_id}...")
     try:
-        from Bio.PDB import PDBList
+        from Bio.PDB.PDBList import PDBList
         pdbl = PDBList()
         pdbl.retrieve_pdb_file(pdb_id, pdir=str(cache_dir), file_format='pdb')
         print(f"✓ Downloaded to: {pdb_file}")
@@ -123,6 +124,10 @@ def load_sequence_from_pdb(pdb_file: Path) -> str:
     aa_map = dict(zip(aa3, aa1))
     parser = PDBParser(QUIET=True)
     structure = parser.get_structure('protein', str(pdb_file))
+    
+    if structure is None:
+        raise ValueError(f"Failed to parse PDB structure from {pdb_file}")
+    
     chain = list(structure.get_chains())[0]
     residues = list(chain.get_residues())
     
@@ -154,9 +159,9 @@ def get_optimal_settings(sequence_length: int) -> dict:
         return {"agents": 50, "iterations": 300, "category": "very_large"}
 
 
-def load_experimental_data(pdb_id: str) -> dict:
+def load_experimental_data(pdb_id: str) -> Optional[dict]:
     """Load experimental data if available."""
-    exp_file = Path("experimental_stability.csv")
+    exp_file = Path("data/experimental_stability.csv")
     if not exp_file.exists():
         return None
     
@@ -175,8 +180,8 @@ def load_experimental_data(pdb_id: str) -> dict:
         return None
 
 
-def run_protein_test(sequence: str, pdb_file: Path = None, pdb_id: str = None, 
-                     custom_agents: int = None, custom_iterations: int = None):
+def run_protein_test(sequence: str, pdb_file: Optional[Path] = None, pdb_id: Optional[str] = None, 
+                     custom_agents: Optional[int] = None, custom_iterations: Optional[int] = None):
     """Run complete protein test with QCPP-UBF integration."""
     
     print("\n" + "="*70)
@@ -347,7 +352,10 @@ def run_protein_test(sequence: str, pdb_file: Path = None, pdb_id: str = None,
     
     print("="*70)
     
-    # Save results
+    # Save results to organized directory
+    results_dir = Path("results/test_results")
+    results_dir.mkdir(parents=True, exist_ok=True)
+    
     output = {
         'protein_info': {
             'pdb_id': pdb_id,
@@ -375,7 +383,7 @@ def run_protein_test(sequence: str, pdb_file: Path = None, pdb_id: str = None,
         'timestamp': datetime.now().isoformat()
     }
     
-    output_file = Path(f"test_{pdb_id or 'custom'}_results.json")
+    output_file = results_dir / f"test_{pdb_id or 'custom'}_results.json"
     with open(output_file, 'w') as f:
         json.dump(output, f, indent=2)
     

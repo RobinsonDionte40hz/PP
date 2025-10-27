@@ -1,4 +1,4 @@
-from qc_pipeline import QCProteinPipeline
+from src.qc_pipeline import QCProteinPipeline
 
 # Initialize the pipeline
 pipeline = QCProteinPipeline(data_dir="quantum_coherence_proteins")

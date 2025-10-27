@@ -101,7 +101,7 @@ class DocumentationGenerator:
         Example:
             >>> phase = {'phase_number': 1, 'name': 'Initial Validation', 'protein_count': 10}
             >>> report = generator.generate_phase_report(phase, results)
-            >>> with open('phase1_report.md', 'w') as f:
+            >>> with open('phase1_report.md', 'w', encoding='utf-8') as f:
             ...     f.write(report)
         """
         phase_num = phase.get('phase_number', 1)
@@ -229,7 +229,7 @@ class DocumentationGenerator:
         }
         
         rmsd_file = figures_dir / "rmsd_distribution.json"
-        with open(rmsd_file, 'w') as f:
+        with open(rmsd_file, 'w', encoding='utf-8') as f:
             json.dump(rmsd_hist_spec, f, indent=2)
         generated_files.append(str(rmsd_file))
         
@@ -247,7 +247,7 @@ class DocumentationGenerator:
         }
         
         scatter_file = figures_dir / "gdt_vs_rmsd.json"
-        with open(scatter_file, 'w') as f:
+        with open(scatter_file, 'w', encoding='utf-8') as f:
             json.dump(scatter_spec, f, indent=2)
         generated_files.append(str(scatter_file))
         
@@ -262,7 +262,7 @@ class DocumentationGenerator:
         }
         
         box_file = figures_dir / "rmsd_by_size.json"
-        with open(box_file, 'w') as f:
+        with open(box_file, 'w', encoding='utf-8') as f:
             json.dump(size_box_spec, f, indent=2)
         generated_files.append(str(box_file))
         
@@ -281,7 +281,7 @@ class DocumentationGenerator:
         }
         
         energy_file = figures_dir / "energy_vs_rmsd.json"
-        with open(energy_file, 'w') as f:
+        with open(energy_file, 'w', encoding='utf-8') as f:
             json.dump(energy_scatter_spec, f, indent=2)
         generated_files.append(str(energy_file))
         
@@ -490,7 +490,7 @@ All experiments were conducted with fixed random seeds (seed={metadata.get('rand
                 }
                 export_data.append(clean_result)
             
-            with open(json_file, 'w') as f:
+            with open(json_file, 'w', encoding='utf-8') as f:
                 json.dump(export_data, f, indent=2)
             
             exported_files['json'] = str(json_file)
