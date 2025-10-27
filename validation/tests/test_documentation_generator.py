@@ -538,7 +538,7 @@ def test_research_report_immutable():
     )
     
     with pytest.raises(AttributeError):
-        report.title = "New Title"
+        report.title = "New Title"  # type: ignore[misc]
 
 
 # Test helper methods

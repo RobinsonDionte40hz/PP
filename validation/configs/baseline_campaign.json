@@ -1,0 +1,13 @@
+{
+  "target_protein_count": 60,
+  "enable_qcpp": false,
+  "max_parallel_tests": 3,
+  "num_agents": 10,
+  "iterations_per_agent": 1000,
+  "checkpoint_interval": 5,
+  "quality_gate_threshold": 0.6,
+  "failure_rmsd_threshold": 8.0,
+  "timeout_multiplier": 2.0,
+  "random_seed": null,
+  "output_dir": "./baseline_results"
+}
