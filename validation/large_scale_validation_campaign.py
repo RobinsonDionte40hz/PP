@@ -257,7 +257,8 @@ class LargeScaleValidationCampaign:
                 logger.info("Selecting proteins...")
                 self._protein_selector = ProteinSelector()
                 self._protein_selection = self._protein_selector.select_proteins(
-                    target_count=self.config.target_protein_count
+                    target_count=self.config.target_protein_count,
+                    max_protein_size=getattr(self.config, 'max_protein_size', None)
                 )
                 
                 # Export selection

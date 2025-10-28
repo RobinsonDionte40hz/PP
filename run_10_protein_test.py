@@ -66,9 +66,13 @@ def main():
     
     if args.interactive:
         campaign_args.append('--interactive')
-    
-    if args.resume:
-        campaign_args.append('--resume')
+    elif args.resume:
+        # Resume needs checkpoint path, but we'll use default behavior
+        # The campaign runner will find the latest checkpoint
+        campaign_args.extend(['--resume', 'latest'])
+    else:
+        # Default: batch mode
+        campaign_args.append('--batch')
     
     # Run the campaign
     sys.argv = ['run_validation_campaign.py'] + campaign_args

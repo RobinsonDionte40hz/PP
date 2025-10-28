@@ -313,6 +313,11 @@ class BatchExecutor:
         Returns:
             Sorted list of proteins (smallest first)
         """
+        # Handle empty protein list
+        if not proteins:
+            logger.warning("No proteins to prioritize")
+            return []
+        
         sorted_proteins = sorted(proteins, key=lambda p: p.sequence_length)
         
         logger.debug(f"Prioritized proteins by size: "

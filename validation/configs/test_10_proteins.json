@@ -2,12 +2,13 @@
   "target_protein_count": 10,
   "enable_qcpp": true,
   "max_parallel_tests": 3,
-  "num_agents": 10,
+  "num_agents": 20,
   "iterations_per_agent": 1000,
   "checkpoint_interval": 5,
   "quality_gate_threshold": 0.60,
   "failure_rmsd_threshold": 8.0,
   "timeout_multiplier": 2.0,
   "random_seed": 42,
-  "output_dir": "./campaign_10_proteins"
+  "output_dir": "./campaign_10_proteins",
+  "max_protein_size": 200
 }

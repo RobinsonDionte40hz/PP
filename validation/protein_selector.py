@@ -185,7 +185,8 @@ class ProteinSelector:
                        size_distribution: Optional[Dict[str, float]] = None,
                        max_resolution: float = 2.5,
                        max_missing_pct: float = 10.0,
-                       include_nmr: bool = True) -> List[ProteinMetadata]:
+                       include_nmr: bool = True,
+                       max_protein_size: Optional[int] = None) -> List[ProteinMetadata]:
         """
         Select diverse set of proteins for testing.
         
@@ -197,6 +198,7 @@ class ProteinSelector:
             max_resolution: Maximum resolution for X-ray structures (Angstroms)
             max_missing_pct: Maximum percentage of missing residues
             include_nmr: Whether to include NMR structures
+            max_protein_size: Maximum protein size in residues (optional filter)
         
         Returns:
             List of ProteinMetadata objects representing selected proteins
@@ -219,6 +221,14 @@ class ProteinSelector:
             max_missing_pct=max_missing_pct,
             include_nmr=include_nmr
         )
+        
+        # Filter by max protein size if specified
+        if max_protein_size is not None:
+            candidate_proteins = [
+                p for p in candidate_proteins 
+                if p.sequence_length <= max_protein_size
+            ]
+            logger.info(f"Filtered to {len(candidate_proteins)} proteins ≤ {max_protein_size} residues")
         
         logger.info(f"Found {len(candidate_proteins)} candidate proteins after filtering")
         
