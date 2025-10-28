@@ -114,14 +114,14 @@ class DocumentationGenerator:
         
         # Success metrics (RMSD < 5.0Å as threshold)
         success_threshold = 5.0
-        successes = sum(1 for r in results if r.get('rmsd', float('inf')) < success_threshold)
+        successes = sum(1 for r in results if r.get('best_rmsd', float('inf')) < success_threshold)
         success_rate = (successes / total_tests) * 100
         
         # Calculate averages
-        avg_rmsd = sum(r.get('rmsd', 0.0) for r in results) / total_tests
-        avg_gdt_ts = sum(r.get('gdt_ts', 0.0) for r in results) / total_tests
+        avg_rmsd = sum(r.get('best_rmsd', 0.0) for r in results) / total_tests
+        avg_gdt_ts = sum(r.get('gdt_ts_score', 0.0) for r in results) / total_tests
         avg_tm_score = sum(r.get('tm_score', 0.0) for r in results) / total_tests
-        avg_energy = sum(r.get('energy', r.get('final_energy', 0.0)) for r in results) / total_tests
+        avg_energy = sum(r.get('best_energy', 0.0) for r in results) / total_tests
         
         # Build report
         report = f"""# {phase_name}
@@ -140,10 +140,10 @@ class DocumentationGenerator:
 
 | Metric | Average | Best | Worst |
 |--------|---------|------|-------|
-| RMSD (Å) | {avg_rmsd:.2f} | {min(r.get('rmsd', 0) for r in results):.2f} | {max(r.get('rmsd', 0) for r in results):.2f} |
-| GDT-TS | {avg_gdt_ts:.1f} | {max(r.get('gdt_ts', 0) for r in results):.1f} | {min(r.get('gdt_ts', 0) for r in results):.1f} |
+| RMSD (Å) | {avg_rmsd:.2f} | {min(r.get('best_rmsd', 0) for r in results):.2f} | {max(r.get('best_rmsd', 0) for r in results):.2f} |
+| GDT-TS | {avg_gdt_ts:.1f} | {max(r.get('gdt_ts_score', 0) for r in results):.1f} | {min(r.get('gdt_ts_score', 0) for r in results):.1f} |
 | TM-score | {avg_tm_score:.3f} | {max(r.get('tm_score', 0) for r in results):.3f} | {min(r.get('tm_score', 0) for r in results):.3f} |
-| Energy (kcal/mol) | {avg_energy:.1f} | {min(r.get('energy', r.get('final_energy', 0)) for r in results):.1f} | {max(r.get('energy', r.get('final_energy', 0)) for r in results):.1f} |
+| Energy (kcal/mol) | {avg_energy:.1f} | {min(r.get('best_energy', 0) for r in results):.1f} | {max(r.get('best_energy', 0) for r in results):.1f} |
 
 """
         
@@ -161,12 +161,12 @@ class DocumentationGenerator:
         report += "| PDB ID | RMSD (Å) | GDT-TS | TM-score | Energy | Status |\n"
         report += "|--------|----------|--------|----------|--------|--------|\n"
         
-        for result in sorted(results, key=lambda x: x.get('rmsd', 0)):
+        for result in sorted(results, key=lambda x: x.get('best_rmsd', 0)):
             pdb_id = result.get('pdb_id', 'UNKNOWN')
-            rmsd = result.get('rmsd', 0.0)
-            gdt_ts = result.get('gdt_ts', 0.0)
+            rmsd = result.get('best_rmsd', 0.0)
+            gdt_ts = result.get('gdt_ts_score', 0.0)
             tm_score = result.get('tm_score', 0.0)
-            energy = result.get('energy', result.get('final_energy', 0.0))
+            energy = result.get('best_energy', 0.0)
             status = "✅ Success" if rmsd < success_threshold else "❌ Failure"
             
             report += f"| {pdb_id} | {rmsd:.2f} | {gdt_ts:.1f} | {tm_score:.3f} | {energy:.1f} | {status} |\n"
@@ -217,7 +217,7 @@ class DocumentationGenerator:
         rmsd_hist_spec = {
             'figure_type': 'histogram',
             'title': 'Distribution of RMSD Values',
-            'data': [r.get('rmsd', 0.0) for r in results],
+            'data': [r.get('best_rmsd', 0.0) for r in results],
             'x_label': 'RMSD (Å)',
             'y_label': 'Count',
             'bins': 20,
@@ -237,8 +237,8 @@ class DocumentationGenerator:
         scatter_spec = {
             'figure_type': 'scatter',
             'title': 'GDT-TS vs RMSD',
-            'x_data': [r.get('rmsd', 0.0) for r in results],
-            'y_data': [r.get('gdt_ts', 0.0) for r in results],
+            'x_data': [r.get('best_rmsd', 0.0) for r in results],
+            'y_data': [r.get('gdt_ts_score', 0.0) for r in results],
             'x_label': 'RMSD (Å)',
             'y_label': 'GDT-TS Score',
             'point_labels': [r.get('pdb_id', '') for r in results],
@@ -255,7 +255,7 @@ class DocumentationGenerator:
         size_box_spec = {
             'figure_type': 'boxplot',
             'title': 'RMSD by Protein Size Category',
-            'data_by_category': self._group_by_category(results, 'size_category', 'rmsd'),
+            'data_by_category': self._group_by_category(results, 'size_category', 'best_rmsd'),
             'x_label': 'Size Category',
             'y_label': 'RMSD (Å)',
             'colors': ['lightblue', 'lightgreen', 'lightyellow', 'lightcoral']
@@ -270,8 +270,8 @@ class DocumentationGenerator:
         energy_scatter_spec = {
             'figure_type': 'scatter',
             'title': 'Energy vs RMSD Correlation',
-            'x_data': [r.get('rmsd', 0.0) for r in results],
-            'y_data': [r.get('energy', r.get('final_energy', 0.0)) for r in results],
+            'x_data': [r.get('best_rmsd', 0.0) for r in results],
+            'y_data': [r.get('best_energy', 0.0) for r in results],
             'x_label': 'RMSD (Å)',
             'y_label': 'Energy (kcal/mol)',
             'show_trendline': True,
@@ -416,8 +416,8 @@ All experiments were conducted with fixed random seeds (seed={metadata.get('rand
             for result in results:
                 # Add success field
                 result_copy = result.copy()
-                result_copy['success'] = 'Yes' if result.get('rmsd', float('inf')) < 5.0 else 'No'
-                result_copy['final_energy'] = result.get('energy', result.get('final_energy', 0.0))
+                result_copy['success'] = 'Yes' if result.get('best_rmsd', float('inf')) < 5.0 else 'No'
+                result_copy['final_energy'] = result.get('best_energy', 0.0)
                 
                 writer.writerow(result_copy)
         
@@ -457,7 +457,7 @@ All experiments were conducted with fixed random seeds (seed={metadata.get('rand
         if 'csv' in formats:
             csv_file = exports_dir / "validation_results.csv"
             
-            fieldnames = ['pdb_id', 'rmsd', 'gdt_ts', 'tm_score', 'energy', 
+            fieldnames = ['pdb_id', 'best_rmsd', 'gdt_ts_score', 'tm_score', 'best_energy', 
                          'protein_length', 'size_category', 'resolution']
             
             with open(csv_file, 'w', newline='') as f:
@@ -466,7 +466,7 @@ All experiments were conducted with fixed random seeds (seed={metadata.get('rand
                 
                 for result in results:
                     row = result.copy()
-                    row['energy'] = result.get('energy', result.get('final_energy', 0.0))
+                    row['energy'] = result.get('best_energy', 0.0)
                     writer.writerow(row)
             
             exported_files['csv'] = str(csv_file)
@@ -480,10 +480,10 @@ All experiments were conducted with fixed random seeds (seed={metadata.get('rand
             for result in results:
                 clean_result = {
                     'pdb_id': result.get('pdb_id'),
-                    'rmsd': result.get('rmsd'),
-                    'gdt_ts': result.get('gdt_ts'),
+                    'best_rmsd': result.get('best_rmsd'),
+                    'gdt_ts_score': result.get('gdt_ts_score'),
                     'tm_score': result.get('tm_score'),
-                    'energy': result.get('energy', result.get('final_energy', 0.0)),
+                    'best_energy': result.get('best_energy', 0.0),
                     'protein_length': result.get('protein_length'),
                     'size_category': result.get('size_category'),
                     'resolution': result.get('resolution')
@@ -509,10 +509,10 @@ All experiments were conducted with fixed random seeds (seed={metadata.get('rand
                 for result in results:
                     writer.writerow([
                         result.get('pdb_id', ''),
-                        f"{result.get('rmsd', 0.0):.2f}",
-                        f"{result.get('gdt_ts', 0.0):.1f}",
+                        f"{result.get('best_rmsd', 0.0):.2f}",
+                        f"{result.get('gdt_ts_score', 0.0):.1f}",
                         f"{result.get('tm_score', 0.0):.3f}",
-                        f"{result.get('energy', result.get('final_energy', 0.0)):.1f}",
+                        f"{result.get('best_energy', 0.0):.1f}",
                         result.get('protein_length', 0),
                         result.get('size_category', ''),
                         f"{result.get('resolution', 0.0):.2f}"
@@ -566,7 +566,7 @@ All experiments were conducted with fixed random seeds (seed={metadata.get('rand
         
         # Generate conclusions
         total_tests = len(results)
-        successes = sum(1 for r in results if r.get('rmsd', float('inf')) < 5.0)
+        successes = sum(1 for r in results if r.get('best_rmsd', float('inf')) < 5.0)
         success_rate = (successes / total_tests * 100) if total_tests > 0 else 0
         
         conclusions = []
