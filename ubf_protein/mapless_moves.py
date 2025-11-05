@@ -265,7 +265,8 @@ class CapabilityBasedMoveEvaluator(IMoveEvaluator):
                      move: ConformationalMove,
                      behavioral_state,  # IBehavioralState
                      memory_influence: float,
-                     physics_factors: Optional[Dict[str, float]] = None) -> float:
+                     physics_factors: Optional[Dict[str, float]] = None,
+                     current_rmsd: Optional[float] = None) -> float:
         """
         Calculate weight for move using 5 composite factors.
 
@@ -274,6 +275,7 @@ class CapabilityBasedMoveEvaluator(IMoveEvaluator):
             behavioral_state: Current behavioral state
             memory_influence: Memory-based influence multiplier
             physics_factors: Optional pre-calculated physics factors
+            current_rmsd: Current RMSD to native structure (if known)
 
         Returns:
             Move weight (higher = more desirable)
@@ -299,7 +301,7 @@ class CapabilityBasedMoveEvaluator(IMoveEvaluator):
         historical_success = memory_influence
 
         # Factor 5: Goal Alignment (0.2 weight)
-        goal_alignment = self._calculate_goal_alignment(move)
+        goal_alignment = self._calculate_goal_alignment(move, current_rmsd)
 
         # Combine factors with weights - explicit calculation for JIT optimization
         total_weight = (
@@ -384,6 +386,10 @@ class CapabilityBasedMoveEvaluator(IMoveEvaluator):
             phi_match = self._estimate_phi_match_from_move(move)
         
         # Apply QCPP quantum alignment formula
+        # Type guard: This method is only called when qcpp_integration is not None
+        if self.qcpp_integration is None:
+            return 1.0  # Fallback (should never happen)
+        
         alignment = self.qcpp_integration.calculate_quantum_alignment(
             QCPPMetrics(
                 qcp_score=qcp_score,
@@ -531,10 +537,18 @@ class CapabilityBasedMoveEvaluator(IMoveEvaluator):
 
         return preference
 
-    def _calculate_goal_alignment(self, move: ConformationalMove) -> float:
+    def _calculate_goal_alignment(self, move: ConformationalMove, current_rmsd: Optional[float] = None) -> float:
         """
         Factor 5: Goal Alignment
         Based on energy decrease and RMSD improvement potential.
+        
+        When current_rmsd is provided (validation mode):
+        - Strongly rewards moves that decrease RMSD toward native
+        - Energy is secondary goal
+        
+        When current_rmsd is None (de novo mode):
+        - Uses energy as primary goal
+        - RMSD change is estimated
         
         When QCPP is enabled, applies phi pattern rewards for high phi match scores.
         """
@@ -554,10 +568,28 @@ class CapabilityBasedMoveEvaluator(IMoveEvaluator):
         
         energy_alignment = max(0.0, min(1.0, 1.0 - (energy_change / 50.0)))
 
-        # RMSD alignment (some RMSD change is good, but not too much)
-        optimal_rmsd = 1.0  # Ideal RMSD change
-        rmsd_alignment = 1.0 - abs(move.estimated_rmsd_change - optimal_rmsd) / 2.0
-        rmsd_alignment = max(0.0, rmsd_alignment)
+        # RMSD alignment - different strategies based on whether we have native structure
+        if current_rmsd is not None and current_rmsd != float('inf'):
+            # VALIDATION MODE: We know current RMSD, reward moves that decrease it
+            # Estimated RMSD change is negative when RMSD decreases (improvement)
+            estimated_new_rmsd = current_rmsd + move.estimated_rmsd_change
+            
+            # Strong reward for RMSD decrease
+            if move.estimated_rmsd_change < 0:  # RMSD decreasing
+                # More improvement = higher score
+                rmsd_alignment = min(1.0, abs(move.estimated_rmsd_change) / 2.0)
+            else:  # RMSD increasing or no change
+                # Penalize RMSD increases
+                rmsd_alignment = max(0.0, 1.0 - move.estimated_rmsd_change / 5.0)
+            
+            # In validation mode, RMSD is MORE important than energy
+            return 0.3 * energy_alignment + 0.7 * rmsd_alignment
+        else:
+            # DE NOVO MODE: No native structure, use energy as primary guide
+            # RMSD change estimation (some conformational change is good for exploration)
+            optimal_rmsd_change = 1.0  # Ideal RMSD change for exploration
+            rmsd_alignment = 1.0 - abs(move.estimated_rmsd_change - optimal_rmsd_change) / 2.0
+            rmsd_alignment = max(0.0, rmsd_alignment)
 
-        # Combine
-        return 0.6 * energy_alignment + 0.4 * rmsd_alignment
+            # In de novo mode, energy is MORE important
+            return 0.6 * energy_alignment + 0.4 * rmsd_alignment

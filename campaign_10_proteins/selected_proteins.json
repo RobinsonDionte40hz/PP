@@ -1,0 +1,104 @@
+{
+  "protein_count": 9,
+  "proteins": [
+    {
+      "pdb_id": "1VII",
+      "sequence_length": 36,
+      "size_category": "tiny",
+      "structural_class": "all-alpha",
+      "experimental_method": "NMR",
+      "resolution": null,
+      "missing_residues_pct": 0.0,
+      "organism": "Synthetic",
+      "description": "Villin headpiece"
+    },
+    {
+      "pdb_id": "1ROP",
+      "sequence_length": 56,
+      "size_category": "small",
+      "structural_class": "all-alpha",
+      "experimental_method": "X-ray",
+      "resolution": 1.7,
+      "missing_residues_pct": 0.0,
+      "organism": "Escherichia coli",
+      "description": "Repressor of primer"
+    },
+    {
+      "pdb_id": "1UTG",
+      "sequence_length": 70,
+      "size_category": "small",
+      "structural_class": "alpha+beta",
+      "experimental_method": "X-ray",
+      "resolution": 1.4,
+      "missing_residues_pct": 0.0,
+      "organism": "Homo sapiens",
+      "description": "Uteroglobin"
+    },
+    {
+      "pdb_id": "1GB1",
+      "sequence_length": 56,
+      "size_category": "small",
+      "structural_class": "alpha+beta",
+      "experimental_method": "X-ray",
+      "resolution": 2.0,
+      "missing_residues_pct": 0.0,
+      "organism": "Streptococcus",
+      "description": "Protein G B1 domain"
+    },
+    {
+      "pdb_id": "1PGB",
+      "sequence_length": 56,
+      "size_category": "small",
+      "structural_class": "alpha+beta",
+      "experimental_method": "X-ray",
+      "resolution": 1.0,
+      "missing_residues_pct": 0.0,
+      "organism": "Streptococcus",
+      "description": "Protein G B1 (IgG binding)"
+    },
+    {
+      "pdb_id": "1HIV",
+      "sequence_length": 99,
+      "size_category": "small",
+      "structural_class": "all-alpha",
+      "experimental_method": "X-ray",
+      "resolution": 2.5,
+      "missing_residues_pct": 0.0,
+      "organism": "HIV-1",
+      "description": "HIV-1 protease"
+    },
+    {
+      "pdb_id": "1CHO",
+      "sequence_length": 128,
+      "size_category": "medium",
+      "structural_class": "alpha-beta",
+      "experimental_method": "X-ray",
+      "resolution": 2.2,
+      "missing_residues_pct": 0.0,
+      "organism": "Bacillus",
+      "description": "Chitinase"
+    },
+    {
+      "pdb_id": "3SSI",
+      "sequence_length": 107,
+      "size_category": "medium",
+      "structural_class": "all-beta",
+      "experimental_method": "X-ray",
+      "resolution": 1.8,
+      "missing_residues_pct": 0.0,
+      "organism": "Streptomyces",
+      "description": "Subtilisin inhibitor"
+    },
+    {
+      "pdb_id": "1MBN",
+      "sequence_length": 153,
+      "size_category": "medium",
+      "structural_class": "all-alpha",
+      "experimental_method": "X-ray",
+      "resolution": 1.5,
+      "missing_residues_pct": 0.0,
+      "organism": "Physeter catodon",
+      "description": "Myoglobin"
+    }
+  ]
+}

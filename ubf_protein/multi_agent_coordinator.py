@@ -38,7 +38,9 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
                  adaptive_config: Optional[AdaptiveConfig] = None,
                  enable_checkpointing: bool = True,
                  checkpoint_dir: str = "checkpoints",
-                 qcpp_integration: Optional[Any] = None):
+                 qcpp_integration: Optional[Any] = None,
+                 qcpp_analysis_frequency: int = 5,
+                 enable_thz_recording: bool = False):
         """
         Initialize multi-agent coordinator with protein sequence.
 
@@ -49,6 +51,8 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
             enable_checkpointing: Whether to enable automatic checkpointing
             checkpoint_dir: Directory for checkpoint files
             qcpp_integration: Optional QCPP integration adapter for physics-grounded exploration
+            qcpp_analysis_frequency: Analyze with QCPP every N iterations (default: 5 for performance)
+            enable_thz_recording: Enable THz signature recording in agents (for determinism research, default: False)
         """
         self._protein_sequence = protein_sequence
         self._agents: List[IProteinAgent] = []
@@ -56,6 +60,10 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
 
         # QCPP Integration (Task 7: Store QCPP integration reference)
         self._qcpp_integration = qcpp_integration
+        self._qcpp_analysis_frequency = qcpp_analysis_frequency
+        
+        # THz recording configuration (opt-in for determinism research)
+        self._enable_thz_recording = enable_thz_recording
         
         # Task 9: Initialize integrated trajectory recorder if QCPP enabled
         self._trajectory_recorder = None
@@ -63,7 +71,10 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
             try:
                 from .integrated_trajectory import IntegratedTrajectoryRecorder
                 self._trajectory_recorder = IntegratedTrajectoryRecorder(max_points=10000)
-                logger.info("Integrated trajectory recording enabled with QCPP")
+                logger.info(
+                    f"Integrated trajectory recording enabled with QCPP "
+                    f"(sampling every {qcpp_analysis_frequency} iterations)"
+                )
             except ImportError as e:
                 logger.warning(f"Could not initialize trajectory recorder: {e}")
                 self._trajectory_recorder = None
@@ -89,13 +100,14 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
         self._best_energy = float('inf')
         self._best_rmsd = float('inf')
 
-    def initialize_agents(self, count: int, diversity_profile: str = "balanced") -> List[IProteinAgent]:
+    def initialize_agents(self, count: int, diversity_profile: str = "balanced", native_structure: Optional[Any] = None) -> List[IProteinAgent]:
         """
         Initialize agents with diversity: 33% cautious, 34% balanced, 33% aggressive.
 
         Args:
             count: Number of agents to initialize
             diversity_profile: Diversity profile to use ("balanced" uses standard ratios)
+            native_structure: Optional native structure for RMSD validation
 
         Returns:
             List of initialized protein agents
@@ -144,7 +156,10 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
                     initial_frequency=frequency,
                     initial_coherence=coherence,
                     adaptive_config=self._adaptive_config,
-                    qcpp_integration=self._qcpp_integration
+                    native_structure=native_structure,
+                    qcpp_integration=self._qcpp_integration,
+                    qcpp_analysis_frequency=self._qcpp_analysis_frequency,
+                    enable_thz_recording=self._enable_thz_recording  # Pass THz recording flag
                 )
 
                 self._agents.append(agent)
@@ -254,7 +269,13 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
                 self._sync_shared_memories_to_agents()
             
             # Task 9: Record integrated trajectory point if QCPP enabled
-            if self._trajectory_recorder is not None and self._qcpp_integration is not None:
+            # Only record every N iterations to avoid performance bottleneck
+            should_record_trajectory = (
+                self._trajectory_recorder is not None 
+                and self._qcpp_integration is not None
+                and (self._total_iterations % self._qcpp_analysis_frequency == 0)
+            )
+            if should_record_trajectory:
                 try:
                     # Get best agent's current state for this iteration
                     best_agent = self._agents[0]  # Start with first agent
@@ -270,7 +291,7 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
                     best_conf = best_agent.get_current_conformation()
                     consciousness = best_agent._consciousness  # type: ignore
                     
-                    # Get QCPP metrics for best conformation
+                    # Get QCPP metrics for best conformation (only every N iterations now)
                     qcpp_metrics = self._qcpp_integration.analyze_conformation(best_conf)
                     
                     # Record trajectory point

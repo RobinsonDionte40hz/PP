@@ -16,7 +16,7 @@ import time
 import logging
 import os
 import random
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict, Optional, Tuple, Any
 from dataclasses import dataclass, asdict
 
 from .models import Conformation
@@ -236,7 +236,8 @@ class ValidationSuite:
                         pdb_id: str,
                         num_agents: int = 10,
                         iterations: int = 1000,
-                        use_multi_agent: bool = True) -> ValidationReport:
+                        use_multi_agent: bool = True,
+                        qcpp_integration: Optional[Any] = None) -> ValidationReport:
         """
         Run full validation on a single protein.
         
@@ -245,6 +246,7 @@ class ValidationSuite:
             num_agents: Number of agents for multi-agent exploration
             iterations: Number of iterations per agent
             use_multi_agent: If True, use multi-agent coordinator; if False, single agent
+            qcpp_integration: Optional QCPP integration adapter for physics-grounded exploration
         
         Returns:
             ValidationReport with all metrics
@@ -284,19 +286,17 @@ class ValidationSuite:
                 logger.info(f"Running multi-agent exploration ({num_agents} agents, {iterations} iterations each)")
                 coordinator = MultiAgentCoordinator(
                     protein_sequence=sequence,
-                    enable_checkpointing=False
+                    enable_checkpointing=False,
+                    qcpp_integration=qcpp_integration
                 )
                 
-                # Initialize agents with native structure
-                agents = []
-                for i in range(num_agents):
-                    agent = ProteinAgent(
-                        protein_sequence=sequence,
-                        native_structure=native_structure,
-                        enable_visualization=False
-                    )
-                    agents.append(agent)
-                coordinator._agents = agents
+                # Initialize agents with native structure using coordinator's method
+                # This ensures proper diversity, QCPP integration, and native structure
+                coordinator.initialize_agents(
+                    count=num_agents,
+                    diversity_profile="balanced",
+                    native_structure=native_structure
+                )
                 
                 results = coordinator.run_parallel_exploration(iterations)
                 
@@ -308,7 +308,8 @@ class ValidationSuite:
                 agent = ProteinAgent(
                     protein_sequence=sequence,
                     native_structure=native_structure,
-                    enable_visualization=False
+                    enable_visualization=False,
+                    qcpp_integration=qcpp_integration
                 )
                 
                 # Run exploration

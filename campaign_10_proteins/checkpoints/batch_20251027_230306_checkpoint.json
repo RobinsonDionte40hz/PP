@@ -1,0 +1,35 @@
+{
+  "batch_id": "batch_20251027_230306",
+  "checkpoint_time": "2025-10-27T23:17:50.402045",
+  "total_proteins": 9,
+  "completed_proteins": [
+    "1L2Y",
+    "1ENH",
+    "1PGB",
+    "1ROP",
+    "1BDD",
+    "2IGD",
+    "3SSI",
+    "3CLN",
+    "1AK3"
+  ],
+  "failed_proteins": [],
+  "pending_proteins": [],
+  "execution_times": {
+    "1L2Y": 121.13456559181213,
+    "1ENH": 143.94339895248413,
+    "1PGB": 146.89047813415527,
+    "1ROP": 190.70335936546326,
+    "1BDD": 197.59252834320068,
+    "2IGD": 198.42184281349182,
+    "3SSI": 476.993656873703,
+    "3CLN": 490.0458097457886,
+    "1AK3": 522.7654416561127
+  },
+  "configuration": {
+    "max_parallel": 3,
+    "checkpoint_interval": 5,
+    "cpu_threshold": 80.0,
+    "memory_threshold": 80.0
+  }
+}

@@ -34,6 +34,14 @@ from . import config as config_module
 # Set up logging
 logger = logging.getLogger(__name__)
 
+# THz signature recording for determinism testing
+try:
+    from .vibrational_analysis import create_vibrational_analyzer, THzSpectrum
+    HAS_THZ_ANALYSIS = True
+except ImportError:
+    HAS_THZ_ANALYSIS = False
+    logger.warning("THz vibrational analysis not available - signature recording disabled")
+
 # Task 5: Import RMSD calculator for native structure validation
 try:
     from .rmsd_calculator import RMSDCalculator
@@ -60,7 +68,9 @@ class ProteinAgent(IProteinAgent):
                  enable_visualization: bool = False,
                  max_snapshots: int = 1000,
                  native_structure: Optional[Conformation] = None,
-                 qcpp_integration: Optional[Any] = None):
+                 qcpp_integration: Optional[Any] = None,
+                 qcpp_analysis_frequency: int = 5,
+                 enable_thz_recording: bool = False):
         """
         Initialize protein agent with consciousness coordinates and protein sequence.
 
@@ -74,13 +84,16 @@ class ProteinAgent(IProteinAgent):
             max_snapshots: Maximum snapshots to store (prevents memory overflow)
             native_structure: Optional native structure for RMSD validation (Task 5)
             qcpp_integration: Optional QCPP integration adapter for physics-grounded exploration
+            qcpp_analysis_frequency: Analyze with QCPP every N iterations (default: 5 for performance)
+            enable_thz_recording: Enable THz signature recording at local minima (for determinism research, default: False)
         """
         # Create adaptive config if not provided
         if adaptive_config is None:
             adaptive_config = self._create_default_adaptive_config(protein_sequence)
         
-        # Store QCPP integration reference
+        # Store QCPP integration reference and analysis frequency
         self._qcpp_integration = qcpp_integration
+        self._qcpp_analysis_frequency = qcpp_analysis_frequency
 
         # Initialize consciousness system (physics-grounded if QCPP enabled)
         if qcpp_integration is not None:
@@ -184,6 +197,21 @@ class ProteinAgent(IProteinAgent):
         self._moves_accepted = 0
         self._moves_rejected = 0
         
+        # THz vibrational analysis (opt-in for determinism research) - MUST BE BEFORE visualization
+        self._enable_thz_recording = enable_thz_recording
+        self._thz_signature_history: List[THzSpectrum] = []
+        self._last_minima_energy = float('inf')
+        self._minima_detection_threshold = 5.0  # Energy change threshold for minima detection
+        
+        # Only create analyzer if THz recording is explicitly enabled
+        if enable_thz_recording and HAS_THZ_ANALYSIS:
+            self._thz_analyzer = create_vibrational_analyzer(cutoff=10.0, spring_constant=1.0)
+            logger.info("THz recording ENABLED for determinism analysis")
+        else:
+            self._thz_analyzer = None
+            if enable_thz_recording and not HAS_THZ_ANALYSIS:
+                logger.warning("THz recording requested but vibrational_analysis module not available")
+        
         # Create initial snapshot if visualization enabled
         if self._enable_visualization:
             self._capture_snapshot(iteration=0)
@@ -246,12 +274,18 @@ class ProteinAgent(IProteinAgent):
                         # Calculate physics factors (placeholder for now)
                         physics_factors = self._get_physics_factors(move)
 
-                        # Evaluate move
+                        # Get current RMSD if available (for validation guidance)
+                        current_rmsd = None
+                        if self._current_conformation.rmsd_to_native is not None:
+                            current_rmsd = self._current_conformation.rmsd_to_native
+
+                        # Evaluate move with RMSD awareness
                         weight = move_evaluator.evaluate_move(
                             move,
                             self._behavioral,
                             memory_influence,
-                            physics_factors
+                            physics_factors,
+                            current_rmsd
                         )
                         move_weights.append((move, weight))
                     except Exception as e:
@@ -329,8 +363,14 @@ class ProteinAgent(IProteinAgent):
                     )
                     
                     # QCPP Integration: Analyze conformation and update consciousness
+                    # Only run every N iterations for performance (default: every 5 iterations)
                     qcpp_metrics = None  # Store for memory creation
-                    if self._qcpp_integration is not None and success:
+                    should_analyze_qcpp = (
+                        self._qcpp_integration is not None 
+                        and success 
+                        and (self._iterations_completed % self._qcpp_analysis_frequency == 0)
+                    )
+                    if should_analyze_qcpp:
                         try:
                             # Analyze conformation with QCPP
                             qcpp_metrics = self._qcpp_integration.analyze_conformation(new_conformation)
@@ -497,6 +537,10 @@ class ProteinAgent(IProteinAgent):
         
         # Update temperature (simulated annealing)
         self._update_temperature()
+
+        # THz signature recording at local minima (only if enabled)
+        if self._enable_thz_recording:
+            self._record_thz_signature_if_minimum(outcome.new_conformation)
 
         # Capture visualization snapshot if enabled
         self._capture_snapshot(self._iterations_completed)
@@ -762,24 +806,89 @@ class ProteinAgent(IProteinAgent):
         Returns:
             Significance score (0.0-1.0)
         """
-        # Factor 1: Energy change impact (0.5 weight)
-        # Large negative changes are highly significant
-        energy_significance = min(1.0, max(0.0, -energy_change / 50.0))  # -50 kJ/mol = max significance
-
-        # Factor 2: Structural novelty (0.3 weight)
-        # For now, assume some novelty if successful
-        structural_novelty = 0.5 if success else 0.1
-
-        # Factor 3: RMSD improvement (0.2 weight)
-        # RMSD decrease is good
+        # Factor 1: RMSD improvement (0.5 weight) - PRIMARY OBJECTIVE
+        # RMSD decrease toward native structure is the main goal
         rmsd_significance = min(1.0, max(0.0, -rmsd_change / 2.0))  # -2 Å = max significance
 
-        # Combine factors
-        significance = (0.5 * energy_significance +
-                       0.3 * structural_novelty +
-                       0.2 * rmsd_significance)
+        # Factor 2: Energy change impact (0.3 weight) - SECONDARY
+        # Large negative changes are significant but not primary goal
+        energy_significance = min(1.0, max(0.0, -energy_change / 50.0))  # -50 kJ/mol = max significance
+
+        # Factor 3: Structural novelty (0.2 weight) - TERTIARY
+        # Exploration diversity
+        structural_novelty = 0.5 if success else 0.1
+
+        # Combine factors: RMSD-focused (50% RMSD, 30% energy, 20% novelty)
+        significance = (0.5 * rmsd_significance +
+                       0.3 * energy_significance +
+                       0.2 * structural_novelty)
 
         return min(1.0, significance)
+
+    def _record_thz_signature_if_minimum(self, conformation: Conformation) -> None:
+        """
+        Record THz signature if conformation represents a local energy minimum.
+        
+        Only called when enable_thz_recording=True (for determinism research).
+        Detects local minima by checking if energy has stabilized (low variation)
+        and is significantly lower than the last recorded minimum.
+        
+        Args:
+            conformation: Current conformation to potentially record
+        """
+        # Should only be called when THz recording is enabled
+        if not self._enable_thz_recording or self._thz_analyzer is None:
+            return
+        
+        current_energy = conformation.energy
+        
+        # Check if this is a local minimum (energy lower than recent history)
+        is_local_minimum = False
+        
+        # Method 1: Use local minima detector's stuck detection as proxy
+        # (stuck = energy stabilized = potential minimum)
+        if self._local_minima_detector.consecutive_stuck_iterations >= 3:
+            is_local_minimum = True
+        
+        # Method 2: Significant energy improvement from last recorded minimum
+        if abs(current_energy - self._last_minima_energy) > self._minima_detection_threshold:
+            if current_energy < self._last_minima_energy:
+                is_local_minimum = True
+        
+        # Record THz signature if this is a minimum
+        if is_local_minimum:
+            try:
+                # Extract CA coordinates from conformation
+                ca_coords = conformation.atom_coordinates  # Already list of (x,y,z) tuples
+                
+                if len(ca_coords) < 3:
+                    logger.warning(f"Not enough atoms ({len(ca_coords)}) for THz analysis")
+                    return
+                
+                # Calculate THz spectrum
+                spectrum = self._thz_analyzer.calculate_spectrum(
+                    ca_coordinates=ca_coords,
+                    n_modes=20,
+                    energy=current_energy,
+                    rmsd=conformation.rmsd_to_native or 0.0,
+                    qcp_score=None  # Will be added if QCPP integration active
+                )
+                
+                # Store in signature history
+                self._thz_signature_history.append(spectrum)
+                self._last_minima_energy = current_energy
+                
+                # Log significant peaks
+                peak_freqs = spectrum.get_peak_frequencies(threshold=0.1)
+                logger.info(
+                    f"THz signature recorded at minimum: "
+                    f"E={current_energy:.2f}, "
+                    f"peaks={len(peak_freqs)}, "
+                    f"dominant={peak_freqs[0] if peak_freqs else 0:.2f} THz"
+                )
+                
+            except Exception as e:
+                logger.warning(f"Failed to record THz signature: {e}")
 
     def get_current_conformation(self) -> Conformation:
         """Get current protein conformation."""
@@ -809,8 +918,25 @@ class ProteinAgent(IProteinAgent):
             metrics["best_gdt_ts"] = self._best_gdt_ts
         if hasattr(self, '_best_tm_score'):
             metrics["best_tm_score"] = self._best_tm_score
+        
+        # Add THz signature count if available
+        if hasattr(self, '_thz_signature_history'):
+            metrics["thz_signatures_recorded"] = len(self._thz_signature_history)
             
         return metrics
+    
+    def get_thz_signature_history(self) -> List[THzSpectrum]:
+        """
+        Get history of recorded THz signatures from local minima.
+        
+        Note: Only populated if enable_thz_recording=True was set during initialization.
+        
+        Returns:
+            List of THzSpectrum objects recorded during exploration (empty if THz recording disabled)
+        """
+        if hasattr(self, '_thz_signature_history'):
+            return self._thz_signature_history.copy()
+        return []
 
     def _calculate_learning_improvement(self) -> float:
         """

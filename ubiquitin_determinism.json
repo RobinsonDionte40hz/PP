@@ -1,0 +1,423 @@
+{
+  "experiment_info": {
+    "protein_sequence": "MQIFVKTLTGKTITLEVEPSDTIENVKAKIQDKEGIPPDQQRLIFAGKQLEDGRTLSDYNIQKESTLHLVLRLRGG",
+    "residue_count": 76,
+    "n_trials": 50,
+    "iterations_per_trial": 3000,
+    "elapsed_time_seconds": 253.19232368469238
+  },
+  "determinism_analysis": {
+    "determinism_score": 0.9961156410434229,
+    "convergence_quality": 0.98705213681141,
+    "signature_diversity": 0.0038843589565771275,
+    "n_clusters": 1,
+    "largest_cluster_fraction": 1.0,
+    "mean_inter_signature_similarity": 0.98705213681141,
+    "std_inter_signature_similarity": 0.007860598690680232,
+    "interpretation": "strong_determinism"
+  },
+  "clusters": [
+    {
+      "cluster_id": 0,
+      "member_count": 4,
+      "center_frequencies": [
+        2.766829017056642,
+        2.952375054503044,
+        3.1712396754927696,
+        3.2756285043663844,
+        3.327126018573611,
+        3.377573257322827,
+        3.4157322672415527,
+        3.4482285231833307,
+        3.4775794168695264,
+        3.490072022581508,
+        3.5076241597816304,
+        3.538422059189094,
+        3.549100049216718,
+        3.5515874205371523,
+        3.5593323460256894,
+        3.568673143392026,
+        3.5808408063937325,
+        3.5903040344331147,
+        3.5990526631220883,
+        3.610036028094154
+      ],
+      "center_intensities": [
+        1.0,
+        0.9533748628904666,
+        0.902971135953519,
+        0.880918346302305,
+        0.8703157691226417,
+        0.8604955053033396,
+        0.8530038256392061,
+        0.8467331116322582,
+        0.8411227059625591,
+        0.838771504732175,
+        0.8355078346501058,
+        0.8300070349332099,
+        0.8280616922188389,
+        0.8276175563496221,
+        0.8262178710548088,
+        0.8244926070080181,
+        0.8223156987148158,
+        0.8206090325330879,
+        0.8190217343923851,
+        0.8170519980267497
+      ],
+      "intra_cluster_similarity": 0.98705213681141,
+      "mean_energy": 0.0
+    }
+  ],
+  "trial_results": [
+    {
+      "trial_id": 0,
+      "final_energy": -365.4661450971021,
+      "final_rmsd": null,
+      "signatures_collected": 0,
+      "iterations_completed": 3000
+    },
+    {
+      "trial_id": 1,
+      "final_energy": -296.67800871385737,
+      "final_rmsd": null,
+      "signatures_collected": 0,
+      "iterations_completed": 3000
+    },
+    {
+      "trial_id": 2,
+      "final_energy": -288.92524814404464,
+      "final_rmsd": null,
+      "signatures_collected": 0,
+      "iterations_completed": 3000
+    },
+    {
+      "trial_id": 3,
+      "final_energy": -351.7827012984231,
+      "final_rmsd": null,
+      "signatures_collected": 0,
+      "iterations_completed": 3000
+    },
+    {
+      "trial_id": 4,
+      "final_energy": -364.11884185241706,
+      "final_rmsd": null,
+      "signatures_collected": 0,
+      "iterations_completed": 3000
+    },
+    {
+      "trial_id": 5,
+      "final_energy": -357.3170380555279,
+      "final_rmsd": null,
+      "signatures_collected": 0,
+      "iterations_completed": 3000
+    },
+    {
+      "trial_id": 6,
+      "final_energy": -351.1636576968288,
+      "final_rmsd": null,
+      "signatures_collected": 0,
+      "iterations_completed": 3000
+    },
+    {
+      "trial_id": 7,
+      "final_energy": -354.65060339286424,
+      "final_rmsd": null,
+      "signatures_collected": 0,
+      "iterations_completed": 3000
+    },
+    {
+      "trial_id": 8,
+      "final_energy": -333.9437560673608,
+      "final_rmsd": null,
+      "signatures_collected": 0,
+      "iterations_completed": 3000
+    },
+    {
+      "trial_id": 9,
+      "final_energy": -344.50997006772167,
+      "final_rmsd": null,
+      "signatures_collected": 0,
+      "iterations_completed": 3000
+    },
+    {
+      "trial_id": 10,
+      "final_energy": -356.4101432521916,
+      "final_rmsd": null,
+      "signatures_collected": 0,
+      "iterations_completed": 3000
+    },
+    {
+      "trial_id": 11,
+      "final_energy": -360.739165698846,
+      "final_rmsd": null,
+      "signatures_collected": 0,
+      "iterations_completed": 3000
+    },
+    {
+      "trial_id": 12,
+      "final_energy": -328.2170381863642,
+      "final_rmsd": null,
+      "signatures_collected": 0,
+      "iterations_completed": 3000
+    },
+    {
+      "trial_id": 13,
+      "final_energy": -346.3973447853711,
+      "final_rmsd": null,
+      "signatures_collected": 0,
+      "iterations_completed": 3000
+    },
+    {
+      "trial_id": 14,
+      "final_energy": -364.00576762202314,
+      "final_rmsd": null,
+      "signatures_collected": 0,
+      "iterations_completed": 3000
+    },
+    {
+      "trial_id": 15,
+      "final_energy": -347.91534641301524,
+      "final_rmsd": null,
+      "signatures_collected": 0,
+      "iterations_completed": 3000
+    },
+    {
+      "trial_id": 16,
+      "final_energy": -377.69623667139257,
+      "final_rmsd": null,
+      "signatures_collected": 0,
+      "iterations_completed": 3000
+    },
+    {
+      "trial_id": 17,
+      "final_energy": -343.3626158652805,
+      "final_rmsd": null,
+      "signatures_collected": 0,
+      "iterations_completed": 3000
+    },
+    {
+      "trial_id": 18,
+      "final_energy": -326.08696887255235,
+      "final_rmsd": null,
+      "signatures_collected": 0,
+      "iterations_completed": 3000
+    },
+    {
+      "trial_id": 19,
+      "final_energy": -335.86535391613415,
+      "final_rmsd": null,
+      "signatures_collected": 0,
+      "iterations_completed": 3000
+    },
+    {
+      "trial_id": 20,
+      "final_energy": -326.28766430916414,
+      "final_rmsd": null,
+      "signatures_collected": 0,
+      "iterations_completed": 3000
+    },
+    {
+      "trial_id": 21,
+      "final_energy": -389.914870061354,
+      "final_rmsd": null,
+      "signatures_collected": 0,
+      "iterations_completed": 3000
+    },
+    {
+      "trial_id": 22,
+      "final_energy": -382.04442248742026,
+      "final_rmsd": null,
+      "signatures_collected": 0,
+      "iterations_completed": 3000
+    },
+    {
+      "trial_id": 23,
+      "final_energy": -330.5666039872741,
+      "final_rmsd": null,
+      "signatures_collected": 0,
+      "iterations_completed": 3000
+    },
+    {
+      "trial_id": 24,
+      "final_energy": -374.8278162522658,
+      "final_rmsd": null,
+      "signatures_collected": 0,
+      "iterations_completed": 3000
+    },
+    {
+      "trial_id": 25,
+      "final_energy": -330.5650847526133,
+      "final_rmsd": null,
+      "signatures_collected": 0,
+      "iterations_completed": 3000
+    },
+    {
+      "trial_id": 26,
+      "final_energy": -319.9373224276564,
+      "final_rmsd": null,
+      "signatures_collected": 0,
+      "iterations_completed": 3000
+    },
+    {
+      "trial_id": 27,
+      "final_energy": -298.59007382697513,
+      "final_rmsd": null,
+      "signatures_collected": 0,
+      "iterations_completed": 3000
+    },
+    {
+      "trial_id": 28,
+      "final_energy": -324.9693534580264,
+      "final_rmsd": null,
+      "signatures_collected": 0,
+      "iterations_completed": 3000
+    },
+    {
+      "trial_id": 29,
+      "final_energy": -331.1782298905538,
+      "final_rmsd": null,
+      "signatures_collected": 0,
+      "iterations_completed": 3000
+    },
+    {
+      "trial_id": 30,
+      "final_energy": -346.4166815048072,
+      "final_rmsd": null,
+      "signatures_collected": 0,
+      "iterations_completed": 3000
+    },
+    {
+      "trial_id": 31,
+      "final_energy": -342.0118961717618,
+      "final_rmsd": null,
+      "signatures_collected": 0,
+      "iterations_completed": 3000
+    },
+    {
+      "trial_id": 32,
+      "final_energy": -355.938481158451,
+      "final_rmsd": null,
+      "signatures_collected": 0,
+      "iterations_completed": 3000
+    },
+    {
+      "trial_id": 33,
+      "final_energy": -350.3775736291402,
+      "final_rmsd": null,
+      "signatures_collected": 0,
+      "iterations_completed": 3000
+    },
+    {
+      "trial_id": 34,
+      "final_energy": -357.41585403238196,
+      "final_rmsd": null,
+      "signatures_collected": 0,
+      "iterations_completed": 3000
+    },
+    {
+      "trial_id": 35,
+      "final_energy": -341.74490326974853,
+      "final_rmsd": null,
+      "signatures_collected": 0,
+      "iterations_completed": 3000
+    },
+    {
+      "trial_id": 36,
+      "final_energy": -359.87451449600565,
+      "final_rmsd": null,
+      "signatures_collected": 0,
+      "iterations_completed": 3000
+    },
+    {
+      "trial_id": 37,
+      "final_energy": -365.1906614156592,
+      "final_rmsd": null,
+      "signatures_collected": 0,
+      "iterations_completed": 3000
+    },
+    {
+      "trial_id": 38,
+      "final_energy": -277.3061703230402,
+      "final_rmsd": null,
+      "signatures_collected": 0,
+      "iterations_completed": 3000
+    },
+    {
+      "trial_id": 39,
+      "final_energy": -353.27071701601756,
+      "final_rmsd": null,
+      "signatures_collected": 3,
+      "iterations_completed": 3000
+    },
+    {
+      "trial_id": 40,
+      "final_energy": -340.0294125050543,
+      "final_rmsd": null,
+      "signatures_collected": 0,
+      "iterations_completed": 3000
+    },
+    {
+      "trial_id": 41,
+      "final_energy": -360.26546766192405,
+      "final_rmsd": null,
+      "signatures_collected": 1,
+      "iterations_completed": 3000
+    },
+    {
+      "trial_id": 42,
+      "final_energy": -319.7249416809406,
+      "final_rmsd": null,
+      "signatures_collected": 0,
+      "iterations_completed": 3000
+    },
+    {
+      "trial_id": 43,
+      "final_energy": -368.6771080413495,
+      "final_rmsd": null,
+      "signatures_collected": 0,
+      "iterations_completed": 3000
+    },
+    {
+      "trial_id": 44,
+      "final_energy": -387.08057975410856,
+      "final_rmsd": null,
+      "signatures_collected": 0,
+      "iterations_completed": 3000
+    },
+    {
+      "trial_id": 45,
+      "final_energy": -335.0990764526486,
+      "final_rmsd": null,
+      "signatures_collected": 0,
+      "iterations_completed": 3000
+    },
+    {
+      "trial_id": 46,
+      "final_energy": -334.4062511181983,
+      "final_rmsd": null,
+      "signatures_collected": 0,
+      "iterations_completed": 3000
+    },
+    {
+      "trial_id": 47,
+      "final_energy": -360.96876208150525,
+      "final_rmsd": null,
+      "signatures_collected": 0,
+      "iterations_completed": 3000
+    },
+    {
+      "trial_id": 48,
+      "final_energy": -311.4110403738986,
+      "final_rmsd": null,
+      "signatures_collected": 0,
+      "iterations_completed": 3000
+    },
+    {
+      "trial_id": 49,
+      "final_energy": -286.0049463065308,
+      "final_rmsd": null,
+      "signatures_collected": 0,
+      "iterations_completed": 3000
+    }
+  ]
+}

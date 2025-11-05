@@ -39,6 +39,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from ubf_protein.validation_suite import ValidationSuite, ValidationReport
+from ubf_protein.qcpp_integration import QCPPIntegrationAdapter
+from ubf_protein.qcpp_config import get_default_config
 
 from .protein_selector import ProteinSelector, ProteinMetadata
 from .phase_manager import PhaseManager, Phase, QualityGateResult, PhaseStatus
@@ -74,6 +76,7 @@ class CampaignConfig:
         timeout_multiplier: Timeout as multiple of expected runtime
         random_seed: Random seed for reproducibility (None for random)
         output_dir: Directory for all campaign outputs
+        max_protein_size: Maximum protein size in residues (filters out larger proteins)
     """
     target_protein_count: int = 60
     enable_qcpp: bool = True
@@ -86,6 +89,7 @@ class CampaignConfig:
     timeout_multiplier: float = 2.0
     random_seed: Optional[int] = None
     output_dir: str = "./campaign_results"
+    max_protein_size: Optional[int] = None
 
 
 # ============================================================================
@@ -213,6 +217,7 @@ class LargeScaleValidationCampaign:
         self._documentation_generator: Optional[DocumentationGenerator] = None
         self._quality_controller: Optional[QualityController] = None
         self._validation_suite: Optional[ValidationSuite] = None
+        self._qcpp_adapter: Optional[QCPPIntegrationAdapter] = None
         
         # Campaign state
         self._is_setup = False
@@ -318,6 +323,41 @@ class LargeScaleValidationCampaign:
             self._validation_suite = ValidationSuite(
                 pdb_cache_dir=str(self.output_dir / "pdb_cache")
             )
+            
+            # QCPP integration (if enabled)
+            if self.config.enable_qcpp:
+                logger.info("Initializing QCPP integration...")
+                try:
+                    # Import QCPP components (adjust path for src directory)
+                    import sys
+                    from pathlib import Path
+                    src_path = Path(__file__).parent.parent / "src"
+                    if str(src_path) not in sys.path:
+                        sys.path.insert(0, str(src_path))
+                    
+                    from protein_predictor import QuantumCoherenceProteinPredictor
+                    
+                    # Create QCPP predictor
+                    qcpp_predictor = QuantumCoherenceProteinPredictor()
+                    
+                    # Create adapter with default config
+                    qcpp_config = get_default_config()
+                    self._qcpp_adapter = QCPPIntegrationAdapter(
+                        predictor=qcpp_predictor,
+                        cache_size=qcpp_config.cache_size
+                    )
+                    logger.info("✓ QCPP integration initialized successfully")
+                except ImportError as e:
+                    logger.warning(f"QCPP integration requested but QCPP not available: {e}")
+                    logger.warning("Continuing without QCPP integration")
+                    self._qcpp_adapter = None
+                except Exception as e:
+                    logger.warning(f"Failed to initialize QCPP integration: {e}")
+                    logger.warning("Continuing without QCPP integration")
+                    self._qcpp_adapter = None
+            else:
+                logger.info("QCPP integration disabled by configuration")
+                self._qcpp_adapter = None
             
             logger.info("All components initialized successfully")
             
@@ -543,7 +583,8 @@ class LargeScaleValidationCampaign:
                 pdb_id=protein.pdb_id,
                 num_agents=self.config.num_agents,
                 iterations=self.config.iterations_per_agent,
-                use_multi_agent=True
+                use_multi_agent=True,
+                qcpp_integration=self._qcpp_adapter
             )
             
             # Post-test validation (skip for now)

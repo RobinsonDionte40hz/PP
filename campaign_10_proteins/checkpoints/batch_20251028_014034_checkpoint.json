@@ -1,0 +1,15 @@
+{
+  "batch_id": "batch_20251028_014034",
+  "checkpoint_time": "2025-10-28T01:40:34.847088",
+  "total_proteins": 0,
+  "completed_proteins": [],
+  "failed_proteins": [],
+  "pending_proteins": [],
+  "execution_times": {},
+  "configuration": {
+    "max_parallel": 3,
+    "checkpoint_interval": 5,
+    "cpu_threshold": 80.0,
+    "memory_threshold": 80.0
+  }
+}

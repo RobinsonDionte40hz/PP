@@ -11,6 +11,11 @@ Usage:
   python test_protein.py --sequence ACDEFGHIKL          # Test custom sequence
   python test_protein.py --list                         # Show available proteins
   python test_protein.py --quick                        # Quick test on small protein
+
+Performance Notes:
+  - THz recording is DISABLED by default in main exploration (saves ~0.75s)
+  - THz is only ENABLED for separate determinism tests (when explicitly requested)
+  - This makes production runs faster while keeping determinism research available
 """
 
 import sys
@@ -32,6 +37,23 @@ from ubf_protein.qcpp_integration import QCPPIntegrationAdapter
 from ubf_protein.multi_agent_coordinator import MultiAgentCoordinator
 from Bio.PDB.PDBParser import PDBParser
 from Bio.PDB.Polypeptide import aa3, aa1
+
+# Import geometric attractor analysis
+try:
+    # Import the analysis components from test_geometric_attractors.py
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("geometric_attractors", "test_geometric_attractors.py")
+    geometric_module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(geometric_module)
+    
+    GoldenRatioAnalyzer = geometric_module.GoldenRatioAnalyzer
+    SymmetryAnalyzer = geometric_module.SymmetryAnalyzer
+    QCPPComponentAnalyzer = geometric_module.QCPPComponentAnalyzer
+    ProteinStructure = geometric_module.ProteinStructure
+    GEOMETRIC_ANALYSIS_AVAILABLE = True
+except Exception as e:
+    print(f"⚠️  Geometric attractor analysis not available: {e}")
+    GEOMETRIC_ANALYSIS_AVAILABLE = False
 
 
 def discover_pdb_files() -> dict:
@@ -159,6 +181,22 @@ def get_optimal_settings(sequence_length: int) -> dict:
         return {"agents": 50, "iterations": 300, "category": "very_large"}
 
 
+def get_quick_test_settings(sequence_length: int) -> dict:
+    """Get fast test settings for quick validation (10x fewer iterations)."""
+    if sequence_length < 50:
+        # Small proteins: Quick test with fewer iterations
+        return {"agents": 10, "iterations": 50, "category": "small"}
+    elif sequence_length < 100:
+        # Medium proteins
+        return {"agents": 10, "iterations": 40, "category": "medium"}
+    elif sequence_length < 150:
+        # Large proteins
+        return {"agents": 15, "iterations": 40, "category": "large"}
+    else:
+        # Very large
+        return {"agents": 20, "iterations": 50, "category": "very_large"}
+
+
 def load_experimental_data(pdb_id: str) -> Optional[dict]:
     """Load experimental data if available."""
     exp_file = Path("data/experimental_stability.csv")
@@ -177,6 +215,163 @@ def load_experimental_data(pdb_id: str) -> Optional[dict]:
         }
     except Exception as e:
         print(f"⚠️  Could not load experimental data: {e}")
+        return None
+
+
+def analyze_geometric_attractors(pdb_file: Path, sequence: str, qcp_values: Optional[list], 
+                                 estimated_rmsd: float, best_energy: float) -> Optional[dict]:
+    """Analyze protein structure for golden ratio patterns, symmetry, and QCPP components."""
+    
+    if not GEOMETRIC_ANALYSIS_AVAILABLE:
+        return None
+    
+    try:
+        print(f"\n[BONUS] Analyzing geometric attractors (golden ratio, symmetry)...")
+        
+        # Create protein structure object
+        protein_struct = ProteinStructure(
+            name=pdb_file.stem,
+            pdb_file=pdb_file,
+            sequence=sequence,
+            num_residues=len(sequence),
+            rmsd=estimated_rmsd,
+            energy=best_energy,
+            qcp_values=qcp_values
+        )
+        
+        # Run analyses
+        golden_analyzer = GoldenRatioAnalyzer()
+        symmetry_analyzer = SymmetryAnalyzer()
+        qcpp_analyzer = QCPPComponentAnalyzer()
+        
+        golden_results = golden_analyzer.analyze_structure(protein_struct)
+        symmetry_results = symmetry_analyzer.analyze_structure(protein_struct)
+        qcpp_results = qcpp_analyzer.analyze_structure(protein_struct)
+        
+        # Print summary
+        print(f"✓ Geometric analysis complete:")
+        print(f"  🌟 Golden Ratio (φ) Patterns: {golden_results.golden_ratio_percentage:.1f}% "
+              f"({golden_results.golden_ratios}/{golden_results.total_ratios} distance ratios)")
+        print(f"  🔷 Rotational Symmetry: {symmetry_results.rotational_symmetry:.3f}")
+        print(f"  🔶 Local Symmetry: {symmetry_results.local_symmetry:.3f}")
+        print(f"  📐 Platonic Solid Similarities:")
+        print(f"     - Icosahedron (φ-based): {symmetry_results.icosahedron_similarity:.3f}")
+        print(f"     - Dodecahedron (φ-based): {symmetry_results.dodecahedron_similarity:.3f}")
+        print(f"     - Octahedron: {symmetry_results.octahedron_similarity:.3f}")
+        
+        # Interpret findings
+        if golden_results.golden_ratio_percentage > 15:
+            print(f"  ✨ HIGH φ content detected! Structure may leverage geometric optimization.")
+        elif golden_results.golden_ratio_percentage > 10:
+            print(f"  ⚡ Moderate φ content. Some geometric patterns present.")
+        
+        if symmetry_results.icosahedron_similarity > 0.6 or symmetry_results.dodecahedron_similarity > 0.6:
+            print(f"  🌟 Strong similarity to φ-containing Platonic solids!")
+            print(f"     This supports the geometric attractor hypothesis.")
+        
+        return {
+            'golden_ratio': {
+                'percentage': golden_results.golden_ratio_percentage,
+                'total_patterns': golden_results.golden_ratios,
+                'total_ratios_analyzed': golden_results.total_ratios
+            },
+            'symmetry': {
+                'rotational': symmetry_results.rotational_symmetry,
+                'local': symmetry_results.local_symmetry,
+                'radius_of_gyration': symmetry_results.radius_of_gyration,
+                'asphericity': symmetry_results.asphericity
+            },
+            'platonic_similarity': {
+                'tetrahedron': symmetry_results.tetrahedron_similarity,
+                'cube': symmetry_results.cube_similarity,
+                'octahedron': symmetry_results.octahedron_similarity,
+                'dodecahedron': symmetry_results.dodecahedron_similarity,
+                'icosahedron': symmetry_results.icosahedron_similarity
+            },
+            'qcpp_components': {
+                'golden_correlation': qcpp_results.golden_correlation,
+                'doubling_correlation': qcpp_results.doubling_correlation
+            }
+        }
+        
+    except Exception as e:
+        print(f"⚠️  Could not complete geometric analysis: {e}")
+        return None
+
+
+def analyze_thz_determinism(sequence: str, num_trials: int = 10, 
+                           iterations_per_trial: int = 100) -> Optional[dict]:
+    """Test folding determinism using THz signature clustering."""
+    
+    try:
+        print(f"\n[BONUS] Testing THz determinism with {num_trials} trials...")
+        
+        # Import determinism testing
+        from ubf_protein.protein_agent import ProteinAgent
+        from ubf_protein.signature_analysis import create_determinism_tester
+        
+        # Run multiple trials
+        all_frequencies = []
+        all_intensities = []
+        trial_energies = []
+        
+        for trial_num in range(num_trials):
+            # Create agent with unique behavior and THz recording ENABLED
+            agent = ProteinAgent(
+                protein_sequence=sequence,
+                initial_frequency=9.0,
+                initial_coherence=0.6,
+                enable_visualization=False,
+                enable_thz_recording=True  # ← ENABLE for determinism test
+            )
+            
+            # Run exploration
+            for _ in range(iterations_per_trial):
+                try:
+                    agent.explore_step()
+                except:
+                    break
+            
+            # Get THz signatures
+            thz_history = agent.get_thz_signature_history()
+            metrics = agent.get_exploration_metrics()
+            trial_energies.append(metrics['best_energy'])
+            
+            # Collect signatures
+            for spectrum in thz_history:
+                all_frequencies.append(spectrum.frequencies)
+                all_intensities.append(spectrum.intensities)
+        
+        if len(all_frequencies) < 2:
+            print(f"  ⚠️  Not enough signatures collected ({len(all_frequencies)})")
+            return None
+        
+        # Analyze determinism
+        tester = create_determinism_tester(similarity_threshold=0.7)
+        score = tester.calculate_determinism_score(all_frequencies, all_intensities)
+        
+        print(f"✓ THz determinism analysis complete:")
+        print(f"  🎵 Signatures collected: {len(all_frequencies)}")
+        print(f"  📊 Clusters found: {score.n_clusters}")
+        print(f"  🎯 Convergence: {score.convergence_ratio:.1%} in largest cluster")
+        print(f"  🔬 Determinism score: {score.determinism_score:.3f}")
+        print(f"  💡 {score.interpret()}")
+        
+        return {
+            'total_signatures': len(all_frequencies),
+            'num_trials': num_trials,
+            'num_clusters': score.n_clusters,
+            'largest_cluster_size': score.largest_cluster_size,
+            'convergence_ratio': score.convergence_ratio,
+            'determinism_score': score.determinism_score,
+            'interpretation': score.interpret(),
+            'avg_trial_energy': sum(trial_energies) / len(trial_energies)
+        }
+        
+    except Exception as e:
+        print(f"⚠️  Could not complete THz determinism test: {e}")
+        import traceback
+        traceback.print_exc()
         return None
 
 
@@ -214,15 +409,22 @@ def run_protein_test(sequence: str, pdb_file: Optional[Path] = None, pdb_id: Opt
     # Step 1: Initialize QCPP
     print(f"\n[1/5] Initializing QCPP predictor...")
     qcpp_predictor = QuantumCoherenceProteinPredictor()
-    cache_size = 5000
+    
+    # Use large cache + infrequent analysis for performance
+    cache_size = 10000  # Large cache to maximize hits
     qcpp_adapter = QCPPIntegrationAdapter(qcpp_predictor, cache_size)
-    print(f"✓ QCPP initialized")
+    
+    # QCPP analysis frequency: 20 = analyze every 20th iteration (20x speedup)
+    # This balances physics guidance with performance
+    qcpp_freq = 20
+    print(f"✓ QCPP initialized (cache={cache_size}, analyzing every {qcpp_freq} iterations)")
     
     # Step 2: Create coordinator
     print(f"\n[2/5] Creating multi-agent coordinator...")
     coordinator = MultiAgentCoordinator(
         protein_sequence=sequence,
-        qcpp_integration=qcpp_adapter
+        qcpp_integration=qcpp_adapter,
+        qcpp_analysis_frequency=qcpp_freq
     )
     
     coordinator.initialize_agents(
@@ -265,6 +467,7 @@ def run_protein_test(sequence: str, pdb_file: Optional[Path] = None, pdb_id: Opt
     
     # Step 5: Calculate RMSE if experimental data available
     rmse_results = None
+    qcp_values_native = None
     if pdb_file and exp_data:
         print(f"\n[5/5] Calculating prediction accuracy (RMSE)...")
         
@@ -274,8 +477,8 @@ def run_protein_test(sequence: str, pdb_file: Optional[Path] = None, pdb_id: Opt
         qcp_df = qcpp_native.calculate_qcp()
         
         if qcp_df is not None and len(qcp_df) > 0:
-            qcp_values = qcp_df['qcp'].to_numpy()
-            avg_qcp = float(np.mean(qcp_values))
+            qcp_values_native = qcp_df['qcp'].to_numpy().tolist()
+            avg_qcp = float(np.mean(qcp_values_native))
             stability_score = avg_qcp / 5.0
             
             # Use validated scaling
@@ -310,6 +513,26 @@ def run_protein_test(sequence: str, pdb_file: Optional[Path] = None, pdb_id: Opt
     else:
         print(f"\n[5/5] Skipping RMSE (no experimental data available)")
     
+    # Bonus: Geometric Attractor Analysis
+    geometric_results = None
+    if pdb_file:
+        geometric_results = analyze_geometric_attractors(
+            pdb_file=pdb_file,
+            sequence=sequence,
+            qcp_values=qcp_values_native,
+            estimated_rmsd=estimated_rmsd,
+            best_energy=results.best_energy
+        )
+    
+    # Bonus: THz Determinism Test (smaller scale for speed)
+    thz_results = None
+    if len(sequence) <= 20:  # Only for small proteins (fast testing)
+        thz_results = analyze_thz_determinism(
+            sequence=sequence,
+            num_trials=10,
+            iterations_per_trial=100
+        )
+    
     # Get cache stats
     cache_stats = qcpp_adapter.get_cache_stats()
     
@@ -335,6 +558,40 @@ def run_protein_test(sequence: str, pdb_file: Optional[Path] = None, pdb_id: Opt
         print(f"  - Temperature RMSE: {rmse_results['temperature_rmse']:.2f} °C")
         print(f"  - ΔG RMSE: {rmse_results['dg_rmse']:.2f} kcal/mol")
         print(f"  - Overall Quality: {rmse_results['quality']}")
+    
+    if geometric_results:
+        print(f"\n🔬 GEOMETRIC ATTRACTOR ANALYSIS:")
+        print(f"  - Golden Ratio (φ) Patterns: {geometric_results['golden_ratio']['percentage']:.1f}%")
+        print(f"  - Rotational Symmetry: {geometric_results['symmetry']['rotational']:.3f}")
+        print(f"  - Icosahedron Similarity: {geometric_results['platonic_similarity']['icosahedron']:.3f}")
+        print(f"  - Dodecahedron Similarity: {geometric_results['platonic_similarity']['dodecahedron']:.3f}")
+        
+        # Interpretation
+        phi_pct = geometric_results['golden_ratio']['percentage']
+        icosa_sim = geometric_results['platonic_similarity']['icosahedron']
+        dodeca_sim = geometric_results['platonic_similarity']['dodecahedron']
+        
+        if phi_pct > 15 or icosa_sim > 0.6 or dodeca_sim > 0.6:
+            print(f"  ✨ HYPOTHESIS SUPPORT: Strong geometric optimization detected!")
+        elif phi_pct > 10:
+            print(f"  ⚡ HYPOTHESIS SUPPORT: Moderate geometric patterns present")
+        else:
+            print(f"  📊 Low geometric optimization (expected for small/unstructured proteins)")
+    
+    if thz_results:
+        print(f"\n🎵 THz DETERMINISM ANALYSIS:")
+        print(f"  - Signatures collected: {thz_results['total_signatures']}")
+        print(f"  - Signature clusters: {thz_results['num_clusters']}")
+        print(f"  - Convergence ratio: {thz_results['convergence_ratio']:.1%}")
+        print(f"  - Determinism score: {thz_results['determinism_score']:.3f}")
+        print(f"  - {thz_results['interpretation']}")
+        
+        if thz_results['determinism_score'] > 0.8:
+            print(f"  🌟 STRONG EVIDENCE: Folding is highly deterministic!")
+        elif thz_results['determinism_score'] > 0.6:
+            print(f"  ✨ MODERATE EVIDENCE: Multiple convergent pathways")
+        else:
+            print(f"  ⚡ WEAK EVIDENCE: Stochastic folding behavior")
     
     print(f"\n" + "="*70)
     
@@ -380,6 +637,8 @@ def run_protein_test(sequence: str, pdb_file: Optional[Path] = None, pdb_id: Opt
             'avg_calculation_time_ms': cache_stats['avg_calculation_time_ms']
         },
         'rmse_validation': rmse_results,
+        'geometric_attractor_analysis': geometric_results,
+        'thz_determinism_analysis': thz_results,
         'timestamp': datetime.now().isoformat()
     }
     
@@ -455,8 +714,14 @@ Examples:
     
     # Quick test
     if args.quick:
-        print("🚀 Quick Test Mode: Using Villin (1VII, 35 residues)")
+        print("🚀 Quick Test Mode: Using Villin (1VII, 35 residues, reduced iterations)")
         args.pdb = '1VII'
+        # Override with quick settings - much fewer iterations for speed
+        quick_settings = get_quick_test_settings(35)
+        if not args.agents:
+            args.agents = quick_settings['agents']
+        if not args.iterations:
+            args.iterations = quick_settings['iterations']
     
     # Validate input
     if not args.pdb and not args.sequence:

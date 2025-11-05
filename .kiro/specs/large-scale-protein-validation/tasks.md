@@ -225,10 +225,91 @@
   - _Requirements: All requirements (integration testing)_
   - _Files: `validation/tests/test_integration.py`, `validation/tests/INTEGRATION_TEST_STATUS.md`_
 
-- [ ] 16. Create documentation and examples
+- [ ] 16. Implement VibrationalAnalyzer for THz spectrum calculation
+  - Create `VibrationalAnalyzer` class with normal mode analysis
+  - Implement Hessian matrix calculation from molecular mechanics force field
+  - Implement normal mode extraction using scipy.linalg.eigh
+  - Implement THz spectrum generation (10-50 THz range)
+  - Implement mode intensity calculations
+  - Implement signature similarity matching algorithm
+  - Implement Hessian caching for performance optimization
+  - Create `THzSpectrum` and `NormalModeData` dataclasses
+  - Target performance: <50ms per spectrum calculation
+  - _Requirements: 11.1, 11.2_
+  - _Files: `validation/vibrational_analyzer.py`_
+
+- [ ] 17. Implement SignatureDatabase for THz pattern storage
+  - Create `SignatureDatabase` class with HDF5 storage backend
+  - Implement signature storage with quality metrics mapping
+  - Implement similarity query using approximate nearest neighbor search
+  - Implement signature clustering (k-means, hierarchical)
+  - Implement successful signature retrieval (RMSD < 5.0 Å filter)
+  - Implement database export and import functionality
+  - Implement signature statistics calculation
+  - Create `QualityMetrics`, `SignatureMatch`, `SignatureCluster`, and `SignatureStatistics` dataclasses
+  - Index by PDB ID, energy, RMSD for fast queries
+  - _Requirements: 11.3, 11.4, 11.5_
+  - _Files: `validation/signature_database.py`_
+
+- [ ] 18. Implement VibrationalGuidedAgent extension
+  - Create `VibrationalGuidedAgent` class extending `ProteinAgent`
+  - Implement THz-guided move evaluation with signature matching
+  - Implement THz alignment factor calculation
+  - Implement consciousness coordinate updates with THz dimension
+  - Implement THz signature recording at energy minima
+  - Implement learning progress tracking
+  - Create `THzLearningMetrics` and `THzMemory` dataclasses
+  - Integrate with collective memory pool for THz signature sharing
+  - _Requirements: 12.1, 12.2, 12.3, 12.4, 12.5_
+  - _Files: `validation/vibrational_guided_agent.py`_
+
+- [ ] 19. Integrate THz analysis into LargeScaleValidationCampaign
+  - Add `enable_thz_analysis` parameter to `CampaignConfig`
+  - Create `THzConfig` dataclass for THz-specific settings
+  - Initialize `VibrationalAnalyzer` and `SignatureDatabase` in campaign setup
+  - Modify test execution to use `VibrationalGuidedAgent` when THz enabled
+  - Implement THz signature collection during exploration
+  - Implement incremental signature database building
+  - Add THz metrics to `CampaignResults` and `PhaseResults`
+  - Implement THz learning phase transitions (exploration → pattern recognition → targeted seeking)
+  - _Requirements: 11.1, 11.2, 11.3, 11.4, 11.5, 12.1, 12.2, 12.3, 12.4, 12.5_
+  - _Files: `validation/large_scale_validation_campaign.py` (modifications)_
+
+- [ ] 20. Implement THz analysis reporting
+  - Add THz analysis section to `DocumentationGenerator`
+  - Implement THz signature convergence visualization
+  - Implement THz-quality correlation plots
+  - Implement signature cluster visualization
+  - Implement learning efficiency metrics reporting
+  - Add hypothesis result determination (strong determinism / multiple pathways / stochastic)
+  - Export THz analysis results to research reports
+  - _Requirements: 11.5, 12.5_
+  - _Files: `validation/documentation_generator.py` (modifications)_
+
+- [ ] 21. Write unit tests for THz components
+  - Write unit tests for `VibrationalAnalyzer` (Hessian calculation, normal modes, THz spectrum)
+  - Write unit tests for `SignatureDatabase` (storage, queries, clustering)
+  - Write unit tests for `VibrationalGuidedAgent` (THz-guided evaluation, consciousness updates)
+  - Write unit tests for THz integration in campaign orchestrator
+  - Write unit tests for THz reporting functionality
+  - _Requirements: 11.1, 11.2, 11.3, 11.4, 11.5, 12.1, 12.2, 12.3, 12.4, 12.5_
+  - _Files: `validation/tests/test_vibrational_analyzer.py`, `validation/tests/test_signature_database.py`, `validation/tests/test_vibrational_guided_agent.py`_
+
+- [ ] 22. Write integration tests for THz-guided exploration
+  - Write test for THz-guided agent learning with signature database
+  - Write test for signature convergence over exploration iterations
+  - Write test for learning efficiency comparison (THz-guided vs baseline)
+  - Write test for THz spectrum accuracy against known vibrational data
+  - Write test for signature clustering producing meaningful groups
+  - _Requirements: 11.1, 11.2, 11.3, 11.4, 11.5, 12.1, 12.2, 12.3, 12.4, 12.5_
+  - _Files: `validation/tests/test_thz_integration.py`_
+
+- [ ] 23. Create documentation and examples
   - Create README.md for large-scale validation framework
   - Create usage examples for different campaign configurations
+  - Create THz-guided exploration examples
   - Create troubleshooting guide for common issues
   - Document configuration options and their effects
   - Create visualization examples for generated reports
+  - Document THz analysis methodology and interpretation
   - _Requirements: All requirements (documentation)_

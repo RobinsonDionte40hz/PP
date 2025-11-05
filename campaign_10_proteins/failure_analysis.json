@@ -1,0 +1,16 @@
+{
+  "total_failures": 9,
+  "patterns": {
+    "common_size_category": null,
+    "common_structural_class": null,
+    "average_secondary_structure_content": {
+      "helix": 0.0,
+      "sheet": 0.0,
+      "coil": 1.0
+    },
+    "common_issues": []
+  },
+  "recommendations": [
+    "High coil content: Increase flexibility with lower structural_focus"
+  ]
+}
