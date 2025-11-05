@@ -7,3 +7,52 @@ __pycache__/
 .pytest_cache/
 *.egg-info/
 temp.pdb
+# Cleanup v2 additions
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# Virtual environments
+venv/
+.venv/
+myvenv/
+pypy_env/
+
+# Results and outputs
+results/**/*.json
+test_results.json
+validation_*.json
+ubiquitin_*.json
+*_results.json
+
+# Checkpoints (keep only recent)
+checkpoints/checkpoint_*.json
+ubf_protein/checkpoints/checkpoint_*.json
+
+# Temporary files
+*.pdb
+temp.*
+*.tmp
+
+# Backup directories
+backup_*/
+
+# Logs
+*.log
+
+# IDE/Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Distribution
+*.egg-info/
+dist/
+build/

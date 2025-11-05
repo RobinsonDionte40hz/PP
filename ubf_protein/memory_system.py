@@ -134,24 +134,27 @@ class MemorySystem(IMemorySystem):
                                  outcome: ConformationalOutcome,
                                  consciousness_state: ConsciousnessCoordinates,
                                  behavioral_state: BehavioralStateData,
-                                 qcpp_metrics: Optional[Any] = None) -> ConformationalMemory:
+                                 qcpp_metrics: Optional[Any] = None,
+                                 conformation: Optional[Any] = None) -> ConformationalMemory:
         """
         Create a memory from a conformational outcome.
         
         If qcpp_metrics is provided, creates a QCPPValidatedMemory with
         enhanced significance calculation including QCPP stability.
+        If conformation is provided, generates hash for QCPP metrics reuse.
 
         Args:
             outcome: The outcome to create memory from
             consciousness_state: Consciousness state when outcome occurred
             behavioral_state: Behavioral state when outcome occurred
             qcpp_metrics: Optional QCPP metrics for validation (QCPPMetrics instance)
+            conformation: Optional conformation for hash generation
 
         Returns:
             New ConformationalMemory or QCPPValidatedMemory instance
         """
-        # Calculate base significance based on outcome impact
-        base_significance = self._calculate_significance(outcome)
+        # Calculate base significance with QCPP metrics if available
+        base_significance = self._calculate_significance(outcome, qcpp_metrics)
         
         # Extract timestamp from move_id if possible
         timestamp = 0
@@ -167,6 +170,11 @@ class MemorySystem(IMemorySystem):
             # Combine base and QCPP significance (weighted: 70% base, 30% QCPP)
             total_significance = min(1.0, base_significance * 0.7 + qcpp_significance * 0.3)
             
+            # Generate conformation hash if conformation provided
+            conf_hash = None
+            if conformation is not None:
+                conf_hash = self._hash_conformation(conformation)
+            
             return QCPPValidatedMemory(
                 memory_id=str(uuid.uuid4()),
                 move_type=outcome.move_executed.move_type.value,
@@ -178,7 +186,8 @@ class MemorySystem(IMemorySystem):
                 consciousness_state=consciousness_state,
                 behavioral_state=behavioral_state,
                 qcpp_metrics=qcpp_metrics,
-                qcpp_significance=qcpp_significance
+                qcpp_significance=qcpp_significance,
+                conformation_hash=conf_hash
             )
         else:
             # Create standard memory without QCPP validation
@@ -206,35 +215,202 @@ class MemorySystem(IMemorySystem):
             for move_type, memories in self._memories.items()
         }
 
-    def _calculate_significance(self, outcome: ConformationalOutcome) -> float:
+    def _calculate_significance(self, outcome: ConformationalOutcome, qcpp_metrics: Optional[Any] = None) -> float:
         """
         Calculate significance score for an outcome (0.0-1.0).
-
-        Based on energy change magnitude and structural impact.
+        
+        Now uses 8 signals for comprehensive learning (NEW: geometric targeting):
+        1. Energy impact (25%): Magnitude of energy change  [reduced from 30%]
+        2. Structural novelty (20%): RMSD change
+        3. THz activity (15%): 40 Hz resonance patterns from QCPP
+        4. Geometric patterns (10%): Golden ratio (φ) angle matching
+        5. Field coherence (10%): Quantum field alignment
+        6. Hydrophobic clustering (5%): Core formation patterns  [reduced from 10%]
+        7. Secondary structure (5%): Helix/sheet formation
+        8. Geometric targeting (10%): Similarity to target Platonic solid [NEW]
 
         Args:
             outcome: The outcome to evaluate
+            qcpp_metrics: Optional QCPP metrics for physics-based signals
 
         Returns:
             Significance score between 0.0 and 1.0
         """
-        # Energy significance (larger changes = more significant)
+        # Signal 1: Energy impact (25%) - larger changes = more significant [reduced from 30%]
         energy_significance = min(1.0, abs(outcome.energy_change) / 100.0)
-
-        # Structural significance (larger RMSD changes = more significant)
+        
+        # Signal 2: Structural novelty (20%) - larger RMSD changes = more significant
         structural_significance = min(1.0, outcome.rmsd_change / 5.0)
-
-        # Success bonus
-        success_bonus = 0.2 if outcome.success else 0.0
-
-        # Combine factors (weighted average)
+        
+        # Initialize physics-based signals to neutral values
+        thz_significance = 0.5  # Default: moderate significance
+        geometric_significance = 0.5
+        coherence_significance = 0.5
+        geometric_targeting_significance = 0.0  # NEW: Default 0 (no target)
+        
+        # Signals 3-5, 8: Physics-based signals from QCPP (if available)
+        if qcpp_metrics is not None:
+            try:
+                # Signal 3: THz activity (15%) - resonance with consciousness frequencies
+                # 40 Hz is the target "gamma band" for consciousness
+                # QCPP's QCP score correlates with THz resonance strength
+                # Normalize QCP score (typically 3-8) to significance
+                thz_significance = min(1.0, max(0.0, (qcpp_metrics.qcp_score - 3.0) / 5.0))
+                
+                # Signal 4: Geometric patterns (10%) - golden ratio matching
+                # phi_match_score is already 0-1, use directly
+                geometric_significance = qcpp_metrics.phi_match_score
+                
+                # Signal 5: Field coherence (10%) - quantum field alignment
+                # Normalize coherence from [-1, 1] to [0, 1]
+                coherence_significance = (qcpp_metrics.field_coherence + 1.0) / 2.0
+                
+                # Signal 8: Geometric targeting (10%) - NEW: Prescriptive geometric guidance
+                # geometric_similarity is 0.0 if no target, 0.0-1.0 if targeting enabled
+                geometric_targeting_significance = qcpp_metrics.geometric_similarity
+                
+                # Boost significance for high geometric similarity (strong attractor)
+                if geometric_targeting_significance > 0.7:
+                    geometric_targeting_significance *= 1.5  # Extra weight for good matches
+                    geometric_targeting_significance = min(1.0, geometric_targeting_significance)
+                
+            except Exception as e:
+                logger.warning(f"Error extracting QCPP signals for significance: {e}")
+        
+        # Signal 6: Hydrophobic clustering (5%) - core formation [reduced from 10%]
+        hydrophobic_significance = self._calculate_hydrophobic_significance(outcome.new_conformation)
+        
+        # Signal 7: Secondary structure (5%) - helix/sheet formation
+        ss_significance = self._calculate_secondary_structure_significance(outcome.new_conformation)
+        
+        # Weighted combination of all 8 signals (total: 100%)
         significance = (
-            energy_significance * 0.5 +
-            structural_significance * 0.3 +
-            success_bonus
+            energy_significance * 0.25 +            # Reduced from 0.30
+            structural_significance * 0.20 +
+            thz_significance * 0.15 +
+            geometric_significance * 0.10 +
+            coherence_significance * 0.10 +
+            hydrophobic_significance * 0.05 +       # Reduced from 0.10
+            ss_significance * 0.05 +
+            geometric_targeting_significance * 0.10  # NEW: 8th signal
         )
-
+        
+        # Success bonus (up to +0.2, capped at 1.0)
+        if outcome.success:
+            significance = min(1.0, significance + 0.2)
+        
         return min(1.0, significance)
+    
+    def _calculate_hydrophobic_significance(self, conformation: Any) -> float:
+        """
+        Calculate hydrophobic clustering significance (0.0-1.0).
+        
+        Measures how well hydrophobic residues cluster together,
+        indicating core formation - a key folding event.
+        
+        Args:
+            conformation: Conformation to analyze
+            
+        Returns:
+            Hydrophobic significance score (0-1)
+        """
+        try:
+            # Hydrophobic residues
+            hydrophobic = {'ALA', 'VAL', 'ILE', 'LEU', 'MET', 'PHE', 'TRP', 'PRO'}
+            
+            # Get sequence and check hydrophobic count
+            sequence = conformation.sequence
+            hydrophobic_indices = [i for i, aa in enumerate(sequence) if aa in hydrophobic]
+            
+            if len(hydrophobic_indices) < 2:
+                return 0.3  # Neutral if insufficient hydrophobic residues
+            
+            # Calculate average distance between hydrophobic residues
+            coords = conformation.atom_coordinates
+            total_distance = 0.0
+            pair_count = 0
+            
+            for i in range(len(hydrophobic_indices)):
+                for j in range(i + 1, len(hydrophobic_indices)):
+                    idx1, idx2 = hydrophobic_indices[i], hydrophobic_indices[j]
+                    if idx1 < len(coords) and idx2 < len(coords):
+                        c1, c2 = coords[idx1], coords[idx2]
+                        dist = ((c1[0]-c2[0])**2 + (c1[1]-c2[1])**2 + (c1[2]-c2[2])**2)**0.5
+                        total_distance += dist
+                        pair_count += 1
+            
+            if pair_count == 0:
+                return 0.3
+            
+            avg_distance = total_distance / pair_count
+            
+            # Closer clustering = higher significance
+            # Target: < 10 Å is good clustering, > 20 Å is poor
+            if avg_distance < 10.0:
+                return 1.0  # Excellent clustering
+            elif avg_distance < 15.0:
+                return 0.7  # Good clustering
+            elif avg_distance < 20.0:
+                return 0.5  # Moderate clustering
+            else:
+                return 0.3  # Poor clustering
+                
+        except Exception as e:
+            logger.warning(f"Error calculating hydrophobic significance: {e}")
+            return 0.5  # Neutral default
+    
+    def _calculate_secondary_structure_significance(self, conformation: Any) -> float:
+        """
+        Calculate secondary structure significance (0.0-1.0).
+        
+        Measures presence of helices and sheets, indicating
+        structured folding progress.
+        
+        Args:
+            conformation: Conformation to analyze
+            
+        Returns:
+            Secondary structure significance score (0-1)
+        """
+        try:
+            ss = conformation.secondary_structure
+            total_residues = len(ss)
+            
+            if total_residues == 0:
+                return 0.5
+            
+            # Count structured elements
+            helix_count = ss.count('H')
+            sheet_count = ss.count('E')
+            structured_count = helix_count + sheet_count
+            
+            # Calculate structured fraction
+            structured_fraction = structured_count / total_residues
+            
+            # Reward continuous stretches (not isolated residues)
+            continuous_bonus = 0.0
+            stretch_length = 0
+            
+            for element in ss:
+                if element in ['H', 'E']:
+                    stretch_length += 1
+                else:
+                    if stretch_length >= 3:  # Meaningful stretch
+                        continuous_bonus += 0.1
+                    stretch_length = 0
+            
+            # Final check for last stretch
+            if stretch_length >= 3:
+                continuous_bonus += 0.1
+            
+            # Combine fraction and bonus (capped at 1.0)
+            significance = min(1.0, structured_fraction * 0.7 + min(0.3, continuous_bonus))
+            
+            return significance
+            
+        except Exception as e:
+            logger.warning(f"Error calculating secondary structure significance: {e}")
+            return 0.5  # Neutral default
     
     def _calculate_qcpp_significance(self, qcpp_metrics: Any, outcome: ConformationalOutcome) -> float:
         """
@@ -297,6 +473,92 @@ class MemorySystem(IMemorySystem):
                 if memory in self._memories[move_type]:
                     self._memories[move_type].remove(memory)
                     self._memory_count -= 1
+
+    def get_qcpp_for_conformation(self, conformation: Any) -> Optional[Any]:
+        """
+        Query memory for QCPP metrics of a conformation.
+        
+        This enables reusing QCPP calculations when revisiting conformations,
+        avoiding redundant computation (0.3-2.0ms per analysis).
+        
+        Args:
+            conformation: Conformation to query QCPP metrics for
+            
+        Returns:
+            QCPPMetrics if found in memory, None if never analyzed before
+        """
+        try:
+            # Generate hash for conformation (coordinate-based)
+            conf_hash = self._hash_conformation(conformation)
+            
+            # Search through all memories for matching conformation
+            for move_type, memories in self._memories.items():
+                for memory in memories:
+                    # Check if this is a QCPP-validated memory with matching conformation
+                    if isinstance(memory, QCPPValidatedMemory) and hasattr(memory, 'qcpp_metrics'):
+                        # Check if memory has conformation hash
+                        if hasattr(memory, 'conformation_hash'):
+                            if memory.conformation_hash == conf_hash:
+                                logger.debug(f"✓ Found QCPP metrics in memory (self-revisit)")
+                                return memory.qcpp_metrics
+            
+            return None
+        except Exception as e:
+            logger.warning(f"Error querying QCPP from memory: {e}")
+            return None
+    
+    def store_qcpp_metrics(self, conformation: Any, qcpp_metrics: Any) -> None:
+        """
+        Store QCPP metrics for a conformation (lightweight storage).
+        
+        Note: This method is now simplified since conformation_hash is set
+        during memory creation in create_memory_from_outcome().
+        
+        This method is kept for backward compatibility but is essentially
+        a no-op since QCPP metrics are already stored with hash during
+        memory creation.
+        
+        Args:
+            conformation: Conformation these metrics apply to
+            qcpp_metrics: QCPP metrics to store
+        """
+        # No-op: QCPP metrics are now stored with hash during memory creation
+        logger.debug(f"✓ QCPP metrics stored via memory creation")
+        pass
+    
+    def _hash_conformation(self, conformation: Any) -> str:
+        """
+        Generate hash for conformation based on atom coordinates.
+        
+        Uses first 10 CA atom coordinates (rounded to 1 decimal) to create
+        a compact hash that identifies unique conformations while being
+        tolerant to minor numerical differences.
+        
+        Args:
+            conformation: Conformation to hash
+            
+        Returns:
+            Hash string for conformation lookup
+        """
+        try:
+            import hashlib
+            
+            # Extract coordinates (first 10 atoms for speed)
+            coords = []
+            if hasattr(conformation, 'atom_coordinates'):
+                atom_coords = conformation.atom_coordinates
+                # atom_coordinates is a List[Tuple[float, float, float]]
+                # Take first 10 atoms, round to 1 decimal place
+                for coord in atom_coords[:10]:
+                    if len(coord) >= 3:
+                        coords.extend([round(coord[0], 1), round(coord[1], 1), round(coord[2], 1)])
+            
+            # Create hash from coordinate string
+            coord_str = '_'.join(str(c) for c in coords)
+            return hashlib.sha256(coord_str.encode()).hexdigest()
+        except Exception as e:
+            logger.warning(f"Error hashing conformation: {e}")
+            return ""
 
 
 class SharedMemoryPool(ISharedMemoryPool):

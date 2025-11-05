@@ -70,7 +70,9 @@ class ProteinAgent(IProteinAgent):
                  native_structure: Optional[Conformation] = None,
                  qcpp_integration: Optional[Any] = None,
                  qcpp_analysis_frequency: int = 5,
-                 enable_thz_recording: bool = False):
+                 enable_thz_recording: bool = False,
+                 coordinator: Optional[Any] = None,
+                 target_geometry: str = 'none'):
         """
         Initialize protein agent with consciousness coordinates and protein sequence.
 
@@ -86,6 +88,8 @@ class ProteinAgent(IProteinAgent):
             qcpp_integration: Optional QCPP integration adapter for physics-grounded exploration
             qcpp_analysis_frequency: Analyze with QCPP every N iterations (default: 5 for performance)
             enable_thz_recording: Enable THz signature recording at local minima (for determinism research, default: False)
+            coordinator: Optional coordinator reference for global QCPP registry access (cross-agent sharing)
+            target_geometry: Target Platonic solid geometry for active agent guidance (default: 'none')
         """
         # Create adaptive config if not provided
         if adaptive_config is None:
@@ -94,6 +98,13 @@ class ProteinAgent(IProteinAgent):
         # Store QCPP integration reference and analysis frequency
         self._qcpp_integration = qcpp_integration
         self._qcpp_analysis_frequency = qcpp_analysis_frequency
+        self._last_qcpp_metrics = None  # Store latest QCPP metrics for resonance bonus
+        
+        # Store geometric targeting configuration (NEW: Phase 3)
+        self._target_geometry = target_geometry
+        
+        # Store coordinator reference for global QCPP registry (cross-agent sharing)
+        self._coordinator = coordinator
 
         # Initialize consciousness system (physics-grounded if QCPP enabled)
         if qcpp_integration is not None:
@@ -197,6 +208,10 @@ class ProteinAgent(IProteinAgent):
         self._moves_accepted = 0
         self._moves_rejected = 0
         
+        # QCPP metrics reuse tracking
+        self._qcpp_calculations = 0  # Fresh QCPP calculations (novel conformations)
+        self._qcpp_cache_hits = 0    # Reused from memory (self-revisits)
+        
         # THz vibrational analysis (opt-in for determinism research) - MUST BE BEFORE visualization
         self._enable_thz_recording = enable_thz_recording
         self._thz_signature_history: List[THzSpectrum] = []
@@ -287,6 +302,32 @@ class ProteinAgent(IProteinAgent):
                             physics_factors,
                             current_rmsd
                         )
+                        
+                        # Todo #4: Apply 40Hz resonance bonus if QCPP metrics available
+                        if self._last_qcpp_metrics is not None and self._dynamic_adjuster is not None:
+                            resonance_bonus = self._dynamic_adjuster.calculate_resonance_bonus(self._last_qcpp_metrics)
+                            weight *= resonance_bonus
+                            if resonance_bonus > 1.0:
+                                logger.debug(f"Applied {resonance_bonus:.2f}× resonance bonus to move {move.move_type}")
+                        
+                        # NEW Phase 3: Apply geometric targeting factor
+                        if self._last_qcpp_metrics is not None and self._last_qcpp_metrics.geometric_similarity > 0.0:
+                            # Weight moves by geometric similarity to target
+                            # Range: 0.8-1.2x (baseline), up to 1.32x with high similarity bonus
+                            geometric_factor = 0.8 + (0.4 * self._last_qcpp_metrics.geometric_similarity)
+                            
+                            # Extra bonus for high similarity (positive feedback loop)
+                            if self._last_qcpp_metrics.geometric_similarity > 0.7:
+                                geometric_factor *= 1.1  # Up to 1.32x total
+                            
+                            weight *= geometric_factor
+                            if geometric_factor > 1.0:
+                                logger.debug(
+                                    f"Applied {geometric_factor:.2f}× geometric targeting bonus "
+                                    f"(similarity: {self._last_qcpp_metrics.geometric_similarity:.3f} "
+                                    f"to {self._target_geometry})"
+                                )
+                        
                         move_weights.append((move, weight))
                     except Exception as e:
                         logger.warning(f"Error evaluating move {move.move_id}: {e}")
@@ -372,8 +413,32 @@ class ProteinAgent(IProteinAgent):
                     )
                     if should_analyze_qcpp:
                         try:
-                            # Analyze conformation with QCPP
-                            qcpp_metrics = self._qcpp_integration.analyze_conformation(new_conformation)
+                            # STEP 1: Check global registry first (cross-agent optimization)
+                            if self._coordinator is not None:
+                                qcpp_metrics = self._coordinator.get_qcpp_from_registry(new_conformation)
+                                if qcpp_metrics is not None:
+                                    logger.debug("✓ Reusing QCPP from GLOBAL REGISTRY (cross-agent)")
+                                    # No need to check local memory since global registry is faster
+                            
+                            # STEP 2: Check local memory (self-revisit optimization)
+                            if qcpp_metrics is None:
+                                qcpp_metrics = self._memory.get_qcpp_for_conformation(new_conformation)
+                                if qcpp_metrics is not None:
+                                    logger.debug("✓ Reusing QCPP from local memory (self-revisit)")
+                                    self._qcpp_cache_hits += 1
+                            
+                            # STEP 3: Calculate fresh (novel conformation)
+                            if qcpp_metrics is None:
+                                qcpp_metrics = self._qcpp_integration.analyze_conformation(new_conformation)
+                                logger.debug("✓ Calculated NEW QCPP metrics (novel conformation)")
+                                self._qcpp_calculations += 1
+                                
+                                # Store in global registry for cross-agent sharing
+                                if self._coordinator is not None:
+                                    self._coordinator.store_qcpp_in_registry(new_conformation, qcpp_metrics)
+                            
+                            # Store latest QCPP metrics for resonance bonus in next iteration
+                            self._last_qcpp_metrics = qcpp_metrics
                             
                             # Update physics-grounded consciousness from QCPP metrics
                             if hasattr(self._consciousness, 'update_from_qcpp_metrics'):
@@ -401,6 +466,19 @@ class ProteinAgent(IProteinAgent):
                                 if new_temp != self._temperature:
                                     self._temperature = new_temp
                                     logger.debug(f"Adjusted temperature: {self._temperature:.1f} → {new_temp:.1f} K")
+                                
+                                # Todo #4: Check if refinement mode should be triggered
+                                if self._dynamic_adjuster.should_trigger_refinement_mode(qcpp_metrics):
+                                    refinement_freq, refinement_temp = self._dynamic_adjuster.get_refinement_parameters(
+                                        current_coords.frequency,
+                                        self._temperature
+                                    )
+                                    self._consciousness._coordinates.frequency = refinement_freq
+                                    self._temperature = refinement_temp
+                                    logger.info(
+                                        f"Refinement mode activated: freq={refinement_freq:.1f} Hz, "
+                                        f"temp={refinement_temp:.1f} K"
+                                    )
                         
                         except Exception as e:
                             logger.warning(f"Error in QCPP analysis/adjustment: {e}")
@@ -479,7 +557,8 @@ class ProteinAgent(IProteinAgent):
                 outcome,
                 self._consciousness.get_coordinates(),
                 self._behavioral.get_behavioral_data(),
-                qcpp_metrics=qcpp_metrics_for_memory
+                qcpp_metrics=qcpp_metrics_for_memory,
+                conformation=outcome.new_conformation  # Pass conformation for hash generation
             )
             self._memory.store_memory(memory)
             if memory.significance >= MEMORY_SIGNIFICANCE_THRESHOLD:
@@ -505,7 +584,8 @@ class ProteinAgent(IProteinAgent):
                 outcome,
                 self._consciousness.get_coordinates(),
                 self._behavioral.get_behavioral_data(),
-                qcpp_metrics=qcpp_metrics_for_memory
+                qcpp_metrics=qcpp_metrics_for_memory,
+                conformation=outcome.new_conformation  # Pass conformation for hash generation
             )
             # Override significance for successful escape
             escape_memory.significance = 0.8

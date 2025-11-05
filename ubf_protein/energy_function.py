@@ -233,10 +233,14 @@ class MolecularMechanicsEnergy(IPhysicsCalculator):
     
     def _calculate_compactness_bonus(self, conformation: Conformation) -> float:
         """
-        Calculate bonus for compact structures (simulates hydrophobic effect).
+        Calculate compactness energy (simulates hydrophobic collapse).
         
-        Rewards structures where residues are closer together on average.
-        This is a simplified way to make folded proteins more favorable.
+        STRONGLY penalizes extended structures, rewards compact structures.
+        This is essential to drive protein folding - without it, extended
+        conformations have artificially low energy and never fold.
+        
+        Physics basis: Hydrophobic effect causes proteins to collapse into
+        compact globules to minimize solvent-exposed surface area.
         """
         coords = conformation.atom_coordinates
         n = len(coords)
@@ -244,7 +248,7 @@ class MolecularMechanicsEnergy(IPhysicsCalculator):
         if n < 4:
             return 0.0
         
-        # Calculate radius of gyration
+        # Calculate radius of gyration (Rg)
         center_x = sum(c[0] for c in coords) / n
         center_y = sum(c[1] for c in coords) / n
         center_z = sum(c[2] for c in coords) / n
@@ -253,14 +257,26 @@ class MolecularMechanicsEnergy(IPhysicsCalculator):
                     for c in coords) / n
         rg = math.sqrt(rg_sq)
         
-        # Reward compact structures (small radius of gyration)
-        # Typical Rg for folded protein: ~2-3 Å per residue^(1/3)
+        # Ideal Rg for folded protein: ~3 Å per residue^(1/3)
+        # Example: 36 residues → ideal ~10 Å, native 1VII = 8.8 Å
         ideal_rg = 3.0 * (n ** (1.0/3.0))
+        rg_ratio = rg / ideal_rg
         
-        # Bonus for being compact (negative energy for Rg < ideal)
-        compactness_bonus = -2.0 * n * max(0, 1.0 - rg / ideal_rg)
-        
-        return compactness_bonus
+        # CRITICAL FIX: Penalize extended AND reward compact
+        # Old code only rewarded compact, giving extended structures zero penalty!
+        if rg_ratio > 1.0:
+            # PENALIZE extended structures (Rg > ideal)
+            # Quadratic penalty grows with unfolding
+            # Tuned to 2.5 for gentle but firm compaction pressure
+            # Example: Extended (Rg=40Å, ratio=4) → +810 kcal/mol penalty
+            penalty = 2.5 * n * (rg_ratio - 1.0) ** 2
+            return penalty
+        else:
+            # REWARD compact structures (Rg < ideal)
+            # Linear bonus for being more compact than target
+            # Example: Native (Rg=9Å, ratio=0.9) → -18 kcal/mol bonus
+            bonus = -5.0 * n * (1.0 - rg_ratio)
+            return bonus
     
     def _validate_geometry(self, conformation: Conformation) -> bool:
         """Validate reasonable geometry."""

@@ -229,3 +229,126 @@ class DynamicParameterAdjuster:
         self._adjustment_count = 0
         self._total_frequency_change = 0.0
         self._total_temperature_change = 0.0
+    
+    def should_reduce_iterations(self, determinism_score: float) -> bool:
+        """
+        Check if exploration should terminate early based on determinism.
+        
+        High determinism (>0.8) indicates the structure is settling into
+        a predictable, stable attractor. Further random exploration is
+        unlikely to improve quality, so terminate early to save time.
+        
+        Args:
+            determinism_score: THz determinism score (0-1)
+            
+        Returns:
+            True if iterations should be reduced by 50%
+        """
+        return determinism_score > 0.8
+    
+    def calculate_resonance_bonus(self, qcpp_metrics: Any) -> float:
+        """
+        Calculate move weight bonus for 40 Hz resonance maintenance.
+        
+        The 40 Hz "gamma band" frequency is associated with consciousness
+        and protein stability. Moves that maintain resonance near this
+        frequency should be preferred.
+        
+        Args:
+            qcpp_metrics: QCPPMetrics with qcp_score (correlates with THz)
+            
+        Returns:
+            Weight multiplier (1.0 = neutral, 1.3 = high resonance bonus)
+        """
+        try:
+            # QCP score correlates with THz resonance strength
+            # QCP typically ranges 3-8, with higher = stronger resonance
+            # Map to resonance strength: QCP < 4 = weak, QCP > 6 = strong
+            
+            if not hasattr(qcpp_metrics, 'qcp_score'):
+                return 1.0  # Neutral if no data
+            
+            qcp = qcpp_metrics.qcp_score
+            
+            # Strong resonance (QCP > 6): 1.3× bonus
+            if qcp > 6.0:
+                logger.debug(f"Strong 40Hz resonance (QCP={qcp:.2f}): 1.3× weight bonus")
+                return 1.3
+            
+            # Moderate resonance (QCP 4-6): 1.15× bonus
+            elif qcp > 4.0:
+                logger.debug(f"Moderate 40Hz resonance (QCP={qcp:.2f}): 1.15× weight bonus")
+                return 1.15
+            
+            # Weak resonance (QCP < 4): 1.0× neutral
+            else:
+                return 1.0
+                
+        except Exception as e:
+            logger.warning(f"Error calculating resonance bonus: {e}")
+            return 1.0
+    
+    def should_trigger_refinement_mode(self, qcpp_metrics: Any) -> bool:
+        """
+        Check if refinement mode should be triggered based on field coherence.
+        
+        High field coherence (>0.7) indicates quantum fields are well-aligned,
+        suggesting a high-quality local minimum. Switch from exploration to
+        refinement: smaller moves, lower temperature, higher precision.
+        
+        Args:
+            qcpp_metrics: QCPPMetrics with field_coherence
+            
+        Returns:
+            True if refinement mode should be activated
+        """
+        try:
+            if not hasattr(qcpp_metrics, 'field_coherence'):
+                return False
+            
+            coherence = qcpp_metrics.field_coherence
+            
+            # Field coherence ranges [-1, 1], normalize to [0, 1]
+            normalized_coherence = (coherence + 1.0) / 2.0
+            
+            if normalized_coherence > 0.7:
+                logger.info(
+                    f"High field coherence ({normalized_coherence:.3f}): "
+                    f"Triggering refinement mode"
+                )
+                return True
+            
+            return False
+            
+        except Exception as e:
+            logger.warning(f"Error checking refinement mode trigger: {e}")
+            return False
+    
+    def get_refinement_parameters(self,
+                                  current_frequency: float,
+                                  current_temperature: float) -> Tuple[float, float]:
+        """
+        Get parameters for refinement mode (smaller moves, lower temp).
+        
+        Refinement mode focuses on local optimization around a high-quality
+        minimum rather than broad exploration.
+        
+        Args:
+            current_frequency: Current consciousness frequency
+            current_temperature: Current temperature
+            
+        Returns:
+            Tuple of (refinement_frequency, refinement_temperature)
+        """
+        # Reduce frequency by 50% (slower, more careful exploration)
+        refinement_frequency = max(self.MIN_FREQUENCY, current_frequency * 0.5)
+        
+        # Reduce temperature by 70% (less randomness, more exploitation)
+        refinement_temperature = max(self.MIN_TEMPERATURE, current_temperature * 0.3)
+        
+        logger.debug(
+            f"Refinement parameters: freq={refinement_frequency:.1f} Hz, "
+            f"temp={refinement_temperature:.1f} K"
+        )
+        
+        return refinement_frequency, refinement_temperature

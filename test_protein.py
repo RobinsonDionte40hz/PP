@@ -38,6 +38,9 @@ from ubf_protein.multi_agent_coordinator import MultiAgentCoordinator
 from Bio.PDB.PDBParser import PDBParser
 from Bio.PDB.Polypeptide import aa3, aa1
 
+# Create amino acid mapping dictionary
+AA1_TO_AA3 = dict(zip(aa1, aa3))
+
 # Import geometric attractor analysis
 try:
     # Import the analysis components from test_geometric_attractors.py
@@ -223,10 +226,13 @@ def analyze_geometric_attractors(pdb_file: Path, sequence: str, qcp_values: Opti
     """Analyze protein structure for golden ratio patterns, symmetry, and QCPP components."""
     
     if not GEOMETRIC_ANALYSIS_AVAILABLE:
+        print("⚠️  Geometric analysis module not loaded")
         return None
     
     try:
-        print(f"\n[BONUS] Analyzing geometric attractors (golden ratio, symmetry)...")
+        print(f"Analyzing geometric attractors (golden ratio, symmetry, Platonic solids)...")
+        print(f"  PDB file: {pdb_file}")
+        print(f"  Sequence length: {len(sequence)} residues")
         
         # Create protein structure object
         protein_struct = ProteinStructure(
@@ -375,8 +381,50 @@ def analyze_thz_determinism(sequence: str, num_trials: int = 10,
         return None
 
 
+def save_conformation_as_pdb(sequence: str, coordinates: list, energy: float, 
+                              output_file: Path, pdb_id: Optional[str] = None):
+    """
+    Save a conformation to PDB format.
+    
+    Args:
+        sequence: Amino acid sequence (1-letter codes)
+        coordinates: List of (x, y, z) tuples for CA atoms
+        energy: Conformation energy in kcal/mol
+        output_file: Path to save PDB file
+        pdb_id: Optional PDB identifier
+    """
+    with open(output_file, 'w') as f:
+        # Header
+        f.write("HEADER    PROTEIN STRUCTURE PREDICTION\n")
+        if pdb_id:
+            f.write(f"TITLE     UBF-QCPP PREDICTION FOR {pdb_id.upper()}\n")
+        else:
+            f.write(f"TITLE     UBF-QCPP PREDICTION\n")
+        f.write(f"REMARK    SEQUENCE: {sequence}\n")
+        f.write(f"REMARK    ENERGY: {energy:.2f} kcal/mol\n")
+        f.write(f"REMARK    METHOD: UBF with QCPP integration\n")
+        f.write(f"REMARK    DATE: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+        f.write("\n")
+        
+        # Write atoms (CA only for simplicity)
+        for i, (aa_letter, coord) in enumerate(zip(sequence, coordinates), 1):
+            x, y, z = coord
+            # Convert to 3-letter code
+            aa_3letter = AA1_TO_AA3.get(aa_letter, 'UNK')
+            
+            # PDB ATOM format:
+            # ATOM  serial name altLoc resName chainID resSeq iCode   x       y       z     occ   temp element
+            f.write(f"ATOM  {i:5d}  CA  {aa_3letter:3s} A{i:4d}    "
+                   f"{x:8.3f}{y:8.3f}{z:8.3f}  1.00  0.00           C\n")
+        
+        f.write("END\n")
+    
+    print(f"✓ Structure saved to: {output_file}")
+
+
 def run_protein_test(sequence: str, pdb_file: Optional[Path] = None, pdb_id: Optional[str] = None, 
-                     custom_agents: Optional[int] = None, custom_iterations: Optional[int] = None):
+                     custom_agents: Optional[int] = None, custom_iterations: Optional[int] = None,
+                     target_geometry: str = 'none'):
     """Run complete protein test with QCPP-UBF integration."""
     
     print("\n" + "="*70)
@@ -396,6 +444,10 @@ def run_protein_test(sequence: str, pdb_file: Optional[Path] = None, pdb_id: Opt
     print(f"  - Total Conformations: {num_agents * iterations:,}")
     if pdb_id:
         print(f"  - PDB ID: {pdb_id.upper()}")
+    if target_geometry != 'none':
+        print(f"  - 🎯 Geometric Target: {target_geometry.capitalize()} (active guidance enabled)")
+    else:
+        print(f"  - Geometric Target: None (post-analysis only)")
     
     # Load experimental data if available
     exp_data = None
@@ -412,19 +464,26 @@ def run_protein_test(sequence: str, pdb_file: Optional[Path] = None, pdb_id: Opt
     
     # Use large cache + infrequent analysis for performance
     cache_size = 10000  # Large cache to maximize hits
-    qcpp_adapter = QCPPIntegrationAdapter(qcpp_predictor, cache_size)
+    qcpp_adapter = QCPPIntegrationAdapter(
+        qcpp_predictor, 
+        cache_size,
+        target_geometry=target_geometry  # NEW: Pass geometric target
+    )
     
     # QCPP analysis frequency: 20 = analyze every 20th iteration (20x speedup)
     # This balances physics guidance with performance
     qcpp_freq = 20
     print(f"✓ QCPP initialized (cache={cache_size}, analyzing every {qcpp_freq} iterations)")
+    if target_geometry != 'none':
+        print(f"  🎯 Geometric targeting active: {target_geometry}")
     
     # Step 2: Create coordinator
     print(f"\n[2/5] Creating multi-agent coordinator...")
     coordinator = MultiAgentCoordinator(
         protein_sequence=sequence,
         qcpp_integration=qcpp_adapter,
-        qcpp_analysis_frequency=qcpp_freq
+        qcpp_analysis_frequency=qcpp_freq,
+        target_geometry=target_geometry  # NEW: Pass geometric target
     )
     
     coordinator.initialize_agents(
@@ -448,6 +507,25 @@ def run_protein_test(sequence: str, pdb_file: Optional[Path] = None, pdb_id: Opt
     print(f"  Time: {exploration_time:.1f}s")
     print(f"  Throughput: {throughput:.1f} conf/s")
     print(f"  Best Energy: {results.best_energy:.2f} kcal/mol")
+    
+    # Export best conformation to PDB
+    if results.best_conformation:
+        pred_structures_dir = Path("results/predicted_structures")
+        pred_structures_dir.mkdir(parents=True, exist_ok=True)
+        
+        pdb_filename = f"{pdb_id or 'custom'}_predicted.pdb"
+        if target_geometry != 'none':
+            pdb_filename = f"{pdb_id or 'custom'}_predicted_{target_geometry}.pdb"
+        
+        pdb_output_path = pred_structures_dir / pdb_filename
+        
+        save_conformation_as_pdb(
+            sequence=sequence,
+            coordinates=results.best_conformation.atom_coordinates,
+            energy=results.best_energy,
+            output_file=pdb_output_path,
+            pdb_id=pdb_id
+        )
     
     # Step 4: Calculate RMSD estimate
     print(f"\n[4/5] Calculating structural metrics...")
@@ -516,6 +594,9 @@ def run_protein_test(sequence: str, pdb_file: Optional[Path] = None, pdb_id: Opt
     # Bonus: Geometric Attractor Analysis
     geometric_results = None
     if pdb_file:
+        print(f"\n{'='*70}")
+        print("GEOMETRIC INTEGRITY ANALYSIS")
+        print(f"{'='*70}")
         geometric_results = analyze_geometric_attractors(
             pdb_file=pdb_file,
             sequence=sequence,
@@ -523,6 +604,9 @@ def run_protein_test(sequence: str, pdb_file: Optional[Path] = None, pdb_id: Opt
             estimated_rmsd=estimated_rmsd,
             best_energy=results.best_energy
         )
+        if not geometric_results:
+            print("⚠️  Geometric analysis did not complete successfully")
+        print(f"{'='*70}")
     
     # Bonus: THz Determinism Test (smaller scale for speed)
     thz_results = None
@@ -702,6 +786,10 @@ Examples:
     parser.add_argument('--sequence', type=str, help='Custom amino acid sequence')
     parser.add_argument('--agents', type=int, help='Number of agents (optional, auto-configured)')
     parser.add_argument('--iterations', type=int, help='Iterations per agent (optional, auto-configured)')
+    parser.add_argument('--target-geometry', 
+                        choices=['none', 'octahedron', 'icosahedron', 'dodecahedron', 'tetrahedron', 'cube'],
+                        default='none',
+                        help='Target Platonic solid geometry for active agent guidance (default: none)')
     parser.add_argument('--list', action='store_true', help='List available test proteins')
     parser.add_argument('--quick', action='store_true', help='Quick test on Villin (35 residues)')
     
@@ -760,7 +848,8 @@ Examples:
             pdb_file=pdb_file,
             pdb_id=pdb_id,
             custom_agents=args.agents,
-            custom_iterations=args.iterations
+            custom_iterations=args.iterations,
+            target_geometry=args.target_geometry
         )
     
     # Test with custom sequence
@@ -771,7 +860,8 @@ Examples:
         run_protein_test(
             sequence=sequence,
             custom_agents=args.agents,
-            custom_iterations=args.iterations
+            custom_iterations=args.iterations,
+            target_geometry=args.target_geometry
         )
 
 

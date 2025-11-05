@@ -65,6 +65,7 @@ class ConformationalMemory:
 
 
 @dataclass
+@dataclass
 class QCPPValidatedMemory(ConformationalMemory):
     """
     Memory with QCPP validation metrics.
@@ -75,6 +76,7 @@ class QCPPValidatedMemory(ConformationalMemory):
     """
     qcpp_metrics: Optional[Any] = None  # QCPPMetrics type, use Any to avoid circular import
     qcpp_significance: float = 0.0  # QCPP contribution to overall significance (0.0-1.0)
+    conformation_hash: Optional[str] = None  # Hash for QCPP metrics reuse (coordinate-based)
     
     def __post_init__(self):
         """Validate QCPP-specific fields."""

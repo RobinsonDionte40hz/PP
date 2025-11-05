@@ -38,12 +38,14 @@ class QCPPMetrics:
         stability_score: Overall stability prediction (higher = more stable)
         phi_match_score: Golden ratio angle matching score (0-1)
         calculation_time_ms: Time taken for QCPP analysis (performance tracking)
+        geometric_similarity: Similarity to target Platonic solid geometry (0-1, 0 if no target)
     """
     qcp_score: float
     field_coherence: float
     stability_score: float
     phi_match_score: float
     calculation_time_ms: float
+    geometric_similarity: float = 0.0  # NEW: Geometric targeting support
     
     def __post_init__(self):
         """Validate metrics are in expected ranges."""
@@ -62,6 +64,10 @@ class QCPPMetrics:
         # Phi match is a probability-like score
         if not (0.0 <= self.phi_match_score <= 1.0):
             raise ValueError(f"phi_match_score {self.phi_match_score} outside expected range [0, 1]")
+        
+        # Geometric similarity is a probability-like score (0 if no target)
+        if not (0.0 <= self.geometric_similarity <= 1.0):
+            raise ValueError(f"geometric_similarity {self.geometric_similarity} outside expected range [0, 1]")
         
         # Calculation time should be positive
         if self.calculation_time_ms < 0:
@@ -88,16 +94,25 @@ class QCPPIntegrationAdapter:
     - Cache hit rate: >80% for typical exploration
     """
     
-    def __init__(self, predictor: Any, cache_size: int = 1000):
+    def __init__(self, predictor: Any, cache_size: int = 1000, target_geometry: str = 'none'):
         """
         Initialize QCPP integration adapter.
         
         Args:
             predictor: Instance of QuantumCoherenceProteinPredictor (or mock)
             cache_size: Maximum number of conformations to cache (default: 1000)
+            target_geometry: Target Platonic solid geometry for active guidance (default: 'none')
         """
         self.predictor = predictor
         self.cache_size = cache_size
+        self.target_geometry = target_geometry
+        
+        # Initialize geometric scorer if target specified
+        if target_geometry != 'none':
+            from .geometric_scoring import create_scorer
+            self.geometric_scorer = create_scorer(target_geometry)
+        else:
+            self.geometric_scorer = None
         
         # Statistics tracking
         self.analysis_count = 0
@@ -173,6 +188,13 @@ class QCPPIntegrationAdapter:
         # Calculate phi match score
         phi_match_score = self._calculate_phi_match_score(coords)
         
+        # Calculate geometric similarity (NEW: Phase 2)
+        geometric_similarity = 0.0
+        if self.geometric_scorer is not None:
+            # Convert coords back to list of arrays for geometric scorer
+            coords_list = [np.array(c) for c in coords]
+            geometric_similarity = self.geometric_scorer.calculate_similarity(coords_list)
+        
         # Calculate time taken
         end_time = time.time()
         calculation_time_ms = (end_time - start_time) * 1000
@@ -184,7 +206,8 @@ class QCPPIntegrationAdapter:
             field_coherence=field_coherence,
             stability_score=stability_score,
             phi_match_score=phi_match_score,
-            calculation_time_ms=calculation_time_ms
+            calculation_time_ms=calculation_time_ms,
+            geometric_similarity=geometric_similarity  # NEW: Include geometric score
         )
     
     def analyze_conformation(self, conformation: 'Conformation') -> QCPPMetrics:
