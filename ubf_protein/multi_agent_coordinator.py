@@ -308,20 +308,22 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
                     consciousness = best_agent._consciousness  # type: ignore
                     
                     # Get QCPP metrics for best conformation (only every N iterations now)
-                    qcpp_metrics = self._qcpp_integration.analyze_conformation(best_conf)
+                    if self._qcpp_integration is not None:
+                        qcpp_metrics = self._qcpp_integration.analyze_conformation(best_conf)
                     
-                    # Record trajectory point
-                    self._trajectory_recorder.record_point(
-                        iteration=self._total_iterations,
-                        rmsd=best_conf.rmsd_to_native if best_conf.rmsd_to_native else 0.0,
-                        energy=best_conf.energy,
-                        consciousness_frequency=consciousness.get_frequency(),
-                        consciousness_coherence=consciousness.get_coherence(),
-                        qcp_score=qcpp_metrics.qcp_score,
-                        field_coherence=qcpp_metrics.field_coherence,
-                        stability_score=qcpp_metrics.stability_score,
-                        phi_match_score=qcpp_metrics.phi_match_score
-                    )
+                        # Record trajectory point
+                        if self._trajectory_recorder is not None:
+                            self._trajectory_recorder.record_point(
+                                iteration=self._total_iterations,
+                                rmsd=best_conf.rmsd_to_native if best_conf.rmsd_to_native else 0.0,
+                                energy=best_conf.energy,
+                                consciousness_frequency=consciousness.get_frequency(),
+                                consciousness_coherence=consciousness.get_coherence(),
+                                qcp_score=qcpp_metrics.qcp_score,
+                                field_coherence=qcpp_metrics.field_coherence,
+                                stability_score=qcpp_metrics.stability_score,
+                                phi_match_score=qcpp_metrics.phi_match_score
+                            )
                 except Exception as e:
                     # Log but don't crash - trajectory recording is non-critical
                     logger.warning(f"Trajectory recording failed at iteration {self._total_iterations}: {e}")
@@ -778,6 +780,7 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
         Returns:
             IntegratedTrajectoryRecorder if QCPP is enabled, None otherwise
         """
+        return self._trajectory_recorder
     
     def export_best_conformation_coordinates(self) -> Optional[List[Tuple[float, float, float]]]:
         """
@@ -813,6 +816,3 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
         )
         
         return coordinates
-        return self._trajectory_recorder
-
-        print(f"Results exported to {output_file}")

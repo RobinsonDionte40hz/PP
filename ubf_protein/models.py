@@ -250,6 +250,7 @@ class ConformationalOutcome:
     rmsd_change: float
     success: bool  # Did energy decrease?
     significance: float  # 0.0-1.0 for memory formation
+    _qcpp_metrics: Optional[Any] = None  # Optional QCPP metrics for this outcome
 
     def get_consciousness_update(self) -> Tuple[float, float]:
         """Get frequency and coherence deltas based on outcome"""
