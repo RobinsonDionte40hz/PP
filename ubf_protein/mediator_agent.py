@@ -1324,3 +1324,53 @@ class MediatorAgent(IProteinAgent):
             return 0.0
         
         return self.detection_statistics['cache_hits'] / total
+    
+    def get_best_conformation(self) -> Conformation:
+        """
+        Get best conformation tracked by this Mediator Agent.
+        
+        Mediator Agents don't explore conformations directly - they analyze patterns
+        from other agents. This method returns the best reference conformation
+        if any exist, otherwise creates a default extended conformation.
+        
+        Returns:
+            Best reference conformation or default conformation
+        """
+        if self.reference_conformations:
+            # Return reference with highest geometric score
+            best_ref = max(self.reference_conformations, key=lambda x: x['geometric_score'])
+            
+            # Create Conformation object from reference data
+            num_residues = len(self.protein_sequence)
+            return Conformation(
+                conformation_id=f"mediator_{best_ref['hash']}",
+                sequence=self.protein_sequence,
+                atom_coordinates=best_ref['coordinates'],
+                phi_angles=[0.0] * num_residues,
+                psi_angles=[0.0] * num_residues,
+                energy=best_ref['energy'],
+                rmsd_to_native=None,
+                secondary_structure=['C'] * num_residues,
+                available_move_types=[],
+                structural_constraints={}
+            )
+        else:
+            # No references yet - return default extended conformation
+            num_residues = len(self.protein_sequence)
+            default_coords = []
+            for i in range(num_residues):
+                # Extended chain: CA atoms along x-axis, 3.8Å apart
+                default_coords.append((i * 3.8, 0.0, 0.0))
+            
+            return Conformation(
+                conformation_id="mediator_default",
+                sequence=self.protein_sequence,
+                atom_coordinates=default_coords,
+                phi_angles=[180.0] * num_residues,
+                psi_angles=[180.0] * num_residues,
+                energy=0.0,
+                rmsd_to_native=None,
+                secondary_structure=['C'] * num_residues,
+                available_move_types=[],
+                structural_constraints={}
+            )
