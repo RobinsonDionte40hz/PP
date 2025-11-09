@@ -377,9 +377,9 @@ class TestGeometricAttractorAnalyzer:
         with pytest.raises(ValueError, match="must contain 'coordinates' key"):
             analyzer.analyze_conformation({})
         
-        # Invalid type
+        # Invalid type - intentionally passing wrong type to test error handling
         with pytest.raises(ValueError, match="Invalid conformation type"):
-            analyzer.analyze_conformation([1, 2, 3])
+            analyzer.analyze_conformation([1, 2, 3])  # type: ignore[arg-type]
     
     def test_to_dict_serialization(self):
         """Test that result can be serialized to dict."""

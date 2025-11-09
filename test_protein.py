@@ -35,6 +35,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "ubf_protein"))
 from src.protein_predictor import QuantumCoherenceProteinPredictor
 from ubf_protein.qcpp_integration import QCPPIntegrationAdapter
 from ubf_protein.multi_agent_coordinator import MultiAgentCoordinator
+from ubf_protein.geometric_attractor import GeometricAttractorAnalyzer
 from Bio.PDB.PDBParser import PDBParser
 from Bio.PDB.Polypeptide import aa3, aa1
 
@@ -218,6 +219,106 @@ def load_experimental_data(pdb_id: str) -> Optional[dict]:
         }
     except Exception as e:
         print(f"⚠️  Could not load experimental data: {e}")
+        return None
+
+
+def analyze_geometric_attractors_v2(best_conformation: dict, sequence: str) -> Optional[dict]:
+    """
+    Analyze protein conformation for geometric patterns using GeometricAttractorAnalyzer.
+    
+    This is the new Task 4 implementation that replaces the old analyze_geometric_attractors.
+    Uses the GeometricAttractorAnalyzer from ubf_protein/geometric_attractor.py.
+    
+    Args:
+        best_conformation: Best conformation from exploration (dict with 'atom_coordinates')
+        sequence: Amino acid sequence string
+    
+    Returns:
+        Dictionary with geometric analysis results, or None if analysis fails
+    """
+    try:
+        print(f"\n{'='*70}")
+        print("GEOMETRIC ATTRACTOR ANALYSIS V2")
+        print(f"{'='*70}")
+        print(f"Analyzing best conformation for geometric patterns...")
+        print(f"  Sequence length: {len(sequence)} residues")
+        
+        # Initialize analyzer with default configuration
+        analyzer = GeometricAttractorAnalyzer(
+            cache_size=1000,
+            cache_ttl=3600.0,
+            phi_tolerance=0.05,
+            neighbor_window=10
+        )
+        
+        # Extract coordinates from best_conformation
+        # The conformation should have 'atom_coordinates' key with list of (x,y,z) tuples
+        if not best_conformation or 'atom_coordinates' not in best_conformation:
+            print("⚠️  Best conformation is missing or has no coordinates")
+            return None
+        
+        coordinates = best_conformation['atom_coordinates']
+        
+        # Create conformation dict for analyzer
+        conformation_data = {
+            'coordinates': coordinates
+        }
+        
+        # Run geometric analysis
+        start_time = time.time()
+        result = analyzer.analyze_conformation(conformation_data, sequence=sequence)
+        analysis_time = time.time() - start_time
+        
+        # Print results
+        print(f"\n✓ Geometric analysis complete (took {analysis_time*1000:.1f}ms):")
+        print(f"\n🌟 Golden Ratio (φ) Patterns:")
+        print(f"  - Percentage: {result.golden_ratio_percentage:.1f}%")
+        print(f"  - Pattern Count: {result.phi_pattern_count}")
+        
+        print(f"\n📐 Platonic Solid Similarities:")
+        print(f"  - Tetrahedron: {result.tetrahedron_similarity:.3f}")
+        print(f"  - Cube: {result.cube_similarity:.3f}")
+        print(f"  - Octahedron: {result.octahedron_similarity:.3f}")
+        print(f"  - Dodecahedron (φ-based): {result.dodecahedron_similarity:.3f}")
+        print(f"  - Icosahedron (φ-based): {result.icosahedron_similarity:.3f}")
+        
+        print(f"\n🔷 Symmetry Metrics:")
+        print(f"  - Rotational Symmetry: {result.rotational_symmetry:.3f}")
+        print(f"  - Local Symmetry: {result.local_symmetry:.3f}")
+        print(f"  - Radius of Gyration: {result.radius_of_gyration:.2f} Å")
+        print(f"  - Asphericity: {result.asphericity:.3f}")
+        
+        # Interpret findings
+        print(f"\n💡 Interpretation:")
+        if result.golden_ratio_percentage > 15:
+            print(f"  ✨ HIGH φ content detected! Structure may leverage geometric optimization.")
+        elif result.golden_ratio_percentage > 10:
+            print(f"  ⚡ Moderate φ content. Some geometric patterns present.")
+        else:
+            print(f"  📊 Low φ content. Limited geometric patterns.")
+        
+        # Check for φ-containing Platonic solid similarity
+        max_phi_solid = max(result.dodecahedron_similarity, result.icosahedron_similarity)
+        if max_phi_solid > 0.6:
+            solid_name = "dodecahedron" if result.dodecahedron_similarity > result.icosahedron_similarity else "icosahedron"
+            print(f"  🌟 Strong similarity to {solid_name} (φ-containing Platonic solid)!")
+            print(f"     This supports the geometric attractor hypothesis.")
+        
+        # Get cache statistics
+        cache_stats = analyzer.get_cache_stats()
+        print(f"\n📊 Cache Statistics:")
+        print(f"  - Hit Rate: {cache_stats['hit_rate']*100:.1f}%")
+        print(f"  - Cache Size: {cache_stats['size']}/{cache_stats['max_size']}")
+        
+        print(f"{'='*70}")
+        
+        # Return results as dictionary
+        return result.to_dict()
+        
+    except Exception as e:
+        print(f"⚠️  Could not complete geometric analysis: {e}")
+        import traceback
+        traceback.print_exc()
         return None
 
 
@@ -591,11 +692,27 @@ def run_protein_test(sequence: str, pdb_file: Optional[Path] = None, pdb_id: Opt
     else:
         print(f"\n[5/5] Skipping RMSE (no experimental data available)")
     
-    # Bonus: Geometric Attractor Analysis
+    # Bonus: Geometric Attractor Analysis V2 (New - analyzes best conformation directly)
     geometric_results = None
-    if pdb_file:
+    if results.best_conformation:
+        # Convert best_conformation to dict format if needed
+        best_conf_dict = {
+            'atom_coordinates': results.best_conformation.atom_coordinates
+        }
+        geometric_results = analyze_geometric_attractors_v2(
+            best_conformation=best_conf_dict,
+            sequence=sequence
+        )
+        if not geometric_results:
+            print("⚠️  Geometric analysis did not complete successfully")
+    else:
+        print("⚠️  No best conformation available for geometric analysis")
+    
+    # Old geometric analysis (kept for backward compatibility with PDB files)
+    # Only run if PDB file is available and new analysis didn't run
+    if pdb_file and not geometric_results:
         print(f"\n{'='*70}")
-        print("GEOMETRIC INTEGRITY ANALYSIS")
+        print("GEOMETRIC INTEGRITY ANALYSIS (Legacy)")
         print(f"{'='*70}")
         geometric_results = analyze_geometric_attractors(
             pdb_file=pdb_file,
@@ -645,16 +762,32 @@ def run_protein_test(sequence: str, pdb_file: Optional[Path] = None, pdb_id: Opt
     
     if geometric_results:
         print(f"\n🔬 GEOMETRIC ATTRACTOR ANALYSIS:")
-        print(f"  - Golden Ratio (φ) Patterns: {geometric_results['golden_ratio']['percentage']:.1f}%")
-        print(f"  - Rotational Symmetry: {geometric_results['symmetry']['rotational']:.3f}")
-        print(f"  - Icosahedron Similarity: {geometric_results['platonic_similarity']['icosahedron']:.3f}")
-        print(f"  - Dodecahedron Similarity: {geometric_results['platonic_similarity']['dodecahedron']:.3f}")
+        
+        # Handle both old and new result formats
+        if 'golden_ratio_percentage' in geometric_results:
+            # New format from analyze_geometric_attractors_v2
+            phi_pct = geometric_results['golden_ratio_percentage']
+            rot_sym = geometric_results['symmetry_metrics']['rotational']
+            icosa_sim = geometric_results['platonic_similarities']['icosahedron']
+            dodeca_sim = geometric_results['platonic_similarities']['dodecahedron']
+            
+            print(f"  - Golden Ratio (φ) Patterns: {phi_pct:.1f}%")
+            print(f"  - Rotational Symmetry: {rot_sym:.3f}")
+            print(f"  - Icosahedron Similarity: {icosa_sim:.3f}")
+            print(f"  - Dodecahedron Similarity: {dodeca_sim:.3f}")
+        else:
+            # Old format from analyze_geometric_attractors
+            phi_pct = geometric_results['golden_ratio']['percentage']
+            rot_sym = geometric_results['symmetry']['rotational']
+            icosa_sim = geometric_results['platonic_similarity']['icosahedron']
+            dodeca_sim = geometric_results['platonic_similarity']['dodecahedron']
+            
+            print(f"  - Golden Ratio (φ) Patterns: {phi_pct:.1f}%")
+            print(f"  - Rotational Symmetry: {rot_sym:.3f}")
+            print(f"  - Icosahedron Similarity: {icosa_sim:.3f}")
+            print(f"  - Dodecahedron Similarity: {dodeca_sim:.3f}")
         
         # Interpretation
-        phi_pct = geometric_results['golden_ratio']['percentage']
-        icosa_sim = geometric_results['platonic_similarity']['icosahedron']
-        dodeca_sim = geometric_results['platonic_similarity']['dodecahedron']
-        
         if phi_pct > 15 or icosa_sim > 0.6 or dodeca_sim > 0.6:
             print(f"  ✨ HYPOTHESIS SUPPORT: Strong geometric optimization detected!")
         elif phi_pct > 10:
