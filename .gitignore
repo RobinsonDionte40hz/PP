@@ -1,58 +1,82 @@
 
-# Results and temporary files
-results/
-backup_*/
-*.pyc
-__pycache__/
-.pytest_cache/
+!.gitignore
+!PUBLICATION_DRAFT.md
+!README.md
+*$py.class
+*.egg
 *.egg-info/
-temp.pdb
-# Cleanup v2 additions
-# Python cache
-__pycache__/
+*.log
+*.pdb
+*.py[cod]
 *.pyc
 *.pyo
-.pytest_cache/
-
-# Virtual environments
-venv/
-.venv/
-myvenv/
-pypy_env/
-
-# Results and outputs
-results/**/*.json
-test_results.json
-validation_*.json
-ubiquitin_*.json
-*_results.json
-
-# Checkpoints (keep only recent)
-checkpoints/checkpoint_*.json
-ubf_protein/checkpoints/checkpoint_*.json
-
-# Temporary files
-*.pdb
-temp.*
-*.tmp
-
-# Backup directories
-backup_*/
-
-# Logs
-*.log
-
-# IDE/Editor
-.vscode/
-.idea/
-*.swp
+*.so
 *.swo
-
-# OS
+*.swp
+*.tmp
+*_results.json
+*~
 .DS_Store
+.Python
+.eggs/
+.idea/
+.installed.cfg
+.kiro/
+.pytest_cache/
+.venv/
+.vscode/
+ENV/
 Thumbs.db
-
-# Distribution
-*.egg-info/
-dist/
+__pycache__/
+backup_*/
 build/
+campaign_*/
+checkpoints/*.json
+checkpoints/checkpoint_*.json
+develop-eggs/
+dist/
+downloads/
+eggs/
+env/
+lib/
+lib64/
+myvenv/
+parts/
+pdb_cache/
+pypy_env/
+results/
+results/**/*.json
+results/experiments/*.json
+results/logs/*.log
+results/test_results/*.json
+scaling_results/
+sdist/
+temp.*
+temp.pdb
+test_checkpoints/
+test_results.json
+ubf_protein/checkpoints/checkpoint_*.json
+ubiquitin_*.json
+validation_*.json
+var/
+venv/
+visualization_output/
+wheels/
+# Backup directories
+# Campaign data
+# Checkpoints (keep only recent)
+# Cleanup v2 additions
+# Distribution
+# IDE/Editor
+# IDEs
+# Keep important files
+# Logs
+# OS
+# Project specific
+# Python
+# Python cache
+# Results (keep structure, ignore data)
+# Results and outputs
+# Results and temporary files
+# Temporary files
+# Virtual environments
