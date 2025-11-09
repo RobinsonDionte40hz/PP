@@ -440,3 +440,768 @@ class AdaptiveConfig:
     # Performance parameters
     max_iterations: int
     checkpoint_interval: int
+
+# ============================================================================
+# Quantum Refinement Engine (Task 1)
+# ============================================================================
+
+@dataclass
+class RefinementConfig:
+    """
+    Configuration for quantum refinement process.
+    
+    Controls the two-stage optimization pipeline:
+    - Stage 1: Global fold optimization (coarse structure)
+    - Stage 2: Quantum refinement (fine-grained structure)
+    
+    Attributes:
+        stage1_temperature: Temperature for Stage 1 (global exploration)
+        stage1_iterations: Iterations for Stage 1
+        stage2_temperature: Temperature for Stage 2 (10x lower for refinement)
+        stage2_iterations: Iterations for Stage 2 (10x more for precision)
+        restraint_weight: Weight for distance restraints (force constant)
+        qcp_weight: Weight for QCP contribution to scoring (0-1)
+        qcp_threshold: QCP threshold for quantum core identification
+        phi_tolerance: Tolerance for φ-harmonic matching (THz)
+        resonance_threshold: Minimum resonance coupling for contacts (0-1)
+        water_spacing_nm: Water molecule spacing for shielding effects
+        coherence_time_fs: Coherence time in femtoseconds
+        max_refinement_time_seconds: Maximum time for refinement
+        checkpoint_interval: Iterations between checkpoints
+    """
+    # Stage 1 (Global) parameters
+    stage1_temperature: float = 1.0
+    stage1_iterations: int = 1000
+    
+    # Stage 2 (Refinement) parameters
+    stage2_temperature: float = 0.1  # 10x lower
+    stage2_iterations: int = 10000  # 10x more
+    restraint_weight: float = 10.0
+    qcp_weight: float = 0.3  # 30% quantum contribution
+    
+    # Quantum parameters
+    qcp_threshold: float = 7.0  # High coherence threshold
+    phi_tolerance: float = 0.1  # THz
+    resonance_threshold: float = 0.7
+    
+    # Water shielding
+    water_spacing_nm: float = 0.28
+    coherence_time_fs: float = 408.0
+    
+    # Performance
+    max_refinement_time_seconds: float = 300.0  # 5 minutes
+    checkpoint_interval: int = 1000
+
+
+@dataclass
+class RefinementResult:
+    """
+    Complete refinement result with metrics.
+    
+    Contains all information about the refinement process, including
+    initial/final structures, RMSD improvements, quality metrics,
+    and detailed diagnostics.
+    
+    Attributes:
+        initial_structure: Input coarse structure (7-14Å RMSD)
+        refined_structure: Output refined structure (<5Å RMSD)
+        native_structure: Reference native structure (optional)
+        initial_rmsd: RMSD before refinement (Ångströms)
+        final_rmsd: RMSD after refinement (Ångströms)
+        rmsd_improvement: RMSD reduction (Ångströms)
+        helix_rmsd: RMSD for helix residues only
+        sheet_rmsd: RMSD for sheet residues only
+        loop_rmsd: RMSD for loop residues only
+        core_rmsd: RMSD for hydrophobic core residues only
+        gdt_ts: GDT-TS score (0-100, higher is better)
+        tm_score: TM-score (0-1, higher is better)
+        energy: Final energy (kcal/mol)
+        iterations_used: Total iterations consumed
+        refinement_time_seconds: Wall-clock time for refinement
+        quantum_cores_identified: Number of quantum cores found
+        restraints_applied: Number of distance restraints applied
+        contacts_enforced: Number of tertiary contacts enforced
+        rmsd_trajectory: RMSD at each iteration
+        energy_trajectory: Energy at each iteration
+    """
+    # Structures
+    initial_structure: Conformation
+    refined_structure: Conformation
+    native_structure: Optional[Any]  # NativeStructure type, avoid circular import
+    
+    # RMSD metrics
+    initial_rmsd: float
+    final_rmsd: float
+    rmsd_improvement: float  # Angstroms
+    
+    # Component RMSD breakdown
+    helix_rmsd: float
+    sheet_rmsd: float
+    loop_rmsd: float
+    core_rmsd: float
+    
+    # Quality metrics
+    gdt_ts: float
+    tm_score: float
+    energy: float  # kcal/mol
+    
+    # Refinement statistics
+    iterations_used: int
+    refinement_time_seconds: float
+    quantum_cores_identified: int
+    restraints_applied: int
+    contacts_enforced: int
+    
+    # Convergence tracking
+    rmsd_trajectory: List[float]
+    energy_trajectory: List[float]
+    
+    def get_summary(self) -> str:
+        """
+        Generate human-readable summary of refinement results.
+        
+        Returns:
+            Multi-line summary string with key metrics
+        """
+        lines = [
+            "=" * 60,
+            "QUANTUM REFINEMENT RESULTS",
+            "=" * 60,
+            f"Initial RMSD:    {self.initial_rmsd:6.2f} Å",
+            f"Final RMSD:      {self.final_rmsd:6.2f} Å",
+            f"Improvement:     {self.rmsd_improvement:6.2f} Å ({self.rmsd_improvement/self.initial_rmsd*100:.1f}%)",
+            "",
+            "Component RMSD Breakdown:",
+            f"  Helix:         {self.helix_rmsd:6.2f} Å",
+            f"  Sheet:         {self.sheet_rmsd:6.2f} Å",
+            f"  Loop:          {self.loop_rmsd:6.2f} Å",
+            f"  Core:          {self.core_rmsd:6.2f} Å",
+            "",
+            "Quality Metrics:",
+            f"  GDT-TS:        {self.gdt_ts:6.2f}",
+            f"  TM-score:      {self.tm_score:6.4f}",
+            f"  Energy:        {self.energy:6.2f} kcal/mol",
+            "",
+            "Refinement Statistics:",
+            f"  Iterations:    {self.iterations_used:6d}",
+            f"  Runtime:       {self.refinement_time_seconds:6.2f} s",
+            f"  Quantum cores: {self.quantum_cores_identified:6d}",
+            f"  Restraints:    {self.restraints_applied:6d}",
+            f"  Contacts:      {self.contacts_enforced:6d}",
+            "=" * 60,
+        ]
+        return "\n".join(lines)
+
+
+# ============================================================================
+# Quantum Core Analysis (Task 2)
+# ============================================================================
+
+@dataclass
+class QuantumCore:
+    """
+    Represents a quantum core region in a protein structure.
+    
+    A quantum core is a contiguous region of residues with high QCP
+    (Quantum Consciousness Potential) values, indicating strong coherence
+    and structural stability.
+    
+    Quantum cores exhibit characteristic THz vibrational modes and can
+    couple with other cores through φ-harmonic resonances.
+    
+    Attributes:
+        residue_indices: List of residue indices in the core (contiguous)
+        average_qcp: Mean QCP value across all core residues
+        coherence: Average coherence metric (0-1)
+        center_of_mass: Geometric center (x, y, z) in Ångströms
+    
+    Example:
+        >>> core = QuantumCore(
+        ...     residue_indices=[10, 11, 12, 13, 14],
+        ...     average_qcp=8.5,
+        ...     coherence=0.85,
+        ...     center_of_mass=(12.3, 4.5, -8.2)
+        ... )
+        >>> print(f"Core spans {len(core.residue_indices)} residues")
+    """
+    residue_indices: List[int]
+    average_qcp: float
+    coherence: float
+    center_of_mass: Tuple[float, float, float]
+    
+    def __post_init__(self):
+        """Validate quantum core data."""
+        if len(self.residue_indices) < 3:
+            raise ValueError(f"Quantum core must have >= 3 residues, got {len(self.residue_indices)}")
+        
+        if self.average_qcp < 0:
+            raise ValueError(f"average_qcp must be >= 0, got {self.average_qcp}")
+        
+        if not (0.0 <= self.coherence <= 1.0):
+            raise ValueError(f"coherence must be in [0, 1], got {self.coherence}")
+
+
+@dataclass
+class THzMode:
+    """
+    Represents a THz vibrational mode in a protein structure.
+    
+    THz modes are collective vibrations in the terahertz frequency range
+    (10^12 Hz) that play critical roles in protein conformational dynamics.
+    
+    Modes can exhibit φ-harmonic resonances at frequencies near golden ratio
+    multiples of 1.0 THz (1.618 THz, 2.618 THz, 4.236 THz, etc.).
+    
+    Attributes:
+        frequency: Vibrational frequency in THz
+        amplitude: Mode amplitude (relative units)
+        participating_residues: List of residue indices involved in this mode
+        is_phi_harmonic: True if frequency is near a φ-harmonic
+    
+    Example:
+        >>> mode = THzMode(
+        ...     frequency=1.62,  # Near φ × 1.0 THz
+        ...     amplitude=0.8,
+        ...     participating_residues=[10, 11, 12, 13, 14],
+        ...     is_phi_harmonic=True
+        ... )
+        >>> if mode.is_phi_harmonic:
+        ...     print(f"φ-harmonic mode at {mode.frequency:.3f} THz")
+    """
+    frequency: float  # THz
+    amplitude: float  # Relative units
+    participating_residues: List[int]
+    is_phi_harmonic: bool
+    
+    def __post_init__(self):
+        """Validate THz mode data."""
+        if self.frequency <= 0:
+            raise ValueError(f"frequency must be > 0, got {self.frequency}")
+        
+        if self.amplitude < 0:
+            raise ValueError(f"amplitude must be >= 0, got {self.amplitude}")
+        
+        if len(self.participating_residues) == 0:
+            raise ValueError("participating_residues cannot be empty")
+
+
+# ============================================================================
+# Distance Restraint System (Task 3)
+# ============================================================================
+
+@dataclass
+class DistanceRestraint:
+    """
+    Represents a φ-harmonic distance restraint for protein refinement.
+    
+    Distance restraints enforce geometric relationships between high-QCP
+    residue pairs, maintaining golden ratio patterns during optimization.
+    
+    The restraint applies a harmonic potential:
+        E = weight × (distance - target_distance)²
+    
+    when the current distance deviates from the target by more than tolerance.
+    
+    Attributes:
+        residue_i: Index of first residue in restraint
+        residue_j: Index of second residue in restraint
+        target_distance: Optimal distance in Ångströms (φ-harmonic)
+        weight: Force constant (kcal/mol/Å²) - typically 100.0
+        tolerance: Allowed deviation in Ångströms - typically 0.5
+        is_phi_harmonic: True if distance is a φ-harmonic (d/φ, d, or d×φ)
+    
+    Example:
+        >>> restraint = DistanceRestraint(
+        ...     residue_i=10,
+        ...     residue_j=25,
+        ...     target_distance=6.0,  # Optimal contact distance
+        ...     weight=100.0,
+        ...     tolerance=0.5,
+        ...     is_phi_harmonic=True
+        ... )
+        >>> energy = restraint.weight * (7.0 - restraint.target_distance) ** 2
+        >>> print(f"Restraint energy at 7.0Å: {energy:.2f} kcal/mol")
+    """
+    residue_i: int
+    residue_j: int
+    target_distance: float  # Angstroms
+    weight: float  # Force constant (kcal/mol/Å²)
+    tolerance: float  # Angstroms
+    is_phi_harmonic: bool
+    
+    def __post_init__(self):
+        """Validate distance restraint data."""
+        if self.residue_i < 0:
+            raise ValueError(f"residue_i must be >= 0, got {self.residue_i}")
+        
+        if self.residue_j < 0:
+            raise ValueError(f"residue_j must be >= 0, got {self.residue_j}")
+        
+        if self.residue_i == self.residue_j:
+            raise ValueError(f"residue_i and residue_j must be different, both are {self.residue_i}")
+        
+        if self.target_distance <= 0:
+            raise ValueError(f"target_distance must be > 0, got {self.target_distance}")
+        
+        if self.weight <= 0:
+            raise ValueError(f"weight must be > 0, got {self.weight}")
+        
+        if self.tolerance <= 0:
+            raise ValueError(f"tolerance must be > 0, got {self.tolerance}")
+    
+    def calculate_energy(self, current_distance: float) -> float:
+        """
+        Calculate harmonic restraint energy.
+        
+        Energy is zero within tolerance, quadratic outside:
+            E = 0                                  if |d - d₀| < tolerance
+            E = weight × (d - d₀)²                 otherwise
+        
+        Args:
+            current_distance: Current inter-residue distance in Ångströms
+        
+        Returns:
+            Restraint energy in kcal/mol
+        
+        Example:
+            >>> restraint = DistanceRestraint(0, 1, 6.0, 100.0, 0.5, True)
+            >>> restraint.calculate_energy(6.2)  # Within tolerance
+            0.0
+            >>> restraint.calculate_energy(7.0)  # Outside tolerance
+            100.0
+        """
+        deviation = abs(current_distance - self.target_distance)
+        
+        if deviation <= self.tolerance:
+            return 0.0
+        
+        # Quadratic penalty outside tolerance
+        effective_deviation = deviation - self.tolerance
+        return self.weight * effective_deviation ** 2
+
+
+# ============================================================================
+# Secondary Structure Models (Task 4)
+# ============================================================================
+
+@dataclass
+class HelixRegion:
+    """
+    Represents an alpha-helix region in a protein structure.
+    
+    Alpha helices are characterized by:
+    - Pitch: ~5.4 Ångströms (distance per turn)
+    - Rise: ~1.5 Ångströms (distance per residue)
+    - Residues per turn: ~3.6
+    - Hydrogen bonds: i to i+4
+    
+    Quantum-corrected helices (QCP > 7) use modified parameters:
+    - Pitch: 5.4Å × (1 + 0.1 × tanh(QCP - 7))
+    - Rise: 1.5Å × (1 + 0.05 × tanh(QCP - 7))
+    
+    Attributes:
+        start_residue: First residue index in helix
+        end_residue: Last residue index in helix (inclusive)
+        average_qcp: Mean QCP value across helix residues
+        pitch: Helix pitch in Ångströms
+        rise: Rise per residue in Ångströms
+        residues_per_turn: Number of residues per helical turn
+    
+    Example:
+        >>> helix = HelixRegion(
+        ...     start_residue=10,
+        ...     end_residue=25,
+        ...     average_qcp=8.2,
+        ...     pitch=5.6,
+        ...     rise=1.55,
+        ...     residues_per_turn=3.61
+        ... )
+        >>> print(f"Helix spans {helix.end_residue - helix.start_residue + 1} residues")
+    """
+    start_residue: int
+    end_residue: int
+    average_qcp: float
+    pitch: float  # Ångströms
+    rise: float  # Ångströms
+    residues_per_turn: float
+    
+    def __post_init__(self):
+        """Validate helix region data."""
+        if self.start_residue < 0:
+            raise ValueError(f"start_residue must be >= 0, got {self.start_residue}")
+        
+        if self.end_residue < self.start_residue:
+            raise ValueError(f"end_residue {self.end_residue} must be >= start_residue {self.start_residue}")
+        
+        # Alpha helices need at least 4 residues for one turn
+        if (self.end_residue - self.start_residue + 1) < 4:
+            raise ValueError(f"Helix must have >= 4 residues, got {self.end_residue - self.start_residue + 1}")
+        
+        if self.pitch <= 0:
+            raise ValueError(f"pitch must be > 0, got {self.pitch}")
+        
+        if self.rise <= 0:
+            raise ValueError(f"rise must be > 0, got {self.rise}")
+        
+        if self.residues_per_turn <= 0:
+            raise ValueError(f"residues_per_turn must be > 0, got {self.residues_per_turn}")
+    
+    def length(self) -> int:
+        """Return number of residues in helix."""
+        return self.end_residue - self.start_residue + 1
+
+
+@dataclass
+class SheetRegion:
+    """
+    Represents a beta-sheet region in a protein structure.
+    
+    Beta sheets are characterized by:
+    - Extended conformation with φ ~ -120°, ψ ~ +120°
+    - Hydrogen bonds between strands (parallel or antiparallel)
+    - Typical strand length: 5-10 residues
+    - Inter-strand distance: ~4.8 Ångströms
+    
+    Quantum-optimized sheets use 2.618 THz coupling frequency
+    (φ² harmonic) for hydrogen bond optimization.
+    
+    Attributes:
+        strand_residues: List of residue ranges for each strand
+                         Each range is (start, end) tuple
+        average_qcp: Mean QCP value across all sheet residues
+        is_parallel: True for parallel, False for antiparallel
+        coupling_frequency: THz frequency for H-bond coupling (default 2.618)
+    
+    Example:
+        >>> sheet = SheetRegion(
+        ...     strand_residues=[(5, 10), (20, 25), (35, 40)],
+        ...     average_qcp=7.5,
+        ...     is_parallel=False,
+        ...     coupling_frequency=2.618
+        ... )
+        >>> print(f"Sheet has {len(sheet.strand_residues)} strands")
+    """
+    strand_residues: List[Tuple[int, int]]  # List of (start, end) tuples
+    average_qcp: float
+    is_parallel: bool
+    coupling_frequency: float = 2.618  # THz (φ² harmonic)
+    
+    def __post_init__(self):
+        """Validate sheet region data."""
+        if len(self.strand_residues) < 2:
+            raise ValueError(f"Sheet must have >= 2 strands, got {len(self.strand_residues)}")
+        
+        for i, (start, end) in enumerate(self.strand_residues):
+            if start < 0:
+                raise ValueError(f"Strand {i} start_residue must be >= 0, got {start}")
+            
+            if end < start:
+                raise ValueError(f"Strand {i} end_residue {end} must be >= start_residue {start}")
+            
+            # Beta strands need at least 3 residues
+            if (end - start + 1) < 3:
+                raise ValueError(f"Strand {i} must have >= 3 residues, got {end - start + 1}")
+        
+        if self.coupling_frequency <= 0:
+            raise ValueError(f"coupling_frequency must be > 0, got {self.coupling_frequency}")
+    
+    def total_residues(self) -> int:
+        """Return total number of residues in all strands."""
+        return sum(end - start + 1 for start, end in self.strand_residues)
+
+
+@dataclass
+class PackingConstraint:
+    """
+    Distance constraint for hydrophobic core packing with QCP-weighted forces.
+    
+    Hydrophobic residues in protein cores pack at optimal distances
+    determined by water exclusion zones (0.28 nm water spacing).
+    This creates preferred packing distances at 2.8Å intervals.
+    
+    Force constants are scaled by QCP coupling factor to prioritize
+    high-coherence residue pairs:
+        force_constant = base_k × (QCP_i + QCP_j) / 2
+    
+    Attributes:
+        residue_i: First residue index (0-based)
+        residue_j: Second residue index (0-based)
+        target_distance: Optimal packing distance in Ångströms
+                         Typically at 2.8Å intervals (water spacing)
+        force_constant: Harmonic force constant in kcal/mol/Ř
+                        Base value 10.0, scaled by QCP coupling
+        qcp_coupling: QCP-based scaling factor (QCP_i + QCP_j) / 2
+                      Higher QCP pairs get stronger constraints
+    
+    Example:
+        >>> constraint = PackingConstraint(
+        ...     residue_i=10,
+        ...     residue_j=25,
+        ...     target_distance=5.6,  # 2×2.8Å
+        ...     force_constant=75.0,  # 10.0 × 7.5 QCP coupling
+        ...     qcp_coupling=7.5
+        ... )
+        >>> energy = constraint.force_constant * (current_dist - constraint.target_distance)**2
+    """
+    residue_i: int
+    residue_j: int
+    target_distance: float  # Angstroms
+    force_constant: float  # kcal/mol/Ř
+    qcp_coupling: float  # QCP-based scaling factor
+    
+    def __post_init__(self):
+        """Validate packing constraint data."""
+        if self.residue_i < 0:
+            raise ValueError(f"residue_i must be >= 0, got {self.residue_i}")
+        
+        if self.residue_j < 0:
+            raise ValueError(f"residue_j must be >= 0, got {self.residue_j}")
+        
+        if self.residue_i == self.residue_j:
+            raise ValueError(f"residue_i and residue_j must be different, both are {self.residue_i}")
+        
+        if self.target_distance <= 0:
+            raise ValueError(f"target_distance must be > 0, got {self.target_distance}")
+        
+        if self.force_constant <= 0:
+            raise ValueError(f"force_constant must be > 0, got {self.force_constant}")
+        
+        if self.qcp_coupling <= 0:
+            raise ValueError(f"qcp_coupling must be > 0, got {self.qcp_coupling}")
+    
+    def calculate_energy(self, current_distance: float) -> float:
+        """
+        Calculate harmonic restraint energy.
+        
+        E = k × (r - r₀)²
+        
+        Args:
+            current_distance: Current distance between residues (Å)
+        
+        Returns:
+            Restraint energy in kcal/mol
+        """
+        deviation = current_distance - self.target_distance
+        return self.force_constant * deviation * deviation
+
+
+@dataclass
+class LoopRegion:
+    """
+    Represents a flexible loop region in a protein structure.
+    
+    Loops are unstructured regions connecting secondary structure elements
+    (helices and sheets). They exhibit high conformational flexibility and
+    are often difficult to predict accurately. Loop refinement uses different
+    strategies based on quantum coherence (QCP) values:
+    
+    - Low QCP (<4): Classical loop modeling (sampling/minimization)
+    - Medium QCP (4-7): G(φ,t) temporal evolution with quantum decay
+    - High QCP (>7): Quantum-corrected geometry constraints
+    
+    G(φ,t) temporal evolution formula:
+        G(φ,t) = exp(-t/τ_c) × φ
+        where τ_c = 408 fs (coherence time)
+    
+    Attributes:
+        start_residue: First residue index of loop (0-based)
+        end_residue: Last residue index of loop (0-based)
+        average_qcp: Mean QCP value across loop residues
+        current_conformation: Current 3D coordinates of loop residues
+                              List of (x, y, z) tuples, one per residue
+        target_conformation: Target 3D coordinates (optional)
+                            Used for guided refinement toward known structure
+    
+    Example:
+        >>> loop = LoopRegion(
+        ...     start_residue=10,
+        ...     end_residue=15,
+        ...     average_qcp=5.2,
+        ...     current_conformation=[(1.0, 2.0, 3.0), (1.5, 2.5, 3.5), ...],
+        ...     target_conformation=None
+        ... )
+        >>> print(f"Loop has {loop.length()} residues")
+        >>> print(f"Strategy: {'quantum' if loop.average_qcp > 4 else 'classical'}")
+    """
+    start_residue: int
+    end_residue: int
+    average_qcp: float
+    current_conformation: List[Tuple[float, float, float]]
+    target_conformation: Optional[List[Tuple[float, float, float]]] = None
+    
+    def __post_init__(self):
+        """Validate loop region data."""
+        if self.start_residue < 0:
+            raise ValueError(f"start_residue must be >= 0, got {self.start_residue}")
+        
+        if self.end_residue < self.start_residue:
+            raise ValueError(
+                f"end_residue {self.end_residue} must be >= start_residue {self.start_residue}"
+            )
+        
+        # Loops should have at least 2 residues
+        if self.end_residue - self.start_residue < 1:
+            raise ValueError(
+                f"Loop must have >= 2 residues, got {self.end_residue - self.start_residue + 1}"
+            )
+        
+        # Validate current_conformation length
+        expected_length = self.end_residue - self.start_residue + 1
+        if len(self.current_conformation) != expected_length:
+            raise ValueError(
+                f"current_conformation length {len(self.current_conformation)} "
+                f"must match loop length {expected_length}"
+            )
+        
+        # Validate target_conformation length if provided
+        if self.target_conformation is not None:
+            if len(self.target_conformation) != expected_length:
+                raise ValueError(
+                    f"target_conformation length {len(self.target_conformation)} "
+                    f"must match loop length {expected_length}"
+                )
+        
+        if self.average_qcp < 0:
+            raise ValueError(f"average_qcp must be >= 0, got {self.average_qcp}")
+    
+    def length(self) -> int:
+        """Return number of residues in loop."""
+        return self.end_residue - self.start_residue + 1
+    
+    def is_classical_refinement(self) -> bool:
+        """Check if loop should use classical refinement (QCP < 4)."""
+        return self.average_qcp < 4.0
+    
+    def is_quantum_refinement(self) -> bool:
+        """Check if loop should use quantum G(φ,t) evolution (4 <= QCP < 7)."""
+        return 4.0 <= self.average_qcp < 7.0
+    
+    def is_high_qcp(self) -> bool:
+        """Check if loop has high quantum coherence (QCP >= 7)."""
+        return self.average_qcp >= 7.0
+
+
+# ============================================================================
+# Tertiary Contact Prediction (Task 7)
+# ============================================================================
+
+@dataclass
+class TertiaryContact:
+    """
+    Represents a predicted tertiary contact between distant residues.
+    
+    Tertiary contacts are long-range interactions between residues that are
+    far apart in sequence but close in 3D space. These contacts are critical
+    for protein fold stability and are predicted using quantum resonance
+    coupling between residue pairs.
+    
+    Resonance coupling formula:
+        R(E₁,E₂,t) = exp[-(E₁(t) - E₂(t) - ℏωγ)²/(2ℏωγ)] × G(φ,t)
+    
+    where:
+        - E₁, E₂: Quantum energies from QCP
+        - ωγ: Gamma frequency (40 Hz)
+        - G(φ,t): Golden ratio temporal evolution
+        - ℏ: Reduced Planck constant
+    
+    Contacts are classified as probable when:
+        - Resonance strength > 0.7
+        - Sequence separation >= 5 residues
+        - Spatial distance < 8.0 Ångströms (if current structure available)
+    
+    Attributes:
+        residue_i: First residue index (0-based)
+        residue_j: Second residue index (0-based)
+        resonance_strength: Resonance coupling strength (0-1)
+                           Values > 0.7 indicate probable contact
+        predicted_distance: Predicted optimal distance in Ångströms
+                           Typically 6.0Å for standard contacts
+        sequence_separation: |j - i| = distance in sequence
+                            Minimum 5 residues for tertiary contacts
+    
+    Example:
+        >>> contact = TertiaryContact(
+        ...     residue_i=10,
+        ...     residue_j=45,
+        ...     resonance_strength=0.85,
+        ...     predicted_distance=6.2,
+        ...     sequence_separation=35
+        ... )
+        >>> if contact.is_probable_contact():
+        ...     print(f"Strong contact predicted between residues {contact.residue_i} and {contact.residue_j}")
+    """
+    residue_i: int
+    residue_j: int
+    resonance_strength: float  # 0-1
+    predicted_distance: float  # Angstroms
+    sequence_separation: int  # |j - i|
+    
+    def __post_init__(self):
+        """Validate tertiary contact data."""
+        if self.residue_i < 0:
+            raise ValueError(f"residue_i must be >= 0, got {self.residue_i}")
+        
+        if self.residue_j < 0:
+            raise ValueError(f"residue_j must be >= 0, got {self.residue_j}")
+        
+        if self.residue_i == self.residue_j:
+            raise ValueError(f"residue_i and residue_j must be different, both are {self.residue_i}")
+        
+        if not (0.0 <= self.resonance_strength <= 1.0):
+            raise ValueError(
+                f"resonance_strength must be in [0, 1], got {self.resonance_strength}"
+            )
+        
+        if self.predicted_distance <= 0:
+            raise ValueError(f"predicted_distance must be > 0, got {self.predicted_distance}")
+        
+        if self.sequence_separation <= 0:
+            raise ValueError(f"sequence_separation must be > 0, got {self.sequence_separation}")
+        
+        # Verify sequence_separation matches residue indices
+        expected_separation = abs(self.residue_j - self.residue_i)
+        if self.sequence_separation != expected_separation:
+            raise ValueError(
+                f"sequence_separation {self.sequence_separation} does not match "
+                f"residue indices difference {expected_separation}"
+            )
+    
+    def is_probable_contact(self, threshold: float = 0.7) -> bool:
+        """
+        Check if this is a probable tertiary contact.
+        
+        Args:
+            threshold: Minimum resonance strength (default 0.7)
+        
+        Returns:
+            True if resonance_strength >= threshold
+        """
+        return self.resonance_strength >= threshold
+    
+    def is_long_range(self, min_separation: int = 5) -> bool:
+        """
+        Check if this is a long-range contact.
+        
+        Args:
+            min_separation: Minimum sequence separation (default 5)
+        
+        Returns:
+            True if sequence_separation >= min_separation
+        """
+        return self.sequence_separation >= min_separation
+    
+    def is_valid_contact(self, 
+                        resonance_threshold: float = 0.7,
+                        min_separation: int = 5) -> bool:
+        """
+        Check if contact meets all criteria for validity.
+        
+        Args:
+            resonance_threshold: Minimum resonance strength
+            min_separation: Minimum sequence separation
+        
+        Returns:
+            True if contact is both probable and long-range
+        """
+        return (self.is_probable_contact(resonance_threshold) and 
+                self.is_long_range(min_separation))
