@@ -1,5 +1,10 @@
 # Publication Draft: Inverse Scaling in Protein Structure Prediction
 
+**Document Type:** Research manuscript documenting inverse scaling findings from 20-protein study (October 2025)  
+**Context:** This manuscript reports actual experimental results (90.4Å mean RMSD) and analyzes energy landscape mechanisms. Results are accurate for this specific research study. For current system documentation, see README files.
+
+---
+
 ## Title
 **Inverse Scaling in Consciousness-Based Protein Structure Prediction: Energy Landscape Smoothness Drives Counterintuitive Size-Quality Correlation**
 

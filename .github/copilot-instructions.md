@@ -8,7 +8,22 @@ This project contains **two complementary protein structure prediction systems**
 Physics-based stability prediction using quantum coherence and golden ratio patterns.
 
 ### 2. UBF Protein System - `ubf_protein/` Directory  
-Consciousness-based conformational exploration using autonomous agents (✅ **PRODUCTION-READY**).
+Consciousness-based conformational exploration using autonomous agents (✅ **RESEARCH-READY**).
+
+---
+
+## ⚠️ Important System Capabilities Disclaimer
+
+**UBF System Status:** This is a RESEARCH platform for exploring consciousness-based protein conformational navigation. Current performance:
+
+- **RMSD Achievement:** 80-90Å typical (research phase, October 2025 validation)
+- **Scientific Accuracy:** Not suitable for production structure prediction
+- **Primary Use:** Validating consciousness navigation concepts, agent coordination, energy landscape exploration
+- **Comparison:** NOT competing with AlphaFold/RosettaFold (those achieve <2Å)
+
+**"Research-Ready" Context:** Refers to software engineering quality (architecture, tests, docs, performance), NOT scientific accuracy of structure predictions.
+
+**Validation Metrics Below:** Quality thresholds are FROM STRUCTURAL BIOLOGY LITERATURE for comparison purposes, not current achievement targets.
 
 ---
 
@@ -98,7 +113,9 @@ Use `QCProteinPipeline.run_validation_pipeline()` with experimental data from `e
 - **Validation** (`rmsd_calculator.py`, `validation_suite.py`): RMSD, GDT-TS, TM-score against native PDB structures
 - **Agent** (`protein_agent.py`): Autonomous exploration with consciousness updates
 - **Coordination** (`multi_agent_coordinator.py`): Diverse populations (33% cautious, 34% balanced, 33% aggressive)
-- **QCPP Integration** (`qcpp_integration.py`, `qcpp_config.py`): Real-time quantum physics feedback (NEW)
+- **QCPP Integration** (`qcpp_integration.py`, `qcpp_config.py`): Real-time quantum physics feedback (Implemented: Oct 25, 2025)
+- **Geometric Analysis** (`geometric_attractor_v2.py`): Percentage-based geometric relationship scoring (Implemented: Nov 9, 2025)
+- **Mediator Agents** (`mediator_agents.py`): Pattern detection and information relay between QCPP and agents (Implemented: Nov 9, 2025)
 - **Adaptive** (`adaptive_config.py`): Auto-scaling for small/medium/large proteins
 - **Persistence** (`checkpoint.py`): SHA256 integrity, auto-save, rotation
 - **Visualization** (`visualization.py`): JSON/PDB/CSV export with 2D projections
@@ -244,17 +261,28 @@ coordinator2.resume_from_checkpoint()
 - Energy calculation: <10ms (target), 2-5ms typical ✅
 - RMSD calculation: <5ms (target), 1-3ms typical ✅
 
-### Validation Metrics
+### Validation Metrics (Structural Biology Literature Standards)
+
+**Note:** These are STANDARD THRESHOLDS from structural biology literature for comparison. Current UBF system achieves research-phase results (~80-90Å RMSD). See validation results for actual performance.
+
+**Literature Quality Thresholds:**
 - **RMSD Quality**: Excellent (<2Å), Good (2-4Å), Acceptable (4-5Å), Poor (≥5Å)
 - **GDT-TS Quality**: Excellent (≥80), Good (65-80), Acceptable (50-65), Poor (<50)
 - **TM-score**: Same fold (>0.5), Similar (>0.6), High similarity (>0.8)
 - **Energy**: Folded (<0 kcal/mol), Native (-50 to -80 kcal/mol)
+
+**Current UBF Achievement (October 2025 Validation):**
+- **RMSD**: 83Å (1UBQ, 76 residues) - Research phase
+- **Energy**: -369 kcal/mol (correctly negative, indicating folded state)
 - **Test Proteins**: 1UBQ (76 res), 1CRN (46 res), 2MR9 (35 res), 1VII (36 res), 1LYZ (129 res)
+
+**System validates MECHANISMS** (agent behavior, energy functions, move generation) **not production-grade structure accuracy.**
 
 ### Documentation Resources
 - **README.md** (18 KB): System overview, installation, quick start, QCPP integration, configuration
 - **API.md** (37 KB): Complete API reference with design principles and examples
 - **EXAMPLES.md** (36 KB): 10 detailed usage examples from basic to advanced
+- **GEOMETRIC_MEDIATOR_README.md** (15 KB): Geometric Attractor V2 and Mediator Agents (Nov 9, 2025)
 - **examples/README_INTEGRATED.md**: QCPP integration documentation
 - **Test suite**: 100+ tests demonstrating all features
 

@@ -1,6 +1,6 @@
 # Complete Documentation Index & Guide
 
-**Generated:** November 5, 2025  
+**Generated:** November 9, 2025 (Updated)  
 **Total Documents:** 164 markdown files  
 **Total Documentation:** ~500+ KB
 
@@ -86,6 +86,22 @@ This is your complete guide to understanding all documentation in this project. 
 
 ---
 
+### 5. **ubf_protein/GEOMETRIC_MEDIATOR_README.md** ⭐⭐ (NEW: Nov 9, 2025)
+**Size:** ~15 KB | **Priority:** HIGH
+
+**What it covers:**
+- Geometric Attractor V2 (percentage-based scoring)
+- Mediator Agents (pattern detection)
+- Integration with test_protein.py
+- 50+ comprehensive tests
+- Performance metrics and caching
+
+**Why read it:** Latest features for geometric analysis and pattern detection.
+
+**See also:** QUICKSTART_GEOMETRIC_MEDIATOR.md for 5-minute quick start
+
+---
+
 ## 📚 Core System Documentation
 
 ### QCPP System
@@ -113,6 +129,14 @@ This is your complete guide to understanding all documentation in this project. 
 #### **ubf_protein/examples/README_INTEGRATED.md** ⭐
 **What:** QCPP integration documentation  
 **Covers:** Integrated exploration, configuration presets, command-line usage
+
+#### **ubf_protein/GEOMETRIC_MEDIATOR_README.md** ⭐⭐ (Nov 9, 2025)
+**What:** Geometric Attractor V2 and Mediator Agents documentation (15 KB)  
+**Covers:** Percentage-based geometric scoring, THz/folding/geometric pattern detection, caching, integration
+
+#### **QUICKSTART_GEOMETRIC_MEDIATOR.md** ⭐ (Nov 9, 2025)
+**What:** 5-minute quick start for geometric analysis  
+**Covers:** Three working examples, tips, common questions
 
 #### **ubf_protein/PERFORMANCE_SUMMARY.md**
 **What:** Performance benchmarks and optimization results  
@@ -574,10 +598,16 @@ This is your complete guide to understanding all documentation in this project. 
 ## 📝 Document Freshness
 
 ### Recently Updated (Nov 2025)
-- **CODEBASE_STATUS.md** (Nov 5, 2025) ⭐
+- **DOCUMENTATION_AUDIT_REPORT.md** (Nov 9, 2025) ⭐ NEW - Critical issues identified
+- **DOCUMENTATION_FIX_PLAN.md** (Nov 9, 2025) ⭐ NEW - Correction roadmap
+- **ubf_protein/GEOMETRIC_MEDIATOR_README.md** (Nov 9, 2025) ⭐ NEW - V2 geometric analysis
+- **QUICKSTART_GEOMETRIC_MEDIATOR.md** (Nov 9, 2025) ⭐ NEW - Quick start guide
+- **.github/copilot-instructions.md** (Nov 9, 2025 - Updated) ⭐ - Added disclaimers, Geometric Mediator
+- **CODEBASE_STATUS.md** (Nov 9, 2025 - Updated) ⭐ - Status clarifications, validation results
+- **DOCUMENTATION_INDEX.md** (Nov 9, 2025 - Updated) ⭐ - This file
 - **CLEANUP_REPORT_V2.md** (Nov 5, 2025)
-- **ubf_protein/examples/README_INTEGRATED.md** (QCPP integration)
-- **docs/completed_tasks/QCPP_UBF_INTEGRATION_COMPLETE.md**
+- **ubf_protein/examples/README_INTEGRATED.md** (Oct 25, 2025 - QCPP integration)
+- **docs/completed_tasks/QCPP_UBF_INTEGRATION_COMPLETE.md** (Oct 25, 2025)
 
 ### Core Documentation (Oct-Nov 2025)
 - **ubf_protein/README.md, API.md, EXAMPLES.md** (production-ready docs)

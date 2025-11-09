@@ -1,5 +1,7 @@
 # UBF Protein System
 
+⚠️ **RESEARCH PLATFORM DISCLAIMER**: This is a research platform for exploring consciousness-based protein conformational navigation. Current performance: **12-83Å RMSD typical** (research phase, November 2025 validation). This system validates consciousness navigation concepts, agent coordination, and energy landscape exploration - it is **NOT designed to compete with production structure prediction tools** like AlphaFold/RosettaFold (which achieve <2Å RMSD). The value lies in exploring novel computational approaches, not production-grade accuracy.
+
 A consciousness-based protein structure prediction system using the Universal Behavioral Framework (UBF). This system uses autonomous agents with consciousness coordinates to explore conformational space and predict protein structures through mapless, capability-based navigation.
 
 ## Table of Contents
@@ -41,13 +43,17 @@ The UBF Protein System integrates quantum coherence principles with autonomous a
 ✅ **Real-Time Visualization** - Export trajectories and energy landscapes in multiple formats  
 ✅ **Comprehensive Testing** - 100+ unit and integration tests with >90% coverage  
 ✅ **Performance Optimized** - <2ms move evaluation, <10μs memory retrieval  
-✅ **QCPP Integration** - Real-time quantum physics guidance from Quantum Coherence Protein Predictor (NEW)
+✅ **QCPP Integration** - Real-time quantum physics guidance from QCPP (October 25, 2025)  
+✅ **Geometric Mediator V2** - Percentage-based geometric pattern detection (November 9, 2025)  
+✅ **Mediator Agents** - Information relay between QCPP and agents (November 9, 2025)
 
 ## QCPP Integration
 
-**NEW: Real-time quantum physics feedback for conformational exploration**
+**Real-time quantum physics feedback for conformational exploration** (Implemented: October 25, 2025)
 
-The UBF system now integrates with the Quantum Coherence Protein Predictor (QCPP) to provide real-time quantum physics guidance during conformational exploration. This integration grounds consciousness-based navigation in quantum mechanics and provides dynamic validation across thousands of conformations.
+The UBF system integrates with the Quantum Coherence Protein Predictor (QCPP) to provide real-time quantum physics guidance during conformational exploration. This integration grounds consciousness-based navigation in quantum mechanics and provides dynamic validation across thousands of conformations.
+
+**Note:** Integration provides physics-based guidance for exploration. Structure prediction accuracy remains in research phase (12-83Å RMSD typical).
 
 ### Key Integration Features
 
@@ -272,6 +278,10 @@ ubf_protein/
 ├── multi_agent_coordinator.py # Multi-agent coordination
 ├── validation_suite.py       # Validation framework for testing predictions
 ├── adaptive_config.py        # Size-based configuration
+├── qcpp_integration.py       # QCPP adapter and metrics (October 25, 2025)
+├── qcpp_config.py            # Integration configuration (October 25, 2025)
+├── geometric_attractor_v2.py # Percentage-based geometric analysis (November 9, 2025)
+├── mediator_agents.py        # Pattern detection and information relay (November 9, 2025)
 ├── checkpoint.py             # Checkpoint and resume system
 ├── visualization.py          # Trajectory and energy landscape export
 │
@@ -671,13 +681,26 @@ print(f"Average GDT-TS: {results.average_gdt_ts:.1f}")
 
 The suite includes 5 validation proteins (configured in `validation_proteins.json`):
 
-| PDB ID | Name | Residues | Difficulty | Expected RMSD |
-|--------|------|----------|------------|---------------|
-| 1UBQ | Ubiquitin | 76 | Medium | 3-5 Å |
-| 1CRN | Crambin | 46 | Easy | 2-4 Å |
-| 2MR9 | Villin Headpiece | 35 | Easy | 2-3 Å |
-| 1VII | Villin Headpiece (NMR) | 36 | Easy | 2-3 Å |
-| 1LYZ | Lysozyme | 129 | Hard | 5-7 Å |
+| PDB ID | Name | Residues | Difficulty | Literature RMSD Target | Actual Results |
+|--------|------|----------|------------|------------------------|----------------|
+| 1UBQ | Ubiquitin | 76 | Medium | <5 Å | 83Å (Oct 2025) |
+| 1CRN | Crambin | 46 | Easy | <4 Å | Research phase |
+| 2MR9 | Villin Headpiece | 35 | Easy | <3 Å | Research phase |
+| 1VII | Villin Headpiece (NMR) | 36 | Easy | <3 Å | 12Å (Nov 2025) |
+| 1LYZ | Lysozyme | 129 | Hard | <7 Å | Research phase |
+
+**Note:** "Literature RMSD Target" shows structural biology standards for reference. "Actual Results" shows UBF system performance. System validates exploration mechanics, not production-grade structure accuracy.
+
+#### Validation Purpose
+
+**This validation suite tests SYSTEM MECHANICS, not production structure prediction:**
+- ✅ Agent behavior consistency
+- ✅ Energy function correctness
+- ✅ Move generation quality
+- ✅ Memory system effectiveness
+- ✅ QCPP integration functionality
+- ✅ Geometric pattern detection
+- 🔬 Structure accuracy: Research phase (12-83Å RMSD typical)
 
 #### Validation Example Script
 
@@ -729,8 +752,10 @@ Example output:
    GDT-TS Score:       68.2
    TM-score:            0.721
 
-⭐ Prediction Quality:  ★★★ GOOD
+⭐ Prediction Quality:  ★★★ GOOD (literature standards shown for comparison)
 ```
+
+**Note:** Example shows ideal output with literature-standard RMSD. Actual UBF system typically achieves 12-83Å RMSD (research phase). Energy calculations and quality assessments are functional and demonstrate system mechanics.
 
 ## Configuration
 
@@ -777,15 +802,35 @@ CONSCIOUSNESS_UPDATE_RULES = {
 
 ## Performance Metrics
 
-### Expected Performance (PyPy 7.3+)
+### Software Performance (PyPy 7.3+)
 
-| Metric | Target | Typical |
-|--------|--------|---------|
-| Move evaluation latency | <2ms | 0.5-1.5ms |
-| Memory retrieval | <10μs | 2-8μs |
-| Agent memory footprint | <50MB | 15-30MB |
-| 100 agents, 500K conformations | <2min | 60-90s |
-| PyPy speedup vs CPython | ≥2x | 2-5x |
+**Note:** These metrics measure SOFTWARE PERFORMANCE (speed, memory, throughput), NOT structure prediction accuracy.
+
+| Metric | Target | Typical | Status |
+|--------|--------|---------|--------|
+| Move evaluation latency | <2ms | 0.5-1.5ms | ✅ Excellent |
+| Memory retrieval | <10μs | 2-8μs | ✅ Excellent |
+| Agent memory footprint | <50MB | 15-30MB | ✅ Excellent |
+| 100 agents, 500K conformations | <2min | 60-90s | ✅ Excellent |
+| PyPy speedup vs CPython | ≥2x | 2-5x | ✅ Excellent |
+| QCPP analysis | <5ms | 0.3-2.0ms | ✅ Excellent |
+| QCPP cache hit rate | - | 30-50% | ✅ Good |
+| Energy calculation | <10ms | 2-5ms | ✅ Excellent |
+| RMSD calculation | <5ms | 1-3ms | ✅ Excellent |
+
+### Structure Prediction Quality
+
+**⚠️ Research Phase - NOT Production Accuracy:**
+
+| Metric | Literature Standard | UBF Actual (Nov 2025) |
+|--------|--------------------|-----------------------|
+| **RMSD** | <2Å (excellent) | **12-83Å** (research phase) |
+| **Energy** | Negative (folded) | Variable (+219 to negative) |
+| **GDT-TS** | ≥65 (good) | 7-20 (research phase) |
+| **TM-score** | >0.6 (good) | 0.04-0.15 (research phase) |
+
+**System validates:** Agent coordination, energy functions, move generation, memory systems  
+**NOT suitable for:** Production structure prediction, drug design, clinical applications
 
 ### Benchmark Command
 
