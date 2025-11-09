@@ -527,7 +527,7 @@ def save_conformation_as_pdb(sequence: str, coordinates: list, energy: float,
 def run_protein_test(sequence: str, pdb_file: Optional[Path] = None, pdb_id: Optional[str] = None, 
                      custom_agents: Optional[int] = None, custom_iterations: Optional[int] = None,
                      target_geometry: str = 'none', enable_mediators: bool = False, 
-                     mediator_count: int = 2):
+                     mediator_count: int = 2, enable_refinement: bool = False):
     """Run complete protein test with QCPP-UBF integration."""
     
     print("\n" + "="*70)
@@ -555,6 +555,10 @@ def run_protein_test(sequence: str, pdb_file: Optional[Path] = None, pdb_id: Opt
         print(f"  - 🔍 Mediator Agents: {mediator_count} agents (pattern detection enabled)")
     else:
         print(f"  - Mediator Agents: Disabled")
+    if enable_refinement:
+        print(f"  - ⚛️ Quantum Refinement: ENABLED (two-stage optimization)")
+    else:
+        print(f"  - Quantum Refinement: Disabled")
     
     # Load experimental data if available
     exp_data = None
@@ -592,7 +596,8 @@ def run_protein_test(sequence: str, pdb_file: Optional[Path] = None, pdb_id: Opt
         qcpp_analysis_frequency=qcpp_freq,
         target_geometry=target_geometry,
         enable_mediators=enable_mediators,
-        mediator_count=mediator_count
+        mediator_count=mediator_count,
+        enable_quantum_refinement=enable_refinement
     )
     
     coordinator.initialize_agents(
@@ -611,7 +616,35 @@ def run_protein_test(sequence: str, pdb_file: Optional[Path] = None, pdb_id: Opt
     print(f"  Estimated time: ~{(num_agents * iterations) / 350 / 60:.1f} minutes")
     
     start_time = time.time()
-    results = coordinator.run_parallel_exploration(iterations=iterations)
+    
+    # Load native structure if available for refinement
+    native_structure = None
+    if enable_refinement and pdb_file:
+        try:
+            from ubf_protein.rmsd_calculator import NativeStructureLoader
+            loader = NativeStructureLoader(cache_dir="./pdb_cache")
+            if Path(pdb_file).exists():
+                native_structure = loader.load_from_file(str(pdb_file), ca_only=True)
+                print(f"  ✓ Loaded native structure for refinement: {native_structure.pdb_id}")
+            elif pdb_id:
+                native_structure = loader.load_from_pdb_id(pdb_id, ca_only=True)
+                print(f"  ✓ Loaded native structure for refinement: {pdb_id}")
+        except Exception as e:
+            print(f"  ⚠️ Could not load native structure for refinement: {e}")
+            print(f"  ⚠️ Refinement will be skipped")
+    
+    # Use refinement workflow if enabled, otherwise standard exploration
+    if enable_refinement:
+        print(f"  ⚛️ Two-stage quantum refinement enabled")
+        exploration_results, refinement_result = coordinator.run_parallel_exploration_with_refinement(
+            iterations=iterations,
+            native_structure=native_structure
+        )
+        results = exploration_results
+    else:
+        results = coordinator.run_parallel_exploration(iterations=iterations)
+        refinement_result = None
+    
     exploration_time = time.time() - start_time
     
     total_conformations = num_agents * iterations
@@ -840,6 +873,29 @@ def run_protein_test(sequence: str, pdb_file: Optional[Path] = None, pdb_id: Opt
         print(f"  - ΔG RMSE: {rmse_results['dg_rmse']:.2f} kcal/mol")
         print(f"  - Overall Quality: {rmse_results['quality']}")
     
+    if refinement_result:
+        print(f"\n⚛️ QUANTUM REFINEMENT:")
+        print(f"  - Initial RMSD: {refinement_result.initial_rmsd:.2f} Å")
+        print(f"  - Final RMSD: {refinement_result.final_rmsd:.2f} Å")
+        print(f"  - RMSD Improvement: {refinement_result.rmsd_improvement:.2f} Å ({refinement_result.rmsd_improvement / refinement_result.initial_rmsd * 100:.1f}%)")
+        print(f"  - Final Energy: {refinement_result.energy:.2f} kcal/mol")
+        print(f"  - GDT-TS: {refinement_result.gdt_ts:.1f}")
+        print(f"  - TM-score: {refinement_result.tm_score:.3f}")
+        print(f"  - Refinement Time: {refinement_result.refinement_time_seconds:.1f}s")
+        
+        # Component breakdown if available
+        if hasattr(refinement_result, 'rmsd_components') and refinement_result.rmsd_components:
+            print(f"  - RMSD Components:")
+            components = refinement_result.rmsd_components
+            if 'helix' in components:
+                print(f"    • Helix: {components['helix']:.2f} Å")
+            if 'sheet' in components:
+                print(f"    • Sheet: {components['sheet']:.2f} Å")
+            if 'loop' in components:
+                print(f"    • Loop: {components['loop']:.2f} Å")
+            if 'core' in components:
+                print(f"    • Core: {components['core']:.2f} Å")
+    
     if geometric_results:
         print(f"\n🔬 GEOMETRIC ATTRACTOR ANALYSIS:")
         
@@ -956,7 +1012,8 @@ def run_protein_test(sequence: str, pdb_file: Optional[Path] = None, pdb_id: Opt
             'iterations_per_agent': iterations,
             'total_conformations': total_conformations,
             'mediators_enabled': enable_mediators,
-            'mediator_count': mediator_count if enable_mediators else 0
+            'mediator_count': mediator_count if enable_mediators else 0,
+            'quantum_refinement_enabled': enable_refinement
         },
         'exploration_results': {
             'best_energy': results.best_energy,
@@ -973,6 +1030,17 @@ def run_protein_test(sequence: str, pdb_file: Optional[Path] = None, pdb_id: Opt
             'aligned': rmsd_result.aligned if rmsd_result else None,
             'calculation_method': 'kabsch' if rmsd_result else 'energy_estimate'
         } if rmsd_result or estimated_rmsd else None,
+        'quantum_refinement': {
+            'initial_rmsd': refinement_result.initial_rmsd,
+            'final_rmsd': refinement_result.final_rmsd,
+            'rmsd_improvement': refinement_result.rmsd_improvement,
+            'energy': refinement_result.energy,
+            'gdt_ts': refinement_result.gdt_ts,
+            'tm_score': refinement_result.tm_score,
+            'refinement_time_seconds': refinement_result.refinement_time_seconds,
+            'rmsd_components': refinement_result.rmsd_components if hasattr(refinement_result, 'rmsd_components') else None,
+            'convergence_trajectory': refinement_result.convergence_trajectory if hasattr(refinement_result, 'convergence_trajectory') else None
+        } if refinement_result else None,
         'qcpp_integration': {
             'total_analyses': cache_stats['total_analyses'],
             'cache_hit_rate': cache_stats['cache_hit_rate'],
@@ -1039,6 +1107,7 @@ Examples:
   python test_protein.py --quick                        # Quick test (small protein)
   python test_protein.py --pdb 1UBQ --agents 30        # Custom agent count
   python test_protein.py --pdb 1UBQ --enable-mediators # Enable pattern detection
+  python test_protein.py --pdb 1UBQ --enable-refinement # Enable quantum refinement
   python test_protein.py --pdb 1UBQ --enable-mediators --mediator-count 5  # 5 Mediators
         """
     )
@@ -1055,6 +1124,8 @@ Examples:
                         help='Enable Mediator Agents for pattern detection and information relay')
     parser.add_argument('--mediator-count', type=int, default=2,
                         help='Number of Mediator Agents to deploy (default: 2, only used if --enable-mediators is set)')
+    parser.add_argument('--enable-refinement', action='store_true',
+                        help='Enable quantum refinement for two-stage optimization (coarse → refined)')
     parser.add_argument('--list', action='store_true', help='List available test proteins')
     parser.add_argument('--quick', action='store_true', help='Quick test on Villin (35 residues)')
     
@@ -1116,7 +1187,8 @@ Examples:
             custom_iterations=args.iterations,
             target_geometry=args.target_geometry,
             enable_mediators=args.enable_mediators,
-            mediator_count=args.mediator_count
+            mediator_count=args.mediator_count,
+            enable_refinement=args.enable_refinement
         )
     
     # Test with custom sequence
@@ -1130,7 +1202,8 @@ Examples:
             custom_iterations=args.iterations,
             target_geometry=args.target_geometry,
             enable_mediators=args.enable_mediators,
-            mediator_count=args.mediator_count
+            mediator_count=args.mediator_count,
+            enable_refinement=args.enable_refinement
         )
 
 

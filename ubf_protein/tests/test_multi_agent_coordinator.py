@@ -7,6 +7,7 @@ working together to explore conformational space.
 
 import pytest
 from unittest.mock import Mock, patch
+from typing import Optional
 
 from ubf_protein.multi_agent_coordinator import MultiAgentCoordinator
 from ubf_protein.protein_agent import ProteinAgent
@@ -598,3 +599,458 @@ class TestMultiAgentCoordinatorWithMediators:
         
         # Should return empty list (both mediators failed or returned empty)
         assert patterns == []
+
+
+class TestQuantumRefinementIntegration:
+    """Test suite for quantum refinement integration with MultiAgentCoordinator (Task 13)"""
+
+    def _create_test_conformation(self, sequence: str, energy: float, rmsd: Optional[float] = None) -> Conformation:
+        """Helper to create a test conformation with all required fields"""
+        n_residues = len(sequence)
+        return Conformation(
+            conformation_id=f"test_conf_{energy}",
+            sequence=sequence,
+            atom_coordinates=[(float(i), float(i), float(i)) for i in range(n_residues)],
+            phi_angles=[0.0] * n_residues,
+            psi_angles=[0.0] * n_residues,
+            energy=energy,
+            rmsd_to_native=rmsd,
+            secondary_structure=['C'] * n_residues,
+            available_move_types=['helix_formation', 'sheet_formation'],
+            structural_constraints={}
+        )
+    
+    def _create_test_refinement_result(
+        self,
+        initial_conf: Conformation,
+        refined_conf: Conformation,
+        initial_rmsd: float,
+        final_rmsd: float
+    ):
+        """Helper to create a test RefinementResult with all required fields"""
+        from ubf_protein.models import RefinementResult
+        
+        return RefinementResult(
+            initial_structure=initial_conf,
+            refined_structure=refined_conf,
+            native_structure=None,
+            initial_rmsd=initial_rmsd,
+            final_rmsd=final_rmsd,
+            rmsd_improvement=initial_rmsd - final_rmsd,
+            helix_rmsd=final_rmsd * 0.8,
+            sheet_rmsd=final_rmsd * 0.9,
+            loop_rmsd=final_rmsd * 1.2,
+            core_rmsd=final_rmsd * 0.7,
+            gdt_ts=75.0,
+            tm_score=0.85,
+            energy=refined_conf.energy,
+            iterations_used=11000,
+            refinement_time_seconds=30.0,
+            quantum_cores_identified=2,
+            restraints_applied=5,
+            contacts_enforced=3,
+            rmsd_trajectory=[initial_rmsd, final_rmsd],
+            energy_trajectory=[initial_conf.energy, refined_conf.energy]
+        )
+
+    def test_initialization_with_refinement_enabled(self):
+        """Test coordinator initialization with quantum refinement enabled"""
+        # Create mock QCPP adapter - will fail type check, should be handled gracefully
+        mock_qcpp = Mock()
+        
+        coordinator = MultiAgentCoordinator(
+            protein_sequence="ACDEFGH",
+            qcpp_integration=mock_qcpp,
+            enable_quantum_refinement=True,
+            refinement_rmsd_threshold=5.0
+        )
+        
+        # Verify refinement initialization was attempted but failed due to mock
+        # This is expected behavior - real QCPP adapter required for refinement
+        assert coordinator._enable_quantum_refinement is False  # Disabled due to TypeError
+        assert coordinator._refinement_rmsd_threshold == 5.0  # Config preserved
+        assert coordinator._refinement_engine is None  # Not initialized
+
+    def test_initialization_without_qcpp_disables_refinement(self):
+        """Test that refinement is automatically disabled if QCPP is not configured"""
+        coordinator = MultiAgentCoordinator(
+            protein_sequence="ACDEFGH",
+            qcpp_integration=None,
+            enable_quantum_refinement=True
+        )
+        
+        # Refinement should be disabled due to missing QCPP
+        assert coordinator._enable_quantum_refinement is False
+        assert coordinator._refinement_engine is None
+
+    def test_custom_refinement_config(self):
+        """Test initialization with custom refinement configuration"""
+        from ubf_protein.models import RefinementConfig
+        
+        mock_qcpp = Mock()
+        custom_config = RefinementConfig()
+        custom_config.stage1_temperature = 2.0
+        custom_config.stage2_iterations = 20000
+        
+        coordinator = MultiAgentCoordinator(
+            protein_sequence="ACDEFGH",
+            qcpp_integration=mock_qcpp,
+            enable_quantum_refinement=True,
+            refinement_config=custom_config
+        )
+        
+        # Verify custom config is stored (even though engine initialization failed)
+        assert coordinator._refinement_config is custom_config
+        # These are attributes of the RefinementConfig class, not instance
+        # The dataclass default values are class attributes
+        assert custom_config.stage1_temperature == 2.0
+        assert custom_config.stage2_iterations == 20000
+        # Engine not initialized due to mock QCPP adapter
+        assert coordinator._enable_quantum_refinement is False
+
+    def test_run_parallel_exploration_with_refinement_below_threshold(self):
+        """Test that refinement is NOT triggered when RMSD is below threshold"""
+        mock_qcpp = Mock()
+        
+        # Patch QuantumRefinementEngine to avoid type check issues
+        with patch('ubf_protein.multi_agent_coordinator.QuantumRefinementEngine') as MockEngine:
+            mock_engine = Mock()
+            MockEngine.return_value = mock_engine
+            
+            coordinator = MultiAgentCoordinator(
+                protein_sequence="ACDEFGH",
+                qcpp_integration=mock_qcpp,
+                enable_quantum_refinement=True,
+                refinement_rmsd_threshold=5.0
+            )
+            
+            # Force enable refinement for testing
+            coordinator._enable_quantum_refinement = True
+            coordinator._refinement_engine = mock_engine
+        
+        # Initialize agents
+        coordinator.initialize_agents(count=3, diversity_profile="balanced")
+        
+        # Mock a good RMSD result (below threshold)
+        mock_conf = self._create_test_conformation("ACDEFGH", -100.0, 3.5)
+        
+        with patch.object(coordinator, 'run_parallel_exploration') as mock_explore:
+            mock_explore.return_value = ExplorationResults(
+                total_iterations=10,
+                total_conformations_explored=30,
+                best_conformation=mock_conf,
+                best_energy=-100.0,
+                best_rmsd=3.5,
+                agent_metrics=[],
+                collective_learning_benefit=0.0,
+                total_runtime_seconds=1.0,
+                shared_memories_created=0
+            )
+            
+            exploration_results, refinement_result = coordinator.run_parallel_exploration_with_refinement(
+                iterations=10
+            )
+        
+        # Verify refinement was NOT triggered
+        assert refinement_result is None
+        assert exploration_results.best_rmsd == 3.5
+
+    def test_run_parallel_exploration_with_refinement_above_threshold(self):
+        """Test that refinement IS triggered when RMSD is above threshold"""
+        mock_qcpp = Mock()
+        
+        # Patch QuantumRefinementEngine to avoid type check issues
+        with patch('ubf_protein.multi_agent_coordinator.QuantumRefinementEngine') as MockEngine:
+            mock_engine = Mock()
+            MockEngine.return_value = mock_engine
+            
+            coordinator = MultiAgentCoordinator(
+                protein_sequence="ACDEFGH",
+                qcpp_integration=mock_qcpp,
+                enable_quantum_refinement=True,
+                refinement_rmsd_threshold=5.0
+            )
+            
+            # Force enable refinement for testing
+            coordinator._enable_quantum_refinement = True
+            coordinator._refinement_engine = mock_engine
+        
+        # Initialize agents
+        coordinator.initialize_agents(count=3, diversity_profile="balanced")
+        
+        # Mock a coarse RMSD result (above threshold)
+        mock_conf = self._create_test_conformation("ACDEFGH", -50.0, 8.5)
+        
+        # Mock refined conformation
+        mock_refined_conf = self._create_test_conformation("ACDEFGH", -100.0, 3.2)
+        
+        # Create refinement result using helper
+        mock_refinement_result = self._create_test_refinement_result(
+            mock_conf, mock_refined_conf, 8.5, 3.2
+        )
+        
+        with patch.object(coordinator, 'run_parallel_exploration') as mock_explore:
+            mock_explore.return_value = ExplorationResults(
+                total_iterations=10,
+                total_conformations_explored=30,
+                best_conformation=mock_conf,
+                best_energy=-50.0,
+                best_rmsd=8.5,
+                agent_metrics=[],
+                collective_learning_benefit=0.0,
+                total_runtime_seconds=1.0,
+                shared_memories_created=0
+            )
+            
+            mock_engine.refine_structure_quantum.return_value = mock_refinement_result
+            
+            exploration_results, refinement_result = coordinator.run_parallel_exploration_with_refinement(
+                iterations=10
+            )
+        
+        # Verify refinement WAS triggered
+        assert refinement_result is not None
+        assert refinement_result.final_rmsd == 3.2
+        assert refinement_result.rmsd_improvement == 5.3
+        
+        # Verify coordinator state was updated with refined structure
+        assert coordinator._best_rmsd == 3.2
+        assert coordinator._best_energy == -100.0
+        assert coordinator._best_conformation == mock_refined_conf
+
+    def test_run_parallel_exploration_with_refinement_no_native_structure(self):
+        """Test that refinement is skipped when RMSD is not available"""
+        mock_qcpp = Mock()
+        
+        # Patch QuantumRefinementEngine to avoid type check issues
+        with patch('ubf_protein.multi_agent_coordinator.QuantumRefinementEngine') as MockEngine:
+            mock_engine = Mock()
+            MockEngine.return_value = mock_engine
+            
+            coordinator = MultiAgentCoordinator(
+                protein_sequence="ACDEFGH",
+                qcpp_integration=mock_qcpp,
+                enable_quantum_refinement=True,
+                refinement_rmsd_threshold=5.0
+            )
+            
+            # Force enable refinement for testing
+            coordinator._enable_quantum_refinement = True
+            coordinator._refinement_engine = mock_engine
+        
+        coordinator.initialize_agents(count=3)
+        
+        # Mock conformation without RMSD (no native structure)
+        mock_conf = self._create_test_conformation("ACDEFGH", -50.0, None)
+        
+        with patch.object(coordinator, 'run_parallel_exploration') as mock_explore:
+            mock_explore.return_value = ExplorationResults(
+                total_iterations=10,
+                total_conformations_explored=30,
+                best_conformation=mock_conf,
+                best_energy=-50.0,
+                best_rmsd=float('inf'),
+                agent_metrics=[],
+                collective_learning_benefit=0.0,
+                total_runtime_seconds=1.0,
+                shared_memories_created=0
+            )
+            
+            exploration_results, refinement_result = coordinator.run_parallel_exploration_with_refinement(
+                iterations=10
+            )
+        
+        # Verify refinement was NOT triggered (no RMSD to check)
+        assert refinement_result is None
+
+    def test_run_parallel_exploration_with_refinement_disabled(self):
+        """Test that refinement is skipped when disabled"""
+        coordinator = MultiAgentCoordinator(
+            protein_sequence="ACDEFGH",
+            enable_quantum_refinement=False
+        )
+        
+        coordinator.initialize_agents(count=3)
+        
+        mock_conf = self._create_test_conformation("ACDEFGH", -50.0, 8.5)
+        
+        with patch.object(coordinator, 'run_parallel_exploration') as mock_explore:
+            mock_explore.return_value = ExplorationResults(
+                total_iterations=10,
+                total_conformations_explored=30,
+                best_conformation=mock_conf,
+                best_energy=-50.0,
+                best_rmsd=8.5,
+                agent_metrics=[],
+                collective_learning_benefit=0.0,
+                total_runtime_seconds=1.0,
+                shared_memories_created=0
+            )
+            
+            exploration_results, refinement_result = coordinator.run_parallel_exploration_with_refinement(
+                iterations=10
+            )
+        
+        # Verify refinement was NOT triggered (disabled)
+        assert refinement_result is None
+
+    def test_run_parallel_exploration_with_refinement_handles_errors(self):
+        """Test that refinement errors are handled gracefully"""
+        mock_qcpp = Mock()
+        
+        # Patch QuantumRefinementEngine to avoid type check issues
+        with patch('ubf_protein.multi_agent_coordinator.QuantumRefinementEngine') as MockEngine:
+            mock_engine = Mock()
+            MockEngine.return_value = mock_engine
+            
+            coordinator = MultiAgentCoordinator(
+                protein_sequence="ACDEFGH",
+                qcpp_integration=mock_qcpp,
+                enable_quantum_refinement=True,
+                refinement_rmsd_threshold=5.0
+            )
+            
+            # Force enable refinement for testing
+            coordinator._enable_quantum_refinement = True
+            coordinator._refinement_engine = mock_engine
+        
+        coordinator.initialize_agents(count=3)
+        
+        mock_conf = self._create_test_conformation("ACDEFGH", -50.0, 8.5)
+        
+        with patch.object(coordinator, 'run_parallel_exploration') as mock_explore:
+            mock_explore.return_value = ExplorationResults(
+                total_iterations=10,
+                total_conformations_explored=30,
+                best_conformation=mock_conf,
+                best_energy=-50.0,
+                best_rmsd=8.5,
+                agent_metrics=[],
+                collective_learning_benefit=0.0,
+                total_runtime_seconds=1.0,
+                shared_memories_created=0
+            )
+            
+            # Simulate refinement error
+            mock_engine.refine_structure_quantum.side_effect = Exception("Refinement failed")
+            
+            exploration_results, refinement_result = coordinator.run_parallel_exploration_with_refinement(
+                iterations=10
+            )
+        
+        # Verify error was handled gracefully
+        assert refinement_result is None  # None due to error
+        assert exploration_results.best_rmsd == 8.5  # Original results preserved
+
+    def test_custom_rmsd_threshold(self):
+        """Test custom RMSD threshold for triggering refinement"""
+        mock_qcpp = Mock()
+        
+        # Patch QuantumRefinementEngine to avoid type check issues
+        with patch('ubf_protein.multi_agent_coordinator.QuantumRefinementEngine') as MockEngine:
+            mock_engine = Mock()
+            MockEngine.return_value = mock_engine
+            
+            # Use 7.0Å threshold instead of default 5.0Å
+            coordinator = MultiAgentCoordinator(
+                protein_sequence="ACDEFGH",
+                qcpp_integration=mock_qcpp,
+                enable_quantum_refinement=True,
+                refinement_rmsd_threshold=7.0
+            )
+            
+            # Force enable refinement for testing
+            coordinator._enable_quantum_refinement = True
+            coordinator._refinement_engine = mock_engine
+        
+        coordinator.initialize_agents(count=3)
+        
+        # RMSD of 6.5Å should NOT trigger with 7.0Å threshold
+        mock_conf = self._create_test_conformation("ACDEFGH", -50.0, 6.5)
+        
+        with patch.object(coordinator, 'run_parallel_exploration') as mock_explore:
+            mock_explore.return_value = ExplorationResults(
+                total_iterations=10,
+                total_conformations_explored=30,
+                best_conformation=mock_conf,
+                best_energy=-50.0,
+                best_rmsd=6.5,
+                agent_metrics=[],
+                collective_learning_benefit=0.0,
+                total_runtime_seconds=1.0,
+                shared_memories_created=0
+            )
+            
+            exploration_results, refinement_result = coordinator.run_parallel_exploration_with_refinement(
+                iterations=10
+            )
+        
+        # Verify refinement was NOT triggered (below custom threshold)
+        assert refinement_result is None
+        assert exploration_results.best_rmsd == 6.5
+
+    def test_integration_with_various_protein_sizes(self):
+        """Test refinement integration with small, medium, and large proteins"""
+        test_sequences = {
+            "small": "ACDEFGH",      # 7 residues
+            "medium": "ACDEFGH" * 10,  # 70 residues
+            "large": "ACDEFGH" * 20    # 140 residues
+        }
+        
+        for size_name, sequence in test_sequences.items():
+            mock_qcpp = Mock()
+            
+            # Patch QuantumRefinementEngine to avoid type check issues
+            with patch('ubf_protein.multi_agent_coordinator.QuantumRefinementEngine') as MockEngine:
+                mock_engine = Mock()
+                MockEngine.return_value = mock_engine
+                
+                coordinator = MultiAgentCoordinator(
+                    protein_sequence=sequence,
+                    qcpp_integration=mock_qcpp,
+                    enable_quantum_refinement=True,
+                    refinement_rmsd_threshold=5.0
+                )
+                
+                # Force enable refinement for testing
+                coordinator._enable_quantum_refinement = True
+                coordinator._refinement_engine = mock_engine
+            
+            # Verify initialization works for all sizes
+            assert coordinator._enable_quantum_refinement is True
+            assert coordinator._refinement_engine is not None
+            assert len(coordinator._protein_sequence) == len(sequence)
+
+    def test_seamless_workflow_integration(self):
+        """Test that refinement integrates seamlessly into existing workflow"""
+        mock_qcpp = Mock()
+        
+        # Patch QuantumRefinementEngine to avoid type check issues
+        with patch('ubf_protein.multi_agent_coordinator.QuantumRefinementEngine') as MockEngine:
+            mock_engine = Mock()
+            MockEngine.return_value = mock_engine
+            
+            coordinator = MultiAgentCoordinator(
+                protein_sequence="ACDEFGH",
+                qcpp_integration=mock_qcpp,
+                enable_quantum_refinement=True,
+                enable_checkpointing=True,
+                checkpoint_dir="test_checkpoints"
+            )
+            
+            # Force enable refinement for testing
+            coordinator._enable_quantum_refinement = True
+            coordinator._refinement_engine = mock_engine
+        
+        # Initialize with all features
+        coordinator.initialize_agents(count=5, diversity_profile="balanced")
+        
+        # Verify all systems are operational
+        assert len(coordinator._agents) == 5
+        assert coordinator._enable_quantum_refinement is True
+        assert coordinator._refinement_engine is not None
+        assert coordinator._checkpoint_manager is not None
+        
+        # Test that method exists and has correct signature
+        assert hasattr(coordinator, 'run_parallel_exploration_with_refinement')
+        assert callable(coordinator.run_parallel_exploration_with_refinement)

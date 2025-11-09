@@ -44,7 +44,10 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
                  target_geometry: str = 'none',
                  enable_mediators: bool = False,
                  mediator_count: int = 2,
-                 mediator_config: Optional[Any] = None):
+                 mediator_config: Optional[Any] = None,
+                 enable_quantum_refinement: bool = False,
+                 refinement_rmsd_threshold: float = 5.0,
+                 refinement_config: Optional[Any] = None):
         """
         Initialize multi-agent coordinator with protein sequence.
 
@@ -61,6 +64,9 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
             enable_mediators: Whether to enable Mediator Agents for pattern detection (default: False)
             mediator_count: Number of Mediator Agents to initialize (default: 2)
             mediator_config: Optional MediatorConfig instance (uses default if None)
+            enable_quantum_refinement: Whether to enable automatic quantum refinement for coarse structures (default: False)
+            refinement_rmsd_threshold: RMSD threshold to trigger refinement in Ångströms (default: 5.0Å)
+            refinement_config: Optional RefinementConfig instance for customization (uses default if None)
         """
         self._protein_sequence = protein_sequence
         self._agents: List[IProteinAgent] = []
@@ -79,6 +85,12 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
         # QCPP Integration (Task 7: Store QCPP integration reference)
         self._qcpp_integration = qcpp_integration
         self._qcpp_analysis_frequency = qcpp_analysis_frequency
+        
+        # Quantum Refinement Engine configuration (Task 13)
+        self._enable_quantum_refinement = enable_quantum_refinement
+        self._refinement_rmsd_threshold = refinement_rmsd_threshold
+        self._refinement_config = refinement_config
+        self._refinement_engine: Optional[Any] = None  # QuantumRefinementEngine instance
         
         # Global QCPP Registry for cross-agent sharing (Task 8: Eliminate cross-agent waste)
         # Thread-safe dictionary for storing QCPP metrics globally
@@ -119,6 +131,37 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
         self._checkpoint_manager = CheckpointManager(checkpoint_dir=checkpoint_dir) if enable_checkpointing else None
         if self._checkpoint_manager and hasattr(self._adaptive_config, 'checkpoint_interval'):
             self._checkpoint_manager.set_auto_save_interval(self._adaptive_config.checkpoint_interval)
+        
+        # Initialize Quantum Refinement Engine if enabled (Task 13)
+        if self._enable_quantum_refinement:
+            if self._qcpp_integration is None:
+                logger.warning(
+                    "Quantum refinement enabled but QCPP integration is not configured. "
+                    "Refinement will not be available."
+                )
+                self._enable_quantum_refinement = False
+            else:
+                try:
+                    from .quantum_refinement_engine import QuantumRefinementEngine
+                    from .energy_function import MolecularMechanicsEnergy
+                    from .rmsd_calculator import RMSDCalculator
+                    
+                    energy_calculator = MolecularMechanicsEnergy()
+                    rmsd_calculator = RMSDCalculator()
+                    
+                    self._refinement_engine = QuantumRefinementEngine(
+                        qcpp_adapter=self._qcpp_integration,
+                        energy_calculator=energy_calculator,
+                        rmsd_calculator=rmsd_calculator
+                    )
+                    
+                    logger.info(
+                        f"Quantum Refinement Engine initialized with RMSD threshold {self._refinement_rmsd_threshold}Å"
+                    )
+                except (ImportError, TypeError) as e:
+                    logger.error(f"Failed to initialize Quantum Refinement Engine: {e}")
+                    self._enable_quantum_refinement = False
+                    self._refinement_engine = None
 
         # Exploration state
         self._total_iterations = 0
@@ -401,9 +444,9 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
             
             # Get current conformation
             current_conf = agent.get_current_conformation()
-            return (current_conf.energy, 
-                    current_conf.rmsd_to_native if current_conf.rmsd_to_native else float('inf'),
-                    memory_shared)
+            rmsd_value = current_conf.rmsd_to_native if current_conf.rmsd_to_native is not None else float('inf')
+            logger.debug(f"Agent conformation: energy={current_conf.energy:.2f}, rmsd_to_native={current_conf.rmsd_to_native}, rmsd_value={rmsd_value}")
+            return (current_conf.energy, rmsd_value, memory_shared)
 
         # Run iterations
         for iteration in range(iterations):
@@ -426,9 +469,9 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
                             self._best_energy = energy
                             # Update best conformation from the agent that achieved this
                             for agent in self._agents:
-                                current_conf = agent.get_current_conformation()
-                                if abs(current_conf.energy - energy) < 0.01:  # Match by energy
-                                    self._best_conformation = current_conf
+                                best_conf = agent.get_best_conformation()
+                                if abs(best_conf.energy - energy) < 0.01:  # Match by energy
+                                    self._best_conformation = best_conf
                                     break
                         
                         if rmsd < self._best_rmsd:
@@ -513,18 +556,18 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
             )
             if should_record_trajectory:
                 try:
-                    # Get best agent's current state for this iteration
+                    # Get best agent's BEST state for this iteration (not current)
                     best_agent = self._agents[0]  # Start with first agent
                     best_agent_energy = float('inf')
                     
                     for agent in self._agents:
-                        conf = agent.get_current_conformation()
+                        conf = agent.get_best_conformation()  # Use BEST, not current
                         if conf.energy < best_agent_energy:
                             best_agent = agent
                             best_agent_energy = conf.energy
                     
                     # Get UBF metrics from best agent
-                    best_conf = best_agent.get_current_conformation()
+                    best_conf = best_agent.get_best_conformation()  # Use BEST, not current
                     consciousness = best_agent._consciousness  # type: ignore
                     
                     # Get QCPP metrics for best conformation (only every N iterations now)
@@ -620,6 +663,141 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
             consciousness_qcpp_correlations=consciousness_qcpp_correlations
         )
 
+    def run_parallel_exploration_with_refinement(
+        self,
+        iterations: int,
+        native_structure: Optional[Any] = None
+    ) -> Tuple[ExplorationResults, Optional[Any]]:
+        """
+        Run parallel exploration with automatic quantum refinement for coarse structures.
+        
+        This method combines Stage 1 exploration (multi-agent parallel search) with
+        optional Stage 2 quantum refinement. After the exploration completes, if the
+        best structure has RMSD > refinement_rmsd_threshold, automatic quantum
+        refinement is triggered to achieve sub-5Å accuracy.
+        
+        Workflow:
+        1. Run standard parallel exploration (Stage 1)
+        2. Check best RMSD against refinement threshold
+        3. If RMSD > threshold, trigger quantum refinement (Stage 2)
+        4. Return both exploration results and refinement result
+        
+        Args:
+            iterations: Number of exploration iterations per agent
+            native_structure: Optional native structure for RMSD validation
+        
+        Returns:
+            Tuple of (ExplorationResults, RefinementResult or None)
+            - ExplorationResults: Standard multi-agent exploration metrics
+            - RefinementResult: Quantum refinement result if triggered, None otherwise
+        
+        Raises:
+            ValueError: If quantum refinement is not enabled or configured
+        
+        Example:
+            >>> coordinator = MultiAgentCoordinator(
+            ...     protein_sequence="MQIFVKT",
+            ...     qcpp_integration=qcpp_adapter,
+            ...     enable_quantum_refinement=True,
+            ...     refinement_rmsd_threshold=5.0
+            ... )
+            >>> coordinator.initialize_agents(count=10)
+            >>> exploration_results, refinement_result = coordinator.run_parallel_exploration_with_refinement(
+            ...     iterations=500,
+            ...     native_structure=native_pdb
+            ... )
+            >>> if refinement_result:
+            ...     print(f"Refined RMSD: {refinement_result.final_rmsd:.2f}Å")
+        """
+        # Ensure agents have native structure for RMSD tracking
+        if native_structure is not None:
+            # Check if agents have RMSD tracking enabled by checking first agent's conformation
+            needs_reinit = False
+            if not self._agents:
+                needs_reinit = True
+                logger.info("No agents initialized - creating agents with RMSD tracking")
+            else:
+                # Check if current conformations have RMSD tracking
+                current_conf = self._agents[0].get_current_conformation()
+                if current_conf.rmsd_to_native is None:
+                    needs_reinit = True
+                    logger.info("Agents don't have native structure - reinitializing with RMSD tracking")
+            
+            if needs_reinit:
+                # Re-initialize agents with native structure
+                agent_count = len(self._agents) if self._agents else 10
+                self.initialize_agents(agent_count, "balanced", native_structure)
+                logger.info(f"Initialized {agent_count} agents with native structure for RMSD tracking")
+        
+        # Stage 1: Run standard parallel exploration
+        logger.info(f"Stage 1: Starting parallel exploration with {len(self._agents)} agents for {iterations} iterations")
+        exploration_results = self.run_parallel_exploration(iterations)
+        
+        logger.info(
+            f"Stage 1 completed: Best RMSD={exploration_results.best_rmsd:.2f}Å, "
+            f"Best Energy={exploration_results.best_energy:.2f} kcal/mol"
+        )
+        
+        # Check if refinement is needed
+        refinement_result = None
+        
+        if not self._enable_quantum_refinement:
+            logger.info("Quantum refinement is not enabled, skipping Stage 2")
+            return exploration_results, None
+        
+        if self._refinement_engine is None:
+            logger.warning("Refinement engine not initialized, skipping Stage 2")
+            return exploration_results, None
+        
+        if exploration_results.best_conformation is None:
+            logger.warning("No valid conformation found in exploration, skipping Stage 2")
+            return exploration_results, None
+        
+        # Check RMSD threshold
+        best_rmsd = exploration_results.best_rmsd
+        
+        if best_rmsd == float('inf') or best_rmsd is None:
+            logger.info("RMSD not available (no native structure), skipping automatic refinement")
+            return exploration_results, None
+        
+        if best_rmsd <= self._refinement_rmsd_threshold:
+            logger.info(
+                f"RMSD {best_rmsd:.2f}Å is already below threshold {self._refinement_rmsd_threshold:.2f}Å, "
+                "skipping refinement"
+            )
+            return exploration_results, None
+        
+        # Stage 2: Trigger quantum refinement
+        logger.info(
+            f"Stage 2: RMSD {best_rmsd:.2f}Å exceeds threshold {self._refinement_rmsd_threshold:.2f}Å, "
+            "triggering quantum refinement"
+        )
+        
+        try:
+            refinement_result = self._refinement_engine.refine_structure_quantum(
+                coarse_structure=exploration_results.best_conformation,
+                native_structure=native_structure,
+                config=self._refinement_config
+            )
+            
+            logger.info(
+                f"Stage 2 completed: Refined RMSD={refinement_result.final_rmsd:.2f}Å "
+                f"(improvement: {refinement_result.rmsd_improvement:.2f}Å), "
+                f"Energy={refinement_result.energy:.2f} kcal/mol"
+            )
+            
+            # Update best conformation with refined structure
+            self._best_conformation = refinement_result.refined_structure
+            self._best_rmsd = refinement_result.final_rmsd
+            self._best_energy = refinement_result.energy
+            
+        except Exception as e:
+            logger.error(f"Quantum refinement failed: {e}")
+            logger.warning("Returning exploration results without refinement")
+            refinement_result = None
+        
+        return exploration_results, refinement_result
+
     def resume_from_checkpoint(self, checkpoint_file: str) -> int:
         """
         Resume exploration from a checkpoint file.
@@ -655,14 +833,14 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
             self._best_conformation = None
             
             for agent in self._agents:
-                current_conf = agent.get_current_conformation()
-                if current_conf.energy < self._best_energy:
-                    self._best_energy = current_conf.energy
-                    self._best_conformation = current_conf
+                best_conf = agent.get_best_conformation()
+                if best_conf.energy < self._best_energy:
+                    self._best_energy = best_conf.energy
+                    self._best_conformation = best_conf
                 
-                if (current_conf.rmsd_to_native and
-                    current_conf.rmsd_to_native < self._best_rmsd):
-                    self._best_rmsd = current_conf.rmsd_to_native
+                if (best_conf.rmsd_to_native and
+                    best_conf.rmsd_to_native < self._best_rmsd):
+                    self._best_rmsd = best_conf.rmsd_to_native
             
             logger.info(
                 f"Resumed from checkpoint: {len(self._agents)} agents, "

@@ -182,6 +182,11 @@ class IProteinAgent(ABC):
         pass
 
     @abstractmethod
+    def get_best_conformation(self) -> 'Conformation':
+        """Get the best protein conformation found during exploration"""
+        pass
+
+    @abstractmethod
     def get_exploration_metrics(self) -> Dict[str, float]:
         """Get current exploration metrics"""
         pass

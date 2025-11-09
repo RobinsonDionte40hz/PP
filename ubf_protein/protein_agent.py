@@ -187,12 +187,29 @@ class ProteinAgent(IProteinAgent):
         else:
             self._current_conformation = initial_conformation
 
+        # Calculate RMSD for initial conformation if native structure is available
+        if self._rmsd_calculator is not None and self._native_structure is not None:
+            try:
+                rmsd_result = self._rmsd_calculator.calculate_rmsd(
+                    predicted_coords=self._current_conformation.atom_coordinates,
+                    native_coords=self._native_structure.ca_coords,
+                    calculate_metrics=True
+                )
+                self._current_conformation.rmsd_to_native = rmsd_result.rmsd
+                self._current_conformation.gdt_ts_score = rmsd_result.gdt_ts
+                self._current_conformation.tm_score = rmsd_result.tm_score
+                logger.info(f"Initial conformation RMSD: {rmsd_result.rmsd:.2f}Å")
+            except Exception as e:
+                logger.warning(f"Failed to calculate RMSD for initial conformation: {e}")
+                self._current_conformation.rmsd_to_native = None
+
         # Exploration metrics
         self._iterations_completed = 0
         self._conformations_explored = 1  # Start with 1 (initial conformation)
         self._memories_created = 0
         self._best_energy = self._current_conformation.energy
         self._best_rmsd = self._current_conformation.rmsd_to_native or float('inf')
+        self._best_conformation = self._current_conformation  # Track best structure found
         self._total_decision_time_ms = 0.0
         self._stuck_in_minima_count = 0
         self._successful_escapes = 0
@@ -615,9 +632,11 @@ class ProteinAgent(IProteinAgent):
         # Update best metrics
         if outcome.new_conformation.energy < self._best_energy:
             self._best_energy = outcome.new_conformation.energy
+            self._best_conformation = outcome.new_conformation  # Update best structure
         if (outcome.new_conformation.rmsd_to_native and
             outcome.new_conformation.rmsd_to_native < self._best_rmsd):
             self._best_rmsd = outcome.new_conformation.rmsd_to_native
+            self._best_conformation = outcome.new_conformation  # Update best structure
             # Track RMSD improvement for learning calculation
             self._rmsd_history.append(self._best_rmsd)
         
@@ -689,26 +708,35 @@ class ProteinAgent(IProteinAgent):
         """
         # Create compact, roughly spherical starting structure
         num_residues = len(self._protein_sequence)
-        atom_coordinates = []
         
-        # Generate points on a rough sphere with some noise
-        # This creates a more compact starting structure
-        radius = 8.0  # Å, typical for small proteins
-        
-        for i in range(num_residues):
-            # Distribute points roughly on a sphere
-            phi = (i / num_residues) * 2 * math.pi  # Azimuthal angle
-            theta = math.acos(2 * (i / num_residues) - 1)  # Polar angle (Fibonacci-like distribution)
-            
-            # Convert to Cartesian with some noise
-            x = radius * math.sin(theta) * math.cos(phi) + random.uniform(-1.0, 1.0)
-            y = radius * math.sin(theta) * math.sin(phi) + random.uniform(-1.0, 1.0)
-            z = radius * math.cos(theta) + random.uniform(-1.0, 1.0)
-            
-            atom_coordinates.append((x, y, z))
+        # Use extended chain for small proteins, loose helix for larger ones
+        if num_residues <= 15:
+            # Extended chain with slight curvature
+            atom_coordinates = self._generate_extended_chain(num_residues)
+        else:
+            # Loose helical structure with proper spacing
+            atom_coordinates = self._generate_loose_helix(num_residues)
 
         # Ensure CA-CA distances are reasonable (~3.8 Å)
         atom_coordinates = self._regularize_chain_geometry(atom_coordinates)
+        
+        # CRITICAL: Validate no clashes in initial structure
+        max_attempts = 5
+        for attempt in range(max_attempts):
+            if self._check_steric_clashes(atom_coordinates, min_distance=2.0):
+                break  # Good structure, no clashes
+            else:
+                # Regenerate with more spacing
+                logger.debug(f"Initial structure has clashes (attempt {attempt+1}/{max_attempts}), regenerating...")
+                if num_residues <= 15:
+                    atom_coordinates = self._generate_extended_chain(num_residues, spacing=4.0 + attempt*0.5)
+                else:
+                    atom_coordinates = self._generate_loose_helix(num_residues, pitch=6.0 + attempt*1.0)
+                atom_coordinates = self._regularize_chain_geometry(atom_coordinates)
+        
+        if not self._check_steric_clashes(atom_coordinates, min_distance=2.0):
+            logger.warning("Could not generate clash-free initial structure, using extended chain")
+            atom_coordinates = self._generate_extended_chain(num_residues, spacing=3.8)
 
         # Placeholder secondary structure (coil, will be updated by moves)
         secondary_structure = ['C'] * num_residues
@@ -732,6 +760,34 @@ class ProteinAgent(IProteinAgent):
             available_move_types=["backbone_rotation", "sidechain_adjust"],
             structural_constraints={}
         )
+
+    def _generate_extended_chain(self, num_residues: int, spacing: float = 3.8) -> List[Tuple[float, float, float]]:
+        """Generate extended chain along x-axis with specified spacing."""
+        return [(i * spacing, 0.0, 0.0) for i in range(num_residues)]
+
+    def _generate_loose_helix(self, num_residues: int, pitch: float = 5.4) -> List[Tuple[float, float, float]]:
+        """
+        Generate loose helical structure.
+        
+        Args:
+            num_residues: Number of residues
+            pitch: Helix pitch (rise per turn), default 5.4Å matches alpha-helix
+        
+        Returns:
+            List of CA coordinates forming a helix
+        """
+        coords = []
+        radius = 2.3  # Helix radius in Å (alpha-helix is ~2.3Å)
+        residues_per_turn = 3.6  # Alpha-helix has 3.6 residues per turn
+        
+        for i in range(num_residues):
+            angle = (i / residues_per_turn) * 2 * math.pi
+            z = i * (pitch / residues_per_turn)
+            x = radius * math.cos(angle)
+            y = radius * math.sin(angle)
+            coords.append((x, y, z))
+        
+        return coords
 
     def _regularize_chain_geometry(self, coords: List[Tuple[float, float, float]]) -> List[Tuple[float, float, float]]:
         """
@@ -913,6 +969,12 @@ class ProteinAgent(IProteinAgent):
         # Apply proper protein conformational moves
         new_coords = self._apply_protein_move(self._current_conformation.atom_coordinates, move)
 
+        # CRITICAL: Validate geometry before accepting move
+        if not self._check_steric_clashes(new_coords, min_distance=2.0):
+            # Reject move that creates steric clashes
+            logger.debug(f"Move {move.move_id} rejected due to steric clashes")
+            return self._current_conformation  # Return unchanged conformation
+
         # Update phi/psi angles for target residues (moderate changes)
         new_phi = list(self._current_conformation.phi_angles)
         new_psi = list(self._current_conformation.psi_angles)
@@ -986,10 +1048,15 @@ class ProteinAgent(IProteinAgent):
         # Task 5: Calculate RMSD, GDT-TS, and TM-score if native structure is provided
         if self._rmsd_calculator is not None and self._native_structure is not None:
             try:
+                # DEBUG: Check native structure attributes
+                logger.debug(f"Native structure type: {type(self._native_structure)}")
+                logger.debug(f"Native structure attributes: {dir(self._native_structure)}")
+                logger.debug(f"Has ca_coords: {hasattr(self._native_structure, 'ca_coords')}")
+                
                 # Calculate RMSD and quality metrics
                 rmsd_result = self._rmsd_calculator.calculate_rmsd(
                     predicted_coords=new_conformation.atom_coordinates,
-                    native_coords=self._native_structure.atom_coordinates,
+                    native_coords=self._native_structure.ca_coords,  # Use ca_coords attribute
                     calculate_metrics=True
                 )
 
@@ -1027,6 +1094,35 @@ class ProteinAgent(IProteinAgent):
                 new_conformation.tm_score = None
 
         return new_conformation
+
+    def _check_steric_clashes(self, coords: List[Tuple[float, float, float]], 
+                             min_distance: float = 2.0) -> bool:
+        """
+        Check for steric clashes between non-adjacent residues.
+        
+        Args:
+            coords: CA coordinates to check
+            min_distance: Minimum allowed distance between non-adjacent CAs (default 2.0 Å)
+        
+        Returns:
+            True if geometry is valid (no clashes), False if clashes detected
+        """
+        n = len(coords)
+        for i in range(n):
+            for j in range(i + 2, n):  # Skip adjacent residues (i+1)
+                dx = coords[j][0] - coords[i][0]
+                dy = coords[j][1] - coords[i][1]
+                dz = coords[j][2] - coords[i][2]
+                dist = math.sqrt(dx*dx + dy*dy + dz*dz)
+                
+                if dist < min_distance:
+                    logger.debug(
+                        f"Steric clash detected: CA{i}-CA{j} distance = {dist:.2f}Å "
+                        f"(threshold: {min_distance:.2f}Å)"
+                    )
+                    return False
+        
+        return True
 
     def _apply_protein_move(self, current_coords: List[Tuple[float, float, float]],
                            move) -> List[Tuple[float, float, float]]:
@@ -1080,9 +1176,9 @@ class ProteinAgent(IProteinAgent):
             # Default: small backbone rotation
             new_coords = self._apply_backbone_rotation(new_coords, target_residues)
 
-        # Ensure CA-CA distances are reasonable (~3.8 Å)
-        # Note: We now generate good initial geometry and use small moves,
-        # so explicit bond length maintenance is less critical
+        # CRITICAL: Maintain proper bond lengths after move application
+        new_coords = self._maintain_bond_lengths(new_coords)
+        
         return new_coords
 
     def _apply_backbone_rotation(self, coords: List[Tuple[float, float, float]],
@@ -1296,33 +1392,65 @@ class ProteinAgent(IProteinAgent):
     def _maintain_bond_lengths(self, coords: List[Tuple[float, float, float]]) -> List[Tuple[float, float, float]]:
         """
         Ensure CA-CA bond lengths are maintained at ~3.8 Å.
-
-        This is a simplified constraint satisfaction - in a full implementation,
-        this would use proper constraint algorithms.
+        
+        Uses iterative relaxation to fix bond lengths while minimizing
+        overall coordinate movement.
         """
         new_coords = list(coords)
         target_distance = 3.8  # CA-CA distance in Å
+        max_iterations = 10  # Multiple passes to relax constraints
+        
+        for iteration in range(max_iterations):
+            max_deviation = 0.0
+            
+            for i in range(len(new_coords) - 1):
+                p1 = new_coords[i]
+                p2 = new_coords[i + 1]
 
-        for i in range(len(new_coords) - 1):
-            p1 = new_coords[i]
-            p2 = new_coords[i + 1]
+                # Calculate current distance
+                current_dist = self._distance(p1, p2)
+                
+                # Track maximum deviation
+                deviation = abs(current_dist - target_distance)
+                max_deviation = max(max_deviation, deviation)
 
-            # Calculate current distance
-            current_dist = self._distance(p1, p2)
-
-            if abs(current_dist - target_distance) > 0.1:  # If deviation > 0.1 Å
-                # Scale the second point to maintain distance
-                direction = self._vector_subtract(p2, p1)
-                direction = self._normalize_vector(direction)
-
-                # New position for second point
-                new_p2 = (
-                    p1[0] + direction[0] * target_distance,
-                    p1[1] + direction[1] * target_distance,
-                    p1[2] + direction[2] * target_distance
-                )
-                new_coords[i + 1] = new_p2
-
+                if deviation > 0.05:  # If deviation > 0.05 Å
+                    # Move BOTH points toward each other (instead of just one)
+                    # This distributes the correction more evenly
+                    direction = self._vector_subtract(p2, p1)
+                    
+                    # Protect against zero-length vectors
+                    if current_dist < 0.01:
+                        # Points are essentially identical - move second one away
+                        direction = (random.uniform(-1, 1), random.uniform(-1, 1), random.uniform(-1, 1))
+                        direction = self._normalize_vector(direction)
+                        new_coords[i + 1] = (
+                            p1[0] + direction[0] * target_distance,
+                            p1[1] + direction[1] * target_distance,
+                            p1[2] + direction[2] * target_distance
+                        )
+                    else:
+                        direction = self._normalize_vector(direction)
+                        
+                        # Calculate how much to move each point (50/50 split)
+                        correction = (target_distance - current_dist) * 0.5
+                        
+                        # Move first point back, second point forward
+                        new_coords[i] = (
+                            p1[0] - direction[0] * correction * 0.5,
+                            p1[1] - direction[1] * correction * 0.5,
+                            p1[2] - direction[2] * correction * 0.5
+                        )
+                        new_coords[i + 1] = (
+                            p2[0] + direction[0] * correction * 0.5,
+                            p2[1] + direction[1] * correction * 0.5,
+                            p2[2] + direction[2] * correction * 0.5
+                        )
+            
+            # Converged if all deviations are small
+            if max_deviation < 0.05:
+                break
+        
         return new_coords
 
     # Vector math utilities
@@ -1486,6 +1614,10 @@ class ProteinAgent(IProteinAgent):
     def get_current_conformation(self) -> Conformation:
         """Get current protein conformation."""
         return self._current_conformation
+    
+    def get_best_conformation(self) -> Conformation:
+        """Get the best protein conformation found during exploration."""
+        return self._best_conformation
 
     def get_exploration_metrics(self) -> Dict[str, float]:
         """Get current exploration metrics."""

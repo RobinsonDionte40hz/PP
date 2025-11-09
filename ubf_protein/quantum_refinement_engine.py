@@ -40,12 +40,14 @@ try:
     from .qcpp_integration import QCPPIntegrationAdapter
     from .energy_function import MolecularMechanicsEnergy
     from .rmsd_calculator import RMSDCalculator, NativeStructure
-    from .models import Conformation, RefinementConfig, RefinementResult
+    from .models import Conformation, RefinementConfig, RefinementResult, RefinementProgress
+    from .refinement_cache import RefinementCache
 except ImportError:
     from ubf_protein.qcpp_integration import QCPPIntegrationAdapter
     from ubf_protein.energy_function import MolecularMechanicsEnergy
     from ubf_protein.rmsd_calculator import RMSDCalculator, NativeStructure
-    from ubf_protein.models import Conformation, RefinementConfig, RefinementResult
+    from ubf_protein.models import Conformation, RefinementConfig, RefinementResult, RefinementProgress
+    from ubf_protein.refinement_cache import RefinementCache
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -151,10 +153,28 @@ class QuantumRefinementEngine:
         self.coherence_time = self.COHERENCE_TIME
         self.water_spacing = self.WATER_SPACING
         
-        # Caching for performance
+        # Performance caching system
+        self.cache = RefinementCache(
+            max_qcp_entries=1000,
+            max_thz_entries=500,
+            max_distance_matrices=10,
+            max_ss_entries=50,
+            max_hydrophobic_entries=50
+        )
+        
+        # Legacy cache references (for backward compatibility)
         self._qcp_cache: Dict[str, float] = {}
         self._thz_mode_cache: Dict[str, List[float]] = {}
         self._distance_matrix_cache: Optional[Any] = None
+        
+        # Progress tracking
+        self._progress_history: List[RefinementProgress] = []
+        self._start_time: Optional[float] = None
+        self._max_iterations: int = 10000
+        
+        # Checkpoint system for error recovery
+        self._checkpoint_stack: List[Tuple[str, Conformation]] = []
+        self._max_checkpoints: int = 5  # Limit memory usage
         
         logger.info(
             f"QuantumRefinementEngine initialized with φ={self.phi:.15f}, "
@@ -207,9 +227,35 @@ class QuantumRefinementEngine:
         if config is None:
             config = RefinementConfig()
         
-        # Validate initial structure geometry
-        if not self.validate_geometry(coarse_structure):
-            raise GeometryError("Initial structure has invalid geometry")
+        # Clear any previous checkpoints
+        self._clear_checkpoints()
+        
+        # CRITICAL: Resolve steric clashes BEFORE quantum refinement
+        # This addresses the finding from COMPLETE_INVESTIGATION_SUMMARY.md:
+        # "Physical trapping via steric clashes (0.40-1.98 Å) blocks all paths"
+        logger.info("\n" + "=" * 70)
+        logger.info("PRE-PROCESSING: Energy Minimization to Resolve Steric Clashes")
+        logger.info("=" * 70)
+        
+        try:
+            minimized_structure = self.resolve_steric_clashes(
+                coarse_structure,
+                max_iterations=100,
+                step_size=0.1
+            )
+            logger.info("✓ Steric clashes resolved via energy minimization")
+            coarse_structure = minimized_structure
+        except Exception as e:
+            logger.warning(f"Energy minimization failed: {e}")
+            logger.warning("Proceeding with original structure (may have clashes)")
+        
+        # Validate initial structure geometry (use lenient mode for coarse structures)
+        if not self.validate_geometry(coarse_structure, config.validation_mode):
+            logger.error(f"Structure geometry invalid even after minimization ({config.validation_mode} mode)")
+            raise GeometryError(f"Initial structure has invalid geometry ({config.validation_mode} mode)")
+        
+        # Save initial checkpoint
+        self._save_checkpoint("initial_structure", coarse_structure)
         
         # Calculate initial metrics
         initial_energy = self.energy_calculator.calculate(coarse_structure)
@@ -324,11 +370,25 @@ class QuantumRefinementEngine:
         logger.info("STEP 3: Secondary Structure Registration")
         logger.info("=" * 70)
         
+        # Checkpoint before secondary structure modification
+        self._save_checkpoint("before_ss_registration", current_structure)
+        
         step3_start = time.time()
-        result = ss_registrar.fix_secondary_structure_registration(
-            structure=current_structure,
-            qcp_values=qcp_values
-        )
+        try:
+            result = ss_registrar.fix_secondary_structure_registration(
+                structure=current_structure,
+                qcp_values=qcp_values
+            )
+        except Exception as e:
+            logger.error(f"Secondary structure registration failed: {e}")
+            logger.info("Attempting to recover from checkpoint...")
+            recovered = self._restore_checkpoint("before_ss_registration")
+            if recovered:
+                current_structure = recovered
+                logger.info("Successfully recovered, continuing with original structure")
+            else:
+                logger.warning("Recovery failed, continuing with current structure")
+            result = current_structure
         # Ensure we got a valid Conformation back
         if isinstance(result, Conformation):
             current_structure = result
@@ -419,13 +479,26 @@ class QuantumRefinementEngine:
         
         # Only refine if we have valid loops and valid current_structure
         if loops and isinstance(current_structure, Conformation):
-            current_structure = loop_refiner.refine_loops_dynamic(
-                structure=current_structure,
-                loops=loops,
-                qcp_values=qcp_values
-            )
-            logger.info("Refined loops using G(φ,t) temporal evolution")
-            logger.info(f"Step 5 completed in {time.time() - step5_start:.2f}s")
+            # Checkpoint before loop refinement
+            self._save_checkpoint("before_loop_refinement", current_structure)
+            
+            try:
+                current_structure = loop_refiner.refine_loops_dynamic(
+                    structure=current_structure,
+                    loops=loops,
+                    qcp_values=qcp_values
+                )
+                logger.info("Refined loops using G(φ,t) temporal evolution")
+                logger.info(f"Step 5 completed in {time.time() - step5_start:.2f}s")
+            except Exception as e:
+                logger.error(f"Loop refinement failed: {e}")
+                logger.info("Attempting to recover from checkpoint...")
+                recovered = self._restore_checkpoint("before_loop_refinement")
+                if recovered:
+                    current_structure = recovered
+                    logger.info("Successfully recovered, skipping loop refinement")
+                else:
+                    logger.warning("Recovery failed, continuing with current structure")
         else:
             logger.info("Step 5: No loops to refine or invalid structure, skipping")        # ===== STEP 6: Tertiary Contact Prediction & Enforcement =====
         logger.info("\n" + "=" * 70)
@@ -443,11 +516,24 @@ class QuantumRefinementEngine:
         
         # Enforce contact map (force predicted contacts to form)
         if predicted_contacts:
-            current_structure = contact_predictor.enforce_contact_map(
-                structure=current_structure,
-                predicted_contacts=predicted_contacts
-            )
-            logger.info("Enforced tertiary contact map")
+            # Checkpoint before contact enforcement
+            self._save_checkpoint("before_contact_enforcement", current_structure)
+            
+            try:
+                current_structure = contact_predictor.enforce_contact_map(
+                    structure=current_structure,
+                    predicted_contacts=predicted_contacts
+                )
+                logger.info("Enforced tertiary contact map")
+            except Exception as e:
+                logger.error(f"Contact enforcement failed: {e}")
+                logger.info("Attempting to recover from checkpoint...")
+                recovered = self._restore_checkpoint("before_contact_enforcement")
+                if recovered:
+                    current_structure = recovered
+                    logger.info("Successfully recovered, skipping contact enforcement")
+                else:
+                    logger.warning("Recovery failed, continuing with current structure")
         
         logger.info(f"Step 6 completed in {time.time() - step6_start:.2f}s")
         
@@ -458,12 +544,47 @@ class QuantumRefinementEngine:
         
         step7_start = time.time()
         
+        # Checkpoint before optimization
+        self._save_checkpoint("before_optimization", current_structure)
+        
         # Run two-stage optimization with all constraints applied
-        optimization_result = self.optimize_two_stage(
-            initial_structure=current_structure,
-            native_structure=native_structure,
-            config=config
-        )
+        try:
+            optimization_result = self.optimize_two_stage(
+                initial_structure=current_structure,
+                native_structure=native_structure,
+                config=config
+            )
+        except Exception as e:
+            logger.error(f"Two-stage optimization failed: {e}")
+            logger.info("Attempting to recover from checkpoint...")
+            recovered = self._restore_checkpoint("before_optimization")
+            if recovered:
+                # Create a fallback result (RefinementResult already imported at top)
+                optimization_result = RefinementResult(
+                    initial_structure=coarse_structure,
+                    refined_structure=recovered,
+                    native_structure=native_structure,
+                    initial_rmsd=initial_rmsd if initial_rmsd is not None else 0.0,
+                    final_rmsd=initial_rmsd if initial_rmsd is not None else 0.0,
+                    rmsd_improvement=0.0,
+                    helix_rmsd=0.0,
+                    sheet_rmsd=0.0,
+                    loop_rmsd=0.0,
+                    core_rmsd=0.0,
+                    gdt_ts=0.0,
+                    tm_score=0.0,
+                    energy=self.energy_calculator.calculate(recovered),
+                    iterations_used=0,
+                    refinement_time_seconds=0.0,
+                    quantum_cores_identified=len(quantum_cores),
+                    restraints_applied=len(distance_restraints),
+                    contacts_enforced=len(predicted_contacts) if predicted_contacts else 0,
+                    rmsd_trajectory=[],
+                    energy_trajectory=[]
+                )
+                logger.info("Using recovered structure as final result")
+            else:
+                raise  # Re-raise if recovery failed
         
         logger.info(f"Step 7 completed in {time.time() - step7_start:.2f}s")
         
@@ -474,8 +595,8 @@ class QuantumRefinementEngine:
         
         refined_structure = optimization_result.refined_structure
         
-        # Validate final structure
-        if not self.validate_geometry(refined_structure):
+        # Validate final structure with strict mode (refined structure should have no clashes)
+        if not self.validate_geometry(refined_structure, "strict"):
             logger.warning("Final structure has questionable geometry - attempting recovery")
             # Fallback to pre-optimization structure
             refined_structure = current_structure
@@ -583,26 +704,151 @@ class QuantumRefinementEngine:
         
         return result
     
-    def validate_geometry(self, structure: Conformation) -> bool:
+    def resolve_steric_clashes(
+        self,
+        structure: Conformation,
+        max_iterations: int = 100,
+        step_size: float = 0.1
+    ) -> Conformation:
+        """
+        Resolve steric clashes using steepest descent energy minimization.
+        
+        This addresses the core finding from COMPLETE_INVESTIGATION_SUMMARY.md:
+        "Steric clashes block progress: Can't escape without fixing overlaps"
+        
+        Uses simple gradient descent to move atoms apart when they're too close,
+        targeting the ~200 kcal/mol energy floor identified in the investigation.
+        
+        Args:
+            structure: Input structure (may have clashes)
+            max_iterations: Maximum minimization steps (default: 100)
+            step_size: Gradient descent step size in Å (default: 0.1)
+        
+        Returns:
+            Minimized structure with resolved clashes
+        
+        Example:
+            >>> clean_structure = engine.resolve_steric_clashes(clashed_structure)
+            >>> if engine.validate_geometry(clean_structure, "lenient"):
+            ...     print("Clashes resolved!")
+        """
+        logger.info(f"Resolving steric clashes via energy minimization (max {max_iterations} steps)")
+        
+        current_coords = list(structure.atom_coordinates)
+        current_energy = self.energy_calculator.calculate(structure)
+        
+        logger.info(f"Initial energy: {current_energy:.2f} kcal/mol")
+        
+        for iteration in range(max_iterations):
+            # Calculate gradient (finite differences)
+            gradient = []
+            
+            for i in range(len(current_coords)):
+                # Calculate energy changes for small displacements
+                eps = 0.01  # Å
+                
+                # X direction
+                coords_plus_x = list(current_coords)
+                coords_plus_x[i] = (current_coords[i][0] + eps, current_coords[i][1], current_coords[i][2])
+                energy_plus_x = self.energy_calculator.calculate(
+                    self._create_conformation(structure.sequence, coords_plus_x, f"temp_x_{i}")
+                )
+                grad_x = (energy_plus_x - current_energy) / eps
+                
+                # Y direction
+                coords_plus_y = list(current_coords)
+                coords_plus_y[i] = (current_coords[i][0], current_coords[i][1] + eps, current_coords[i][2])
+                energy_plus_y = self.energy_calculator.calculate(
+                    self._create_conformation(structure.sequence, coords_plus_y, f"temp_y_{i}")
+                )
+                grad_y = (energy_plus_y - current_energy) / eps
+                
+                # Z direction
+                coords_plus_z = list(current_coords)
+                coords_plus_z[i] = (current_coords[i][0], current_coords[i][1], current_coords[i][2] + eps)
+                energy_plus_z = self.energy_calculator.calculate(
+                    self._create_conformation(structure.sequence, coords_plus_z, f"temp_z_{i}")
+                )
+                grad_z = (energy_plus_z - current_energy) / eps
+                
+                gradient.append((grad_x, grad_y, grad_z))
+            
+            # Take steepest descent step
+            new_coords = []
+            for i, (x, y, z) in enumerate(current_coords):
+                gx, gy, gz = gradient[i]
+                new_coords.append((
+                    x - step_size * gx,
+                    y - step_size * gy,
+                    z - step_size * gz
+                ))
+            
+            # Calculate new energy
+            new_structure = self._create_conformation(
+                structure.sequence,
+                new_coords,
+                f"{structure.conformation_id}_minimized"
+            )
+            new_energy = self.energy_calculator.calculate(new_structure)
+            
+            # Check for convergence
+            energy_change = abs(new_energy - current_energy)
+            
+            if iteration % 10 == 0:
+                logger.debug(f"  Iteration {iteration}: energy={new_energy:.2f} kcal/mol (Δ={energy_change:.2f})")
+            
+            # Accept step if energy decreased or change is small
+            if new_energy <= current_energy or energy_change < 0.1:
+                current_coords = new_coords
+                current_energy = new_energy
+                
+                # Converged if change is very small
+                if energy_change < 0.01:
+                    logger.info(f"Converged after {iteration+1} iterations: {current_energy:.2f} kcal/mol")
+                    break
+            else:
+                # Reduce step size if energy increased
+                step_size *= 0.5
+                if step_size < 0.001:
+                    logger.warning(f"Step size too small, terminating at iteration {iteration}")
+                    break
+        
+        final_structure = self._create_conformation(
+            structure.sequence,
+            current_coords,
+            f"{structure.conformation_id}_minimized"
+        )
+        
+        logger.info(f"Energy minimization complete: {current_energy:.2f} kcal/mol")
+        
+        return final_structure
+    
+    def validate_geometry(self, structure: Conformation, validation_mode: str = "lenient") -> bool:
         """
         Validate structure geometry at checkpoints.
         
         Checks:
         - Bond lengths: 1.0-10.0 Å (physically reasonable C-C, C-N, C-O bonds)
-        - No steric clashes: min distance > 2.0 Å (avoid atomic overlap)
+        - No steric clashes: min distance > threshold
+          - Lenient mode: > 1.0 Å (for coarse exploration structures)
+          - Strict mode: > 2.0 Å (for refined structures)
         - Reasonable angles: 60-180 degrees (avoid impossible bond angles)
         - Finite coordinates: no NaN/Inf (computational stability)
         
         Args:
             structure: Conformation to validate
+            validation_mode: "lenient" for coarse structures, "strict" for refined
         
         Returns:
             True if geometry is valid, False otherwise
         
         Example:
-            >>> if engine.validate_geometry(structure):
+            >>> if engine.validate_geometry(structure, "lenient"):
             ...     print("Geometry is valid!")
         """
+        # Set clash threshold based on validation mode
+        clash_threshold = 0.9 if validation_mode == "lenient" else 2.0
+        
         coords = structure.atom_coordinates
         
         # Check for finite coordinates (no NaN/Inf)
@@ -632,9 +878,49 @@ class QuantumRefinementEngine:
                 
                 # Check for steric clashes (non-bonded atoms too close)
                 # Allow consecutive bonded atoms (j = i+1) to be close
-                if dist < 2.0 and j > i + 1:
-                    logger.warning(f"Steric clash detected: atoms {i}-{j} at {dist:.2f}Å")
+                if dist < clash_threshold and j > i + 1:
+                    logger.warning(f"Steric clash detected ({validation_mode} mode): atoms {i}-{j} at {dist:.2f}Å (threshold: {clash_threshold:.1f}Å)")
                     return False
+        
+        # Check bond angles (i-j-k triplets, 60-180 degrees)
+        for i in range(len(coords) - 2):
+            # Get three consecutive points
+            p1 = coords[i]
+            p2 = coords[i + 1]
+            p3 = coords[i + 2]
+            
+            # Calculate vectors
+            v1 = (p1[0] - p2[0], p1[1] - p2[1], p1[2] - p2[2])
+            v2 = (p3[0] - p2[0], p3[1] - p2[1], p3[2] - p2[2])
+            
+            # Calculate magnitudes
+            mag1 = math.sqrt(v1[0]*v1[0] + v1[1]*v1[1] + v1[2]*v1[2])
+            mag2 = math.sqrt(v2[0]*v2[0] + v2[1]*v2[1] + v2[2]*v2[2])
+            
+            # Skip if vectors are too short (degenerate case)
+            if mag1 < 0.1 or mag2 < 0.1:
+                logger.warning(f"Degenerate bond angle at residue {i+1}: vector magnitude too small")
+                return False
+            
+            # Calculate dot product and angle
+            dot_product = v1[0]*v2[0] + v1[1]*v2[1] + v1[2]*v2[2]
+            cos_angle = dot_product / (mag1 * mag2)
+            
+            # Clamp to [-1, 1] to avoid numerical errors in acos
+            cos_angle = max(-1.0, min(1.0, cos_angle))
+            
+            # Convert to degrees
+            angle_rad = math.acos(cos_angle)
+            angle_deg = math.degrees(angle_rad)
+            
+            # Check if angle is in reasonable range
+            # Strict mode: 60-180 degrees, Lenient mode: 40-180 degrees
+            min_angle = 40.0 if validation_mode == "lenient" else 60.0
+            if angle_deg < min_angle or angle_deg > 180.0:
+                logger.warning(
+                    f"Invalid bond angle at residues {i}-{i+1}-{i+2}: {angle_deg:.1f}° ({validation_mode} mode)"
+                )
+                return False
         
         # All checks passed
         logger.debug(f"Geometry validation passed: min_distance={min_distance:.2f}Å")
@@ -668,6 +954,249 @@ class QuantumRefinementEngine:
         
         logger.debug(f"Energy validation passed: {energy:.2f} kcal/mol")
         return True
+    
+    def _save_checkpoint(self, checkpoint_name: str, structure: Conformation) -> None:
+        """
+        Save a checkpoint before risky operations.
+        
+        Checkpoints allow recovery from failures during optimization,
+        contact enforcement, or other potentially destabilizing operations.
+        Only the last N checkpoints are kept to limit memory usage.
+        
+        Args:
+            checkpoint_name: Descriptive name for this checkpoint
+            structure: Structure to save
+        
+        Example:
+            >>> engine._save_checkpoint("before_stage2", current_structure)
+        """
+        # Add new checkpoint
+        self._checkpoint_stack.append((checkpoint_name, structure))
+        
+        # Limit stack size
+        if len(self._checkpoint_stack) > self._max_checkpoints:
+            removed = self._checkpoint_stack.pop(0)
+            logger.debug(f"Checkpoint '{removed[0]}' removed (max={self._max_checkpoints})")
+        
+        logger.debug(f"Checkpoint '{checkpoint_name}' saved ({len(self._checkpoint_stack)} total)")
+    
+    def _restore_checkpoint(self, checkpoint_name: Optional[str] = None) -> Optional[Conformation]:
+        """
+        Restore a checkpoint after a failed operation.
+        
+        Args:
+            checkpoint_name: Name of checkpoint to restore (None = most recent)
+        
+        Returns:
+            Restored structure, or None if no checkpoints available
+        
+        Example:
+            >>> recovered_structure = engine._restore_checkpoint("before_stage2")
+            >>> if recovered_structure:
+            ...     print("Successfully recovered from failure")
+        """
+        if not self._checkpoint_stack:
+            logger.warning("No checkpoints available for recovery")
+            return None
+        
+        if checkpoint_name is None:
+            # Restore most recent
+            name, structure = self._checkpoint_stack.pop()
+            logger.info(f"Restored most recent checkpoint: '{name}'")
+            return structure
+        
+        # Search for named checkpoint
+        for i, (name, structure) in enumerate(self._checkpoint_stack):
+            if name == checkpoint_name:
+                self._checkpoint_stack.pop(i)
+                logger.info(f"Restored checkpoint: '{checkpoint_name}'")
+                return structure
+        
+        logger.warning(f"Checkpoint '{checkpoint_name}' not found")
+        return None
+    
+    def _clear_checkpoints(self) -> None:
+        """Clear all saved checkpoints."""
+        count = len(self._checkpoint_stack)
+        self._checkpoint_stack.clear()
+        logger.debug(f"Cleared {count} checkpoints")
+    
+    # ========================================================================
+    # Progress Tracking Methods
+    # ========================================================================
+    
+    def _start_progress_tracking(self, max_iterations: int = 10000) -> None:
+        """
+        Initialize progress tracking for refinement run.
+        
+        Args:
+            max_iterations: Maximum iterations for this run
+        """
+        self._progress_history.clear()
+        self._start_time = time.time()
+        self._max_iterations = max_iterations
+        logger.debug(f"Progress tracking started for max {max_iterations} iterations")
+    
+    def _record_progress(
+        self,
+        iteration: int,
+        structure: Conformation,
+        native_structure: Optional[NativeStructure] = None,
+        active_restraints: int = 0,
+        formed_contacts: int = 0
+    ) -> RefinementProgress:
+        """
+        Record progress snapshot at current iteration.
+        
+        Args:
+            iteration: Current iteration number
+            structure: Current structure conformation
+            native_structure: Native structure for RMSD (None if unavailable)
+            active_restraints: Number of active restraints
+            formed_contacts: Number of formed tertiary contacts
+        
+        Returns:
+            RefinementProgress snapshot
+        """
+        # Calculate metrics
+        if native_structure is not None:
+            rmsd_result = self.rmsd_calculator.calculate_rmsd(
+                structure.atom_coordinates, 
+                native_structure.ca_coords
+            )
+            # Extract float value from RMSDResult
+            rmsd = rmsd_result.rmsd
+        else:
+            rmsd = structure.rmsd_to_native if structure.rmsd_to_native is not None else 0.0
+        
+        energy = structure.energy
+        
+        # Calculate timing
+        elapsed_time = time.time() - self._start_time if self._start_time else 0.0
+        
+        # Estimate time remaining (based on iteration rate)
+        estimated_time_remaining = None
+        if iteration > 0 and elapsed_time > 0:
+            iter_rate = iteration / elapsed_time
+            remaining_iters = self._max_iterations - iteration
+            estimated_time_remaining = remaining_iters / iter_rate
+        
+        # Determine convergence status
+        convergence_status = self._assess_convergence_status(iteration)
+        
+        # Create progress snapshot
+        progress = RefinementProgress(
+            iteration=iteration,
+            rmsd=rmsd,
+            energy=energy,
+            active_restraints=active_restraints,
+            formed_contacts=formed_contacts,
+            elapsed_time=elapsed_time,
+            estimated_time_remaining=estimated_time_remaining,
+            convergence_status=convergence_status
+        )
+        
+        # Store in history
+        self._progress_history.append(progress)
+        
+        # Log every N iterations (avoid spam)
+        if iteration % 100 == 0 or iteration == self._max_iterations - 1:
+            logger.info(progress.format_status())
+        
+        return progress
+    
+    def _assess_convergence_status(self, iteration: int) -> str:
+        """
+        Assess convergence status based on recent progress.
+        
+        Args:
+            iteration: Current iteration number
+        
+        Returns:
+            Status string: 'improving', 'stuck', 'converged', 'diverging'
+        """
+        # Need at least 10 iterations for assessment
+        if len(self._progress_history) < 10:
+            return 'improving'
+        
+        # Get recent RMSD history (last 10 iterations)
+        recent_rmsds = [p.rmsd for p in self._progress_history[-10:]]
+        
+        # Check for convergence (RMSD < 5Å and stable)
+        if recent_rmsds[-1] < 5.0:
+            rmsd_variance = max(recent_rmsds) - min(recent_rmsds)
+            if rmsd_variance < 0.5:  # Stable within 0.5Å
+                return 'converged'
+        
+        # Check for divergence (RMSD increasing)
+        if len(recent_rmsds) >= 5:
+            early_avg = sum(recent_rmsds[:5]) / 5
+            late_avg = sum(recent_rmsds[-5:]) / 5
+            if late_avg > early_avg + 2.0:  # RMSD increased by 2Å
+                return 'diverging'
+        
+        # Check for stuck state (no improvement)
+        if len(recent_rmsds) >= 10:
+            rmsd_improvement = recent_rmsds[0] - recent_rmsds[-1]
+            if abs(rmsd_improvement) < 0.1:  # Less than 0.1Å change
+                return 'stuck'
+        
+        # Default: improving
+        return 'improving'
+    
+    def get_latest_progress(self) -> Optional[RefinementProgress]:
+        """
+        Get most recent progress snapshot.
+        
+        Returns:
+            Latest RefinementProgress or None if no progress tracked
+        """
+        if not self._progress_history:
+            return None
+        return self._progress_history[-1]
+    
+    def get_progress_history(self) -> List[RefinementProgress]:
+        """
+        Get complete progress history.
+        
+        Returns:
+            List of all RefinementProgress snapshots
+        """
+        return self._progress_history.copy()
+    
+    def format_progress_summary(self) -> str:
+        """
+        Format progress summary as human-readable string.
+        
+        Returns:
+            Formatted progress summary
+        """
+        if not self._progress_history:
+            return "No progress tracked"
+        
+        initial = self._progress_history[0]
+        latest = self._progress_history[-1]
+        
+        rmsd_improvement = initial.rmsd - latest.rmsd
+        energy_improvement = initial.energy - latest.energy
+        
+        return (
+            f"Refinement Progress Summary:\n"
+            f"  Iterations: {latest.iteration}\n"
+            f"  Initial RMSD: {initial.rmsd:.2f}Å → Final RMSD: {latest.rmsd:.2f}Å\n"
+            f"  RMSD Improvement: {rmsd_improvement:.2f}Å ({rmsd_improvement/initial.rmsd*100:.1f}%)\n"
+            f"  Initial Energy: {initial.energy:.1f} → Final Energy: {latest.energy:.1f} kcal/mol\n"
+            f"  Energy Improvement: {energy_improvement:.1f} kcal/mol\n"
+            f"  Active Restraints: {latest.active_restraints}\n"
+            f"  Formed Contacts: {latest.formed_contacts}\n"
+            f"  Total Time: {latest.elapsed_time:.1f}s\n"
+            f"  Iteration Rate: {latest.iteration_rate():.1f} iter/s\n"
+            f"  Convergence Status: {latest.convergence_status}"
+        )
+    
+    # ========================================================================
+    # Helper Methods
+    # ========================================================================
     
     def _create_conformation(
         self,
@@ -1038,9 +1567,9 @@ class QuantumRefinementEngine:
         if config is None:
             config = RefinementConfig()
         
-        # Validate initial structure
-        if not self.validate_geometry(initial_structure):
-            raise GeometryError("Initial structure has invalid geometry")
+        # Validate initial structure (use validation mode from config)
+        if not self.validate_geometry(initial_structure, config.validation_mode):
+            raise GeometryError(f"Initial structure has invalid geometry ({config.validation_mode} mode)")
         
         # Calculate initial metrics
         initial_energy = self.energy_calculator.calculate(initial_structure)

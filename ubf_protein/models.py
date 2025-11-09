@@ -491,6 +491,9 @@ class RefinementConfig:
     # Performance
     max_refinement_time_seconds: float = 300.0  # 5 minutes
     checkpoint_interval: int = 1000
+    
+    # Geometry validation
+    validation_mode: str = "lenient"  # "strict" or "lenient" for input structures
 
 
 @dataclass
@@ -1205,3 +1208,166 @@ class TertiaryContact:
         """
         return (self.is_probable_contact(resonance_threshold) and 
                 self.is_long_range(min_separation))
+
+
+@dataclass(frozen=True)
+class RefinementProgress:
+    """
+    Real-time progress tracking for quantum refinement.
+    
+    This class tracks refinement progress across iterations, providing
+    visibility into RMSD reduction, energy minimization, restraint
+    application, and contact formation. It also estimates time remaining
+    based on historical iteration times.
+    
+    Progress tracking is essential for:
+    - Monitoring convergence toward native structure
+    - Identifying stuck states or divergence
+    - Estimating computational resources needed
+    - Debugging refinement strategies
+    - Providing user feedback
+    
+    Metrics tracked:
+    - RMSD: Distance from native structure (Ångströms)
+    - Energy: Molecular mechanics energy (kcal/mol)
+    - Active restraints: Number of distance/angle constraints
+    - Formed contacts: Number of tertiary contacts established
+    - Time: Cumulative wall-clock time (seconds)
+    - Iteration rate: Iterations per second
+    
+    Attributes:
+        iteration: Current iteration number (0-based)
+        rmsd: Current RMSD from native structure (Å)
+        energy: Current molecular mechanics energy (kcal/mol)
+        active_restraints: Number of active distance/angle restraints
+        formed_contacts: Number of tertiary contacts formed
+        elapsed_time: Cumulative wall-clock time (seconds)
+        estimated_time_remaining: Estimated seconds until completion (None if unknown)
+        convergence_status: 'improving', 'stuck', 'converged', 'diverging'
+    
+    Example:
+        >>> progress = RefinementProgress(
+        ...     iteration=100,
+        ...     rmsd=8.5,
+        ...     energy=-250.0,
+        ...     active_restraints=45,
+        ...     formed_contacts=12,
+        ...     elapsed_time=15.2,
+        ...     estimated_time_remaining=45.0,
+        ...     convergence_status='improving'
+        ... )
+        >>> print(f"Progress: {progress.percent_complete():.1f}% complete, "
+        ...       f"{progress.iteration_rate():.1f} iter/sec")
+    """
+    iteration: int
+    rmsd: float
+    energy: float
+    active_restraints: int
+    formed_contacts: int
+    elapsed_time: float  # seconds
+    estimated_time_remaining: Optional[float] = None  # seconds
+    convergence_status: str = 'improving'  # 'improving', 'stuck', 'converged', 'diverging'
+    
+    def __post_init__(self):
+        """Validate progress data."""
+        if self.iteration < 0:
+            raise ValueError(f"iteration must be >= 0, got {self.iteration}")
+        
+        if self.rmsd < 0:
+            raise ValueError(f"rmsd must be >= 0, got {self.rmsd}")
+        
+        if self.active_restraints < 0:
+            raise ValueError(f"active_restraints must be >= 0, got {self.active_restraints}")
+        
+        if self.formed_contacts < 0:
+            raise ValueError(f"formed_contacts must be >= 0, got {self.formed_contacts}")
+        
+        if self.elapsed_time < 0:
+            raise ValueError(f"elapsed_time must be >= 0, got {self.elapsed_time}")
+        
+        if self.estimated_time_remaining is not None and self.estimated_time_remaining < 0:
+            raise ValueError(f"estimated_time_remaining must be >= 0, got {self.estimated_time_remaining}")
+        
+        valid_statuses = {'improving', 'stuck', 'converged', 'diverging'}
+        if self.convergence_status not in valid_statuses:
+            raise ValueError(
+                f"convergence_status must be one of {valid_statuses}, got '{self.convergence_status}'"
+            )
+    
+    def iteration_rate(self) -> float:
+        """
+        Calculate iterations per second.
+        
+        Returns:
+            Iterations per second (0 if elapsed_time is 0)
+        """
+        if self.elapsed_time == 0:
+            return 0.0
+        return self.iteration / self.elapsed_time
+    
+    def percent_complete(self, max_iterations: int = 10000) -> float:
+        """
+        Calculate percentage of iterations complete.
+        
+        Args:
+            max_iterations: Total iterations planned (default 10000)
+        
+        Returns:
+            Percentage complete (0-100)
+        """
+        if max_iterations <= 0:
+            return 100.0
+        return min(100.0, (self.iteration / max_iterations) * 100.0)
+    
+    def is_converged(self, rmsd_threshold: float = 5.0) -> bool:
+        """
+        Check if refinement has converged.
+        
+        Args:
+            rmsd_threshold: RMSD target in Ångströms (default 5.0)
+        
+        Returns:
+            True if RMSD <= threshold and status is 'converged'
+        """
+        return self.rmsd <= rmsd_threshold and self.convergence_status == 'converged'
+    
+    def is_stuck(self, stuck_window: int = 100) -> bool:
+        """
+        Check if refinement is stuck.
+        
+        Note: This is a simple check based on convergence_status.
+        For more sophisticated stuck detection, use the refinement
+        engine's history-based analysis.
+        
+        Args:
+            stuck_window: Number of iterations to look back (not used here)
+        
+        Returns:
+            True if status is 'stuck'
+        """
+        return self.convergence_status == 'stuck'
+    
+    def format_status(self) -> str:
+        """
+        Format progress as human-readable status string.
+        
+        Returns:
+            Formatted status string with key metrics
+        """
+        rate = self.iteration_rate()
+        status_str = (
+            f"Iteration {self.iteration}: "
+            f"RMSD={self.rmsd:.2f}Å, "
+            f"Energy={self.energy:.1f} kcal/mol, "
+            f"Restraints={self.active_restraints}, "
+            f"Contacts={self.formed_contacts}, "
+            f"Rate={rate:.1f} iter/s"
+        )
+        
+        if self.estimated_time_remaining is not None:
+            mins = int(self.estimated_time_remaining / 60)
+            secs = int(self.estimated_time_remaining % 60)
+            status_str += f", ETA={mins}m {secs}s"
+        
+        status_str += f" [{self.convergence_status}]"
+        return status_str

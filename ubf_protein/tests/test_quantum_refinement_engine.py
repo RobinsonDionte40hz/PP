@@ -518,6 +518,212 @@ class TestGeometryValidation:
         assert refinement_engine.validate_geometry(bad_conf) is False
 
 
+    def test_validate_bond_angle_too_small(self, refinement_engine):
+        """Test validation fails for bond angle too small (<60°)."""
+        # Create structure with acute angle (< 60 degrees)
+        # Three points forming a very acute angle
+        bad_conf = Conformation(
+            conformation_id="bad_angle_small",
+            sequence="ACDE",
+            atom_coordinates=[
+                (0.0, 0.0, 0.0),    # Point 1
+                (1.0, 0.0, 0.0),    # Point 2 (vertex)
+                (1.2, 0.1, 0.0),    # Point 3 - forms acute angle with points 1-2
+                (2.0, 0.0, 0.0),    # Point 4
+            ],
+            energy=-50.0,
+            rmsd_to_native=10.0,
+            secondary_structure=['C'] * 4,
+            phi_angles=[0.0] * 4,
+            psi_angles=[0.0] * 4,
+            available_move_types=[],
+            structural_constraints={}
+        )
+        
+        # Should fail due to acute angle
+        assert refinement_engine.validate_geometry(bad_conf) is False
+
+    def test_validate_bond_angle_valid(self, refinement_engine):
+        """Test validation passes for valid bond angles (60-180°)."""
+        # Create structure with reasonable angles (around 120°)
+        good_conf = Conformation(
+            conformation_id="good_angles",
+            sequence="ACDEFGH",
+            atom_coordinates=[
+                (0.0, 0.0, 0.0),
+                (3.8, 0.0, 0.0),
+                (5.7, 3.3, 0.0),  # Forms ~120° angle
+                (9.5, 3.3, 0.0),
+                (13.3, 3.3, 0.0),
+                (17.1, 3.3, 0.0),
+                (20.9, 3.3, 0.0),
+            ],
+            energy=-50.0,
+            rmsd_to_native=10.0,
+            secondary_structure=['C'] * 7,
+            phi_angles=[0.0] * 7,
+            psi_angles=[0.0] * 7,
+            available_move_types=[],
+            structural_constraints={}
+        )
+        
+        # Should pass
+        assert refinement_engine.validate_geometry(good_conf) is True
+
+    def test_validate_degenerate_angle(self, refinement_engine):
+        """Test validation fails for degenerate angles (very short bonds)."""
+        # Create structure with degenerate geometry (points too close)
+        bad_conf = Conformation(
+            conformation_id="degenerate",
+            sequence="ACDE",
+            atom_coordinates=[
+                (0.0, 0.0, 0.0),
+                (0.05, 0.0, 0.0),  # Very close to previous point
+                (0.1, 0.0, 0.0),
+                (3.8, 0.0, 0.0),
+            ],
+            energy=-50.0,
+            rmsd_to_native=10.0,
+            secondary_structure=['C'] * 4,
+            phi_angles=[0.0] * 4,
+            psi_angles=[0.0] * 4,
+            available_move_types=[],
+            structural_constraints={}
+        )
+        
+        # Should fail due to short bonds
+        assert refinement_engine.validate_geometry(bad_conf) is False
+
+
+# ============================================================================
+# Test Checkpoint System
+# ============================================================================
+
+class TestCheckpointSystem:
+    """Test checkpoint save/restore functionality."""
+    
+    def test_save_checkpoint(self, refinement_engine, test_conformation):
+        """Test saving a checkpoint."""
+        # Initially no checkpoints
+        assert len(refinement_engine._checkpoint_stack) == 0
+        
+        # Save checkpoint
+        refinement_engine._save_checkpoint("test_checkpoint", test_conformation)
+        
+        # Verify checkpoint was saved
+        assert len(refinement_engine._checkpoint_stack) == 1
+        assert refinement_engine._checkpoint_stack[0][0] == "test_checkpoint"
+        assert refinement_engine._checkpoint_stack[0][1] == test_conformation
+    
+    def test_restore_checkpoint_most_recent(self, refinement_engine, test_conformation):
+        """Test restoring the most recent checkpoint."""
+        # Save a checkpoint
+        refinement_engine._save_checkpoint("checkpoint1", test_conformation)
+        
+        # Restore it
+        restored = refinement_engine._restore_checkpoint()
+        
+        # Verify restoration
+        assert restored is not None
+        assert restored == test_conformation
+        assert len(refinement_engine._checkpoint_stack) == 0  # Should be removed after restore
+    
+    def test_restore_checkpoint_by_name(self, refinement_engine, test_conformation):
+        """Test restoring a specific checkpoint by name."""
+        # Create multiple conformations
+        conf1 = test_conformation
+        conf2 = Conformation(
+            conformation_id="conf2",
+            sequence="ACDEFGH",
+            atom_coordinates=[(i*4.0, 0.0, 0.0) for i in range(7)],
+            energy=-100.0,
+            rmsd_to_native=8.0,
+            secondary_structure=['H'] * 7,
+            phi_angles=[0.0] * 7,
+            psi_angles=[0.0] * 7,
+            available_move_types=[],
+            structural_constraints={}
+        )
+        
+        # Save multiple checkpoints
+        refinement_engine._save_checkpoint("checkpoint1", conf1)
+        refinement_engine._save_checkpoint("checkpoint2", conf2)
+        
+        # Restore specific one
+        restored = refinement_engine._restore_checkpoint("checkpoint1")
+        
+        # Verify correct checkpoint was restored
+        assert restored is not None
+        assert restored == conf1
+        assert len(refinement_engine._checkpoint_stack) == 1  # Only one removed
+    
+    def test_restore_checkpoint_nonexistent(self, refinement_engine):
+        """Test attempting to restore a nonexistent checkpoint."""
+        # Try to restore when no checkpoints exist
+        restored = refinement_engine._restore_checkpoint()
+        
+        # Should return None
+        assert restored is None
+    
+    def test_restore_checkpoint_wrong_name(self, refinement_engine, test_conformation):
+        """Test attempting to restore a checkpoint with wrong name."""
+        # Save a checkpoint
+        refinement_engine._save_checkpoint("checkpoint1", test_conformation)
+        
+        # Try to restore with wrong name
+        restored = refinement_engine._restore_checkpoint("nonexistent")
+        
+        # Should return None, checkpoint should still be there
+        assert restored is None
+        assert len(refinement_engine._checkpoint_stack) == 1
+    
+    def test_checkpoint_limit(self, refinement_engine, test_conformation):
+        """Test that checkpoint stack is limited to max size."""
+        # Save more than max checkpoints (max is 5)
+        for i in range(10):
+            conf = Conformation(
+                conformation_id=f"conf{i}",
+                sequence="ACDEFGH",
+                atom_coordinates=[(j*4.0, 0.0, 0.0) for j in range(7)],
+                energy=-50.0 - i,
+                rmsd_to_native=10.0,
+                secondary_structure=['C'] * 7,
+                phi_angles=[0.0] * 7,
+                psi_angles=[0.0] * 7,
+                available_move_types=[],
+                structural_constraints={}
+            )
+            refinement_engine._save_checkpoint(f"checkpoint{i}", conf)
+        
+        # Stack should be limited to max_checkpoints (5)
+        assert len(refinement_engine._checkpoint_stack) == refinement_engine._max_checkpoints
+        
+        # Oldest checkpoints should be removed
+        checkpoint_names = [name for name, _ in refinement_engine._checkpoint_stack]
+        assert "checkpoint0" not in checkpoint_names
+        assert "checkpoint1" not in checkpoint_names
+        assert "checkpoint2" not in checkpoint_names
+        assert "checkpoint3" not in checkpoint_names
+        assert "checkpoint4" not in checkpoint_names
+        assert "checkpoint5" in checkpoint_names
+        assert "checkpoint9" in checkpoint_names
+    
+    def test_clear_checkpoints(self, refinement_engine, test_conformation):
+        """Test clearing all checkpoints."""
+        # Save some checkpoints
+        for i in range(3):
+            refinement_engine._save_checkpoint(f"checkpoint{i}", test_conformation)
+        
+        # Verify they exist
+        assert len(refinement_engine._checkpoint_stack) == 3
+        
+        # Clear all
+        refinement_engine._clear_checkpoints()
+        
+        # Verify all cleared
+        assert len(refinement_engine._checkpoint_stack) == 0
+
+
 # ============================================================================
 # Test Energy Validation
 # ============================================================================
