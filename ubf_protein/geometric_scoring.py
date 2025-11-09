@@ -1,3 +1,4 @@
+
 """
 Geometric Scoring Module for Prescriptive Geometric Targeting
 
@@ -385,6 +386,48 @@ class GeometricScorer:
             'max_time_ms': self.max_time_ms,
             'within_target': avg_time_ms < 2.0
         }
+
+
+def analyze_all_geometries(coords: List[np.ndarray]) -> dict:
+    """
+    Analyze protein structure against all Platonic solids and find best match.
+    
+    Calculates correlation strength (as percentage) for each geometry:
+    - Tetrahedron (4 faces)
+    - Cube (6 faces)
+    - Octahedron (8 faces)
+    - Dodecahedron (12 faces, φ-based)
+    - Icosahedron (20 faces, φ-based)
+    
+    Args:
+        coords: List of CA atom coordinates (N x 3 numpy arrays)
+        
+    Returns:
+        Dictionary with:
+        - 'correlations': Dict mapping geometry name -> correlation percentage (0-100%)
+        - 'best_match': Name of geometry with highest correlation
+        - 'best_correlation': Correlation percentage of best match
+        - 'ranked_geometries': List of (geometry, correlation%) tuples, sorted best to worst
+    """
+    geometries = ['tetrahedron', 'cube', 'octahedron', 'dodecahedron', 'icosahedron']
+    correlations = {}
+    
+    # Calculate similarity for each geometry
+    for geometry in geometries:
+        scorer = GeometricScorer(target_geometry=geometry)
+        similarity = scorer.calculate_similarity(coords)
+        correlations[geometry] = similarity * 100.0  # Convert to percentage
+    
+    # Find best match
+    ranked = sorted(correlations.items(), key=lambda x: x[1], reverse=True)
+    best_geometry, best_correlation = ranked[0]
+    
+    return {
+        'correlations': correlations,
+        'best_match': best_geometry,
+        'best_correlation': best_correlation,
+        'ranked_geometries': ranked
+    }
 
 
 def create_scorer(target_geometry: str) -> GeometricScorer:
