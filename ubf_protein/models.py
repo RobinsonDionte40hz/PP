@@ -116,29 +116,58 @@ class QCPPValidatedMemory(ConformationalMemory):
 
 @dataclass
 class ConsciousnessCoordinates:
-    """Two fundamental coordinates defining agent state"""
-    frequency: float  # 3-15 Hz (exploration energy)
-    coherence: float  # 0.2-1.0 (structural focus)
+    """
+    Exploration parameter coordinates (metaphorically called "consciousness").
+    
+    ⚠️ METAPHOR ALERT: "Consciousness" is a design pattern, NOT a physical claim.
+    
+    These are dimensionless optimization parameters:
+    - frequency: Aggressiveness (3-15, dimensionless, NOT Hz)
+    - coherence: Consistency (0.2-1.0, dimensionless, NOT quantum coherence)
+    
+    The "Hz" notation is historical/metaphorical for intuitive parameter naming.
+    """
+    frequency: float  # Aggressiveness: 3-15 (dimensionless, metaphorically "Hz")
+    coherence: float  # Consistency: 0.2-1.0 (dimensionless)
     last_update_timestamp: int
 
     def __post_init__(self):
-        assert 3.0 <= self.frequency <= 15.0, "Frequency must be 3-15 Hz"
-        assert 0.2 <= self.coherence <= 1.0, "Coherence must be 0.2-1.0"
+        assert 3.0 <= self.frequency <= 15.0, "Frequency (aggressiveness) must be 3-15"
+        assert 0.2 <= self.coherence <= 1.0, "Coherence (consistency) must be 0.2-1.0"
 
 @dataclass
 class BehavioralStateData:
-    """Cached behavioral state derived from consciousness coordinates"""
-    exploration_energy: float  # Low/Moderate/High
-    structural_focus: float  # Scattered/Balanced/Focused
-    conformational_bias: float  # Compact vs extended preference
-    hydrophobic_drive: float  # 0.0-1.0
-    risk_tolerance: float  # 0.0-1.0 (willingness to try radical moves)
-    native_state_ambition: float  # 0.0-1.0 (drive toward goal)
+    """
+    Search strategy state derived from exploration parameters.
+    
+    ⚠️ HEURISTIC DERIVATION: The 5D strategy is derived from 2D parameters
+    using ad hoc formulas. These transformations are NOT theoretically derived.
+    
+    Derivation (EMPIRICAL):
+    - exploration_energy = f(frequency) [Heuristic mapping]
+    - structural_focus = f(coherence) [Heuristic mapping]
+    - hydrophobic_drive = (freq - 4.0) / 8.0 [Why this formula?]
+    - risk_tolerance = (freq - 6.0) / 6.0 [Why this formula?]
+    - native_state_ambition = coh × (freq / 10.0) [Why this formula?]
+    
+    Alternative formulas may perform equally well or better.
+    """
+    exploration_energy: float  # Low/Moderate/High (heuristic)
+    structural_focus: float  # Scattered/Balanced/Focused (heuristic)
+    conformational_bias: float  # Compact vs extended preference (heuristic)
+    hydrophobic_drive: float  # 0.0-1.0 (heuristic)
+    risk_tolerance: float  # 0.0-1.0 (heuristic)
+    native_state_ambition: float  # 0.0-1.0 (heuristic)
     cached_timestamp: int
 
     @staticmethod
     def from_consciousness(freq: float, coh: float) -> 'BehavioralStateData':
-        """Generate behavioral state from consciousness coordinates"""
+        """
+        Generate search strategy from exploration parameters.
+        
+        ⚠️ HEURISTIC FORMULAS: These transformations are empirical choices.
+        No ablation studies have validated these specific formulas.
+        """
         return BehavioralStateData(
             exploration_energy=map_frequency_to_energy(freq),
             structural_focus=map_coherence_to_focus(coh),

@@ -1,10 +1,28 @@
 # config.py - System configuration
 
-# Consciousness parameters (global bounds)
-FREQUENCY_MIN = 3.0
-FREQUENCY_MAX = 15.0
-COHERENCE_MIN = 0.2
-COHERENCE_MAX = 1.0
+"""
+⚠️ IMPORTANT DISCLAIMER - Consciousness Parameters:
+
+The "consciousness" and "frequency"/"coherence" terminology in this file is
+METAPHORICAL. These are dimensionless optimization parameters, NOT:
+- Physical consciousness in proteins
+- Actual frequencies in Hz
+- Quantum coherence measurements
+
+Mathematical Reality:
+- FREQUENCY_MIN/MAX: Aggressiveness bounds (dimensionless, 3-15)
+- COHERENCE_MIN/MAX: Consistency bounds (dimensionless, 0.2-1.0)
+- "Hz" notation is historical/metaphorical, NOT physical units
+- Update rules are HEURISTIC, not derived from first principles
+
+These parameters evolved through empirical tuning, not theoretical derivation.
+"""
+
+# Exploration parameters (metaphorically called "consciousness")
+FREQUENCY_MIN = 3.0   # Min aggressiveness (dimensionless)
+FREQUENCY_MAX = 15.0  # Max aggressiveness (dimensionless)
+COHERENCE_MIN = 0.2   # Min consistency (dimensionless)
+COHERENCE_MAX = 1.0   # Max consistency (dimensionless)
 BEHAVIORAL_STATE_REGEN_THRESHOLD = 0.3
 
 # Memory parameters (base values, can be overridden by AdaptiveConfig)
@@ -16,9 +34,12 @@ SHARED_MEMORY_SIGNIFICANCE_THRESHOLD = 0.7
 MAX_SHARED_MEMORY_POOL_SIZE = 10000
 
 # Memory significance calculation (simplified 3-factor approach)
-SIGNIFICANCE_ENERGY_CHANGE_WEIGHT = 0.5
-SIGNIFICANCE_STRUCTURAL_NOVELTY_WEIGHT = 0.3
-SIGNIFICANCE_RMSD_IMPROVEMENT_WEIGHT = 0.2
+# ⚠️ HEURISTIC WEIGHTS: These weights (0.5, 0.3, 0.2) were empirically chosen.
+# No ablation studies have been performed to validate these specific values.
+# Alternative weightings may perform equally well or better.
+SIGNIFICANCE_ENERGY_CHANGE_WEIGHT = 0.5        # Why 0.5? Empirical choice
+SIGNIFICANCE_STRUCTURAL_NOVELTY_WEIGHT = 0.3   # Why 0.3? Empirical choice
+SIGNIFICANCE_RMSD_IMPROVEMENT_WEIGHT = 0.2     # Why 0.2? Empirical choice
 
 # Local minima detection (base values, scaled by AdaptiveConfig)
 BASE_STUCK_DETECTION_WINDOW = 20
@@ -88,36 +109,41 @@ TARGET_GDT_TS = 70.0
 TARGET_LEARNING_IMPROVEMENT_PERCENT = 50.0
 
 # Agent diversity profiles
+# ⚠️ EMPIRICAL PROFILES: These ranges were chosen through trial and error.
+# The 33%/34%/33% split is arbitrary - other distributions may work better.
 AGENT_DIVERSITY_PROFILES = {
     'cautious': {
         'profile_name': 'cautious',
-        'frequency_range': (4.0, 7.0),
-        'coherence_range': (0.7, 1.0),
+        'frequency_range': (4.0, 7.0),   # Low aggressiveness (empirical choice)
+        'coherence_range': (0.7, 1.0),   # High consistency (empirical choice)
         'description': 'Low energy, high focus - careful local exploration'
     },
     'balanced': {
         'profile_name': 'balanced',
-        'frequency_range': (7.0, 10.0),
-        'coherence_range': (0.5, 0.8),
+        'frequency_range': (7.0, 10.0),  # Medium aggressiveness (empirical choice)
+        'coherence_range': (0.5, 0.8),   # Medium consistency (empirical choice)
         'description': 'Moderate energy and focus - balanced exploration'
     },
     'aggressive': {
         'profile_name': 'aggressive',
-        'frequency_range': (10.0, 15.0),
-        'coherence_range': (0.3, 0.6),
+        'frequency_range': (10.0, 15.0), # High aggressiveness (empirical choice)
+        'coherence_range': (0.3, 0.6),   # Low consistency (empirical choice)
         'description': 'High energy, lower focus - bold exploration, escapes minima'
     }
 }
 
-# Consciousness update rules (from UBF)
+# Exploration parameter update rules (HEURISTIC - not derived from theory)
+# ⚠️ EMPIRICAL RULES: These update magnitudes (+0.5, -0.3, etc.) were tuned
+# through experimentation. No theoretical justification exists for these values.
+# The "Hz" notation is metaphorical - these are dimensionless increments.
 CONSCIOUSNESS_UPDATE_RULES = {
-    'energy_decrease_large': {'frequency': +0.5, 'coherence': +0.1},
-    'energy_decrease_small': {'frequency': +0.2, 'coherence': +0.05},
-    'energy_increase': {'frequency': -0.3, 'coherence': -0.05},
-    'structure_collapse': {'frequency': -1.0, 'coherence': -0.2},
-    'stable_minimum_found': {'frequency': +0.3, 'coherence': +0.15},
-    'helix_formation': {'frequency': +0.2, 'coherence': +0.08},
-    'sheet_formation': {'frequency': +0.2, 'coherence': +0.08},
-    'hydrophobic_core_formed': {'frequency': +0.4, 'coherence': +0.1},
-    'stuck_in_local_minimum': {'frequency': +1.0, 'coherence': -0.1},  # Boost to escape!
+    'energy_decrease_large': {'frequency': +0.5, 'coherence': +0.1},    # Heuristic
+    'energy_decrease_small': {'frequency': +0.2, 'coherence': +0.05},   # Heuristic
+    'energy_increase': {'frequency': -0.3, 'coherence': -0.05},         # Heuristic
+    'structure_collapse': {'frequency': -1.0, 'coherence': -0.2},       # Heuristic
+    'stable_minimum_found': {'frequency': +0.3, 'coherence': +0.15},    # Heuristic
+    'helix_formation': {'frequency': +0.2, 'coherence': +0.08},         # Heuristic
+    'sheet_formation': {'frequency': +0.2, 'coherence': +0.08},         # Heuristic
+    'hydrophobic_core_formed': {'frequency': +0.4, 'coherence': +0.1},  # Heuristic
+    'stuck_in_local_minimum': {'frequency': +1.0, 'coherence': -0.1},   # Escape boost
 }

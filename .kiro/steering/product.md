@@ -18,10 +18,11 @@ A physics-based predictor using quantum coherence principles and golden ratio pa
 - **Experimental Validation**: Correlates with stability data (Tm, ΔG, half-life)
 
 ### 2. UBF Protein System (PRODUCTION-READY ✅)
-A consciousness-based autonomous agent system using the Universal Behavioral Framework for conformational exploration.
+A consciousness-inspired autonomous agent system using the Universal Behavioral Framework for conformational exploration.
 
 **Key Features:**
 - **Consciousness-Guided Navigation**: 2D consciousness coordinates (frequency 3-15 Hz, coherence 0.2-1.0) drive exploration
+  - ⚠️ **METAPHOR ALERT**: "Consciousness" terminology is metaphorical, referring to mathematical optimization parameters, NOT physical consciousness in proteins
 - **Mapless O(1) Exploration**: Capability-based move generation without spatial maps or pathfinding
 - **Multi-Agent Collective Learning**: 10-100 agents with diverse profiles sharing high-significance memories
 - **Adaptive Configuration**: Auto-scales parameters based on protein size (small/medium/large)
@@ -41,7 +42,7 @@ A consciousness-based autonomous agent system using the Universal Behavioral Fra
 
 ### UBF System (Agent System)
 - **Experience-driven learning** without training data
-- **Consciousness-based** autonomous navigation
+- **Consciousness-inspired** autonomous navigation (METAPHORICAL - mathematical optimization parameters)
 - **Collective intelligence** through shared memories
 - Focus: Conformational exploration and structure prediction
 
@@ -73,6 +74,7 @@ A consciousness-based autonomous agent system using the Universal Behavioral Fra
 - Quantum-guided conformational search with phi pattern rewards
 - Novel fold discovery without training bias
 - Validated predictions: Energy <0 kcal/mol, RMSD <5Å, GDT-TS >50
+- **Note:** "Consciousness" terminology in UBF is metaphorical for optimization parameters
 
 ## Validation & Quality Metrics
 

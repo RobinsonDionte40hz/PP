@@ -8,18 +8,19 @@ This project contains **two complementary protein structure prediction systems**
 Physics-based stability prediction using quantum coherence and golden ratio patterns.
 
 ### 2. UBF Protein System - `ubf_protein/` Directory  
-Consciousness-based conformational exploration using autonomous agents (✅ **RESEARCH-READY**).
+Consciousness-inspired multi-agent optimization for protein conformational exploration (✅ **RESEARCH-READY**).
 
 ---
 
 ## ⚠️ Important System Capabilities Disclaimer
 
-**UBF System Status:** This is a RESEARCH platform for exploring consciousness-based protein conformational navigation. Current performance:
+**UBF System Status:** This is a RESEARCH platform for exploring consciousness-inspired multi-agent optimization for protein conformational navigation. Current performance:
 
-- **RMSD Achievement:** 80-90Å typical (research phase, October 2025 validation)
+- **RMSD Achievement:** 7.5-10Å typical (research phase, November 2025 validation)
 - **Scientific Accuracy:** Not suitable for production structure prediction
-- **Primary Use:** Validating consciousness navigation concepts, agent coordination, energy landscape exploration
+- **Primary Use:** Validating novel optimization mechanisms, agent coordination, energy landscape exploration
 - **Comparison:** NOT competing with AlphaFold/RosettaFold (those achieve <2Å)
+- **"Consciousness" Terminology:** Metaphorical design pattern for exploration parameters, NOT a claim about physical consciousness in proteins
 
 **"Research-Ready" Context:** Refers to software engineering quality (architecture, tests, docs, performance), NOT scientific accuracy of structure predictions.
 
@@ -104,14 +105,14 @@ Use `QCProteinPipeline.run_validation_pipeline()` with experimental data from `e
 #### Component Structure
 - **Interfaces** (`interfaces.py`): 11 core interfaces defining contracts
 - **Models** (`models.py`): 10+ immutable data models with type safety
-- **Consciousness** (`consciousness.py`, `behavioral_state.py`): 2D coordinate system (freq 3-15 Hz, coh 0.2-1.0)
+- **Exploration Parameters** (`consciousness.py`, `behavioral_state.py`): 2D parameter system (aggressiveness 3-15, consistency 0.2-1.0) - **metaphorically called "consciousness"**
 - **Memory** (`memory_system.py`): Experience storage with significance thresholds (≥0.3 individual, ≥0.7 shared)
 - **Move Generation** (`mapless_moves.py`): O(1) capability-based filtering, 10 move types
 - **Move Evaluation**: 5 composite factors (physical, quantum, behavioral, historical, goal)
 - **Physics** (`physics_integration.py`): QAAP, 40 Hz resonance, 408 fs water shielding
 - **Energy** (`energy_function.py`): Molecular mechanics with 6 terms (bond, angle, dihedral, VDW, electrostatic, H-bond)
 - **Validation** (`rmsd_calculator.py`, `validation_suite.py`): RMSD, GDT-TS, TM-score against native PDB structures
-- **Agent** (`protein_agent.py`): Autonomous exploration with consciousness updates
+- **Agent** (`protein_agent.py`): Autonomous exploration with parameter updates
 - **Coordination** (`multi_agent_coordinator.py`): Diverse populations (33% cautious, 34% balanced, 33% aggressive)
 - **QCPP Integration** (`qcpp_integration.py`, `qcpp_config.py`): Real-time quantum physics feedback (Implemented: Oct 25, 2025)
 - **Geometric Analysis** (`geometric_attractor_v2.py`): Percentage-based geometric relationship scoring (Implemented: Nov 9, 2025)
@@ -122,27 +123,31 @@ Use `QCProteinPipeline.run_validation_pipeline()` with experimental data from `e
 
 ### Key Patterns & Conventions
 
-#### Consciousness System
+#### Exploration Parameter System (Consciousness-Inspired Metaphor)
 ```python
-# Consciousness coordinates
-frequency: 3.0-15.0 Hz  # Exploration tempo
-coherence: 0.2-1.0      # Behavioral consistency
+# Exploration parameters (metaphorically called "consciousness coordinates")
+aggressiveness: 3.0-15.0  # Exploration tempo (dimensionless)
+consistency: 0.2-1.0      # Behavioral stability (dimensionless)
 
 # Update rules
-Success: +0.5 Hz frequency, +0.05 coherence
-Failure: -0.3 Hz frequency, -0.03 coherence
-Stuck:   -0.5 Hz frequency, -0.05 coherence
+Success: +0.5 aggressiveness, +0.05 consistency
+Failure: -0.3 aggressiveness, -0.03 consistency
+Stuck:   -0.5 aggressiveness, -0.05 consistency
 ```
 
-#### Behavioral Derivation
+**Note:** "Consciousness" is a METAPHOR for organizing optimization parameters. This is NOT a claim about physical consciousness in proteins.
+
+#### Search Strategy Derivation (from Exploration Parameters)
 ```python
-# 5 dimensions derived from consciousness
-exploration_energy = (freq - 3) / 12
-structural_focus = coherence
+# 5 dimensions derived from base parameters
+exploration_energy = (aggressiveness - 3) / 12
+structural_focus = consistency
 hydrophobic_drive = sqrt(exploration_energy × structural_focus)
-risk_tolerance = exploration_energy × (1 - coherence)
-native_state_ambition = coherence × 0.8 + 0.2
+risk_tolerance = exploration_energy × (1 - consistency)
+native_state_ambition = consistency × 0.8 + 0.2
 ```
+
+**Note:** These transformations are HEURISTIC design choices, not derived from first principles.
 
 #### Memory Significance
 ```python
@@ -297,7 +302,7 @@ coordinator2.resume_from_checkpoint()
 
 ### QCPP-UBF Integration (IMPLEMENTED ✅)
 1. **Real-Time QCPP Feedback**: Use QCPP's QCP in UBF's move evaluation quantum factor
-2. **Physics-Grounded Consciousness**: Agent consciousness coordinates map to QCPP metrics
+2. **Physics-Guided Parameters**: Agent exploration parameters map to QCPP metrics
 3. **Quantum-Guided Moves**: Move evaluation uses QCPP-derived quantum alignment
 4. **Phi Pattern Rewards**: Golden ratio geometries receive energy bonuses from QCPP
 5. **Dynamic Parameter Adjustment**: Exploration adapts based on QCPP stability scores

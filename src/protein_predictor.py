@@ -99,7 +99,30 @@ class QuantumCoherenceProteinPredictor:
     def calculate_qcp(self, n_levels=3):
         """
         Calculate Quantum Consciousness Potential (QCP) values for residues.
-        QCP = 4 + (2^n × φ^l × m)
+        
+        ⚠️ EXPERIMENTAL FORMULA - NOT VALIDATED:
+        This formula is a NOVEL contribution that has NOT been validated against
+        large experimental datasets. Use with caution and verify results.
+        
+        Formula: QCP = 4 + (2^n × φ^l × m)
+        
+        Where:
+        - n: Structural hierarchy (0=coil, 1=helix, 2=sheet, 3=phi-bend)
+        - l: Neighbor count (scaled 1-3)
+        - m: Hydrophobicity (normalized -1 to +1)
+        - φ: Golden ratio (1.618...)
+        
+        Mathematical Concerns:
+        1. Exponential growth (2^n) - grows as 1, 2, 4, 8
+        2. Golden ratio powers (φ^l) - theoretical basis unclear
+        3. Additive constant (4.0) - arbitrary choice
+        4. Units: Dimensionless (no physical interpretation established)
+        
+        Validation Status:
+        - ❌ NOT validated against experimental stability data (Tm, ΔG)
+        - ❌ NO ablation studies (effect of removing φ, changing exponents)
+        - ❌ NO correlation with established stability predictors
+        - ⚠️ Use for research/exploration only, not production predictions
         
         Parameters:
         - n_levels: structural hierarchy levels to consider

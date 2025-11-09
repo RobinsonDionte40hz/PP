@@ -1,0 +1,106 @@
+{
+  "study_name": "QCP Formula Components",
+  "baseline_performance": {
+    "rmsd": 10.0,
+    "energy": -148.40934319920623,
+    "runtime": 0.012499570846557617
+  },
+  "component_results": [
+    {
+      "component_name": "QCP Formula",
+      "variant_name": "baseline",
+      "baseline_rmsd": 10.0,
+      "ablated_rmsd": 8.197678360743716,
+      "baseline_energy": -148.40934319920623,
+      "ablated_energy": -115.41840456767332,
+      "performance_drop": -18.023216392562844,
+      "statistical_significance": 20.0,
+      "runtime_seconds": 1.5431177073527655,
+      "notes": "Full QCP formula"
+    },
+    {
+      "component_name": "QCP Formula",
+      "variant_name": "no_exponential",
+      "baseline_rmsd": 10.0,
+      "ablated_rmsd": 8.422584610584394,
+      "baseline_energy": -148.40934319920623,
+      "ablated_energy": -129.05322419184003,
+      "performance_drop": -15.774153894156056,
+      "statistical_significance": 19.999999999999996,
+      "runtime_seconds": 1.6890538288437098,
+      "notes": "Remove 2^n term"
+    },
+    {
+      "component_name": "QCP Formula",
+      "variant_name": "no_phi",
+      "baseline_rmsd": 10.0,
+      "ablated_rmsd": 8.219844971502466,
+      "baseline_energy": -148.40934319920623,
+      "ablated_energy": -145.30245782890555,
+      "performance_drop": -17.801550284975338,
+      "statistical_significance": 20.0,
+      "runtime_seconds": 1.2313268181868409,
+      "notes": "Remove phi^l term"
+    },
+    {
+      "component_name": "QCP Formula",
+      "variant_name": "no_hydrophobicity",
+      "baseline_rmsd": 10.0,
+      "ablated_rmsd": 9.099281980225827,
+      "baseline_energy": -148.40934319920623,
+      "ablated_energy": -115.33444204137963,
+      "performance_drop": -9.007180197741729,
+      "statistical_significance": 20.0,
+      "runtime_seconds": 1.3752557236729481,
+      "notes": "Remove m term"
+    },
+    {
+      "component_name": "QCP Formula",
+      "variant_name": "no_base_energy",
+      "baseline_rmsd": 10.0,
+      "ablated_rmsd": 8.256780422410436,
+      "baseline_energy": -148.40934319920623,
+      "ablated_energy": -114.82315403486517,
+      "performance_drop": -17.432195775895636,
+      "statistical_significance": 20.0,
+      "runtime_seconds": 1.6287458933953742,
+      "notes": "Remove 4.0 constant"
+    },
+    {
+      "component_name": "QCP Formula",
+      "variant_name": "linear_qcp",
+      "baseline_rmsd": 10.0,
+      "ablated_rmsd": 9.650406400192468,
+      "baseline_energy": -148.40934319920623,
+      "ablated_energy": -127.43921116072421,
+      "performance_drop": -3.495935998075321,
+      "statistical_significance": 19.999999999999996,
+      "runtime_seconds": 1.2970358721101098,
+      "notes": "Linear formula: qcp = n + l + m"
+    },
+    {
+      "component_name": "QCP Formula",
+      "variant_name": "random_qcp",
+      "baseline_rmsd": 10.0,
+      "ablated_rmsd": 8.350955530512104,
+      "baseline_energy": -148.40934319920623,
+      "ablated_energy": -135.3726546298403,
+      "performance_drop": -16.490444694878956,
+      "statistical_significance": 20.0,
+      "runtime_seconds": 1.6900258747852408,
+      "notes": "Random QCP values"
+    }
+  ],
+  "statistical_summary": {
+    "mean_rmsd_drop": -14.003525319755127,
+    "std_rmsd_drop": 5.169021495025571,
+    "max_rmsd_drop": -3.495935998075321,
+    "min_rmsd_drop": -18.023216392562844,
+    "significant_changes": 7,
+    "total_variants": 7,
+    "most_impactful": "baseline",
+    "least_impactful": "linear_qcp"
+  },
+  "runtime_total": 0.015059232711791992,
+  "timestamp": "2025-11-09 17:43:46"
+}

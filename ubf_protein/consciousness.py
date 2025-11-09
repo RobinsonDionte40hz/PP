@@ -1,8 +1,21 @@
 """
-Consciousness coordinate system implementation.
+Exploration parameter system implementation (consciousness-inspired metaphor).
 
-This module implements the consciousness state management for the UBF protein system,
-providing frequency and coherence coordinates that drive agent behavior.
+⚠️ IMPORTANT DISCLAIMER:
+This module uses "consciousness" as a METAPHORICAL FRAMEWORK for organizing
+exploration parameters. This is NOT a claim about consciousness in proteins.
+
+The "consciousness" terminology provides intuitive parameter names:
+- "frequency" = exploration aggressiveness (dimensionless, scaled 3-15)
+- "coherence" = behavioral consistency (dimensionless, scaled 0.2-1.0)
+
+This is a heuristic optimization framework inspired by how conscious systems
+balance exploration vs exploitation, NOT a physical model of protein cognition.
+
+Mathematical Reality:
+- These are optimization parameters in a 2D search space
+- No connection to neuroscience or quantum consciousness
+- Parameter evolution is based on heuristic update rules
 """
 
 import time
@@ -21,23 +34,29 @@ if TYPE_CHECKING:
 
 class ConsciousnessState(IConsciousnessState):
     """
-    Implementation of consciousness coordinate management.
+    Exploration parameter state manager (metaphorically called "consciousness").
 
-    Manages frequency (3-15 Hz) and coherence (0.2-1.0) coordinates that define
-    an agent's current state in the consciousness space. Updates coordinates
-    based on exploration outcomes using predefined update rules.
+    ⚠️ METAPHOR ALERT: "Consciousness" is a design pattern, not a physical claim.
+    
+    This class manages two optimization parameters:
+    - frequency: Exploration aggressiveness (dimensionless, 3-15)
+    - coherence: Behavioral consistency (dimensionless, 0.2-1.0)
+    
+    Updates parameters based on exploration outcomes using heuristic rules.
+    The "Hz" notation for frequency is metaphorical - these are dimensionless
+    parameters inspired by dynamical systems theory, not physical frequencies.
     """
 
     def __init__(self, frequency: float, coherence: float):
         """
-        Initialize consciousness state with given coordinates.
+        Initialize exploration parameter state.
 
         Args:
-            frequency: Initial frequency in Hz (3-15)
-            coherence: Initial coherence (0.2-1.0)
+            frequency: Aggressiveness parameter (3-15, dimensionless)
+            coherence: Consistency parameter (0.2-1.0, dimensionless)
 
         Raises:
-            ValueError: If coordinates are outside valid bounds
+            ValueError: If parameters are outside valid bounds
         """
         # Validate bounds
         if not (FREQUENCY_MIN <= frequency <= FREQUENCY_MAX):
@@ -53,19 +72,34 @@ class ConsciousnessState(IConsciousnessState):
         )
 
     def get_frequency(self) -> float:
-        """Returns current frequency (3-15 Hz)."""
+        """
+        Returns current aggressiveness parameter (3-15, dimensionless).
+        
+        Note: Called "frequency" for historical/metaphorical reasons.
+        This is NOT a physical frequency in Hz.
+        """
         return self._coordinates.frequency
 
     def get_coherence(self) -> float:
-        """Returns current coherence (0.2-1.0)."""
+        """
+        Returns current consistency parameter (0.2-1.0, dimensionless).
+        
+        Note: Called "coherence" for historical/metaphorical reasons.
+        This is NOT quantum coherence.
+        """
         return self._coordinates.coherence
 
     def update_from_outcome(self, outcome: ConformationalOutcome) -> None:
         """
-        Updates coordinates based on exploration outcome.
+        Updates exploration parameters based on outcome.
 
-        Uses CONSCIOUSNESS_UPDATE_RULES to determine how much to adjust
-        frequency and coherence based on the outcome type and significance.
+        Uses HEURISTIC update rules (not derived from first principles) to
+        adjust aggressiveness and consistency based on the outcome type.
+
+        Update philosophy:
+        - Success → Increase aggressiveness and consistency (reward)
+        - Failure → Decrease aggressiveness and consistency (punishment)
+        - These rules are EMPIRICAL, not theoretically derived
 
         Args:
             outcome: The result of a conformational exploration step

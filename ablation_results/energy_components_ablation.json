@@ -1,0 +1,142 @@
+{
+  "study_name": "Energy Function Components",
+  "baseline_performance": {
+    "rmsd": 10.0,
+    "energy": -149.64920416953166,
+    "runtime": 0.008565664291381836
+  },
+  "component_results": [
+    {
+      "component_name": "Energy Function",
+      "variant_name": "baseline",
+      "baseline_rmsd": 10.0,
+      "ablated_rmsd": 9.680798167343925,
+      "baseline_energy": -149.64920416953166,
+      "ablated_energy": -44.008492543887655,
+      "performance_drop": -3.1920183265607527,
+      "statistical_significance": 20.0,
+      "runtime_seconds": 1.2748512079483367,
+      "notes": "All energy terms"
+    },
+    {
+      "component_name": "Energy Function",
+      "variant_name": "no_bond",
+      "baseline_rmsd": 10.0,
+      "ablated_rmsd": 12.017659382741414,
+      "baseline_energy": -149.64920416953166,
+      "ablated_energy": -85.27123022151888,
+      "performance_drop": 20.176593827414138,
+      "statistical_significance": 20.0,
+      "runtime_seconds": 1.1139760047339438,
+      "notes": "Remove bond stretching energy"
+    },
+    {
+      "component_name": "Energy Function",
+      "variant_name": "no_angle",
+      "baseline_rmsd": 10.0,
+      "ablated_rmsd": 11.14957639273509,
+      "baseline_energy": -149.64920416953166,
+      "ablated_energy": -150.4141893583331,
+      "performance_drop": 11.495763927350904,
+      "statistical_significance": 20.0,
+      "runtime_seconds": 1.25357653902001,
+      "notes": "Remove angle bending energy"
+    },
+    {
+      "component_name": "Energy Function",
+      "variant_name": "no_dihedral",
+      "baseline_rmsd": 10.0,
+      "ablated_rmsd": 10.198169889422141,
+      "baseline_energy": -149.64920416953166,
+      "ablated_energy": -58.24570150426914,
+      "performance_drop": 1.981698894221413,
+      "statistical_significance": 20.0,
+      "runtime_seconds": 1.0286115621976049,
+      "notes": "Remove dihedral torsion energy"
+    },
+    {
+      "component_name": "Energy Function",
+      "variant_name": "no_vdw",
+      "baseline_rmsd": 10.0,
+      "ablated_rmsd": 15.704656715120375,
+      "baseline_energy": -149.64920416953166,
+      "ablated_energy": -119.92201998567381,
+      "performance_drop": 57.04656715120375,
+      "statistical_significance": 20.0,
+      "runtime_seconds": 1.3305810740119763,
+      "notes": "Remove van der Waals energy"
+    },
+    {
+      "component_name": "Energy Function",
+      "variant_name": "no_electrostatic",
+      "baseline_rmsd": 10.0,
+      "ablated_rmsd": 8.642232051999654,
+      "baseline_energy": -149.64920416953166,
+      "ablated_energy": -149.19694003700158,
+      "performance_drop": -13.577679480003457,
+      "statistical_significance": 20.0,
+      "runtime_seconds": 1.354047857105371,
+      "notes": "Remove electrostatic energy"
+    },
+    {
+      "component_name": "Energy Function",
+      "variant_name": "no_hbond",
+      "baseline_rmsd": 10.0,
+      "ablated_rmsd": 7.521197627438023,
+      "baseline_energy": -149.64920416953166,
+      "ablated_energy": -70.74955514288146,
+      "performance_drop": -24.788023725619766,
+      "statistical_significance": 20.0,
+      "runtime_seconds": 1.1794965614526103,
+      "notes": "Remove hydrogen bonding energy"
+    },
+    {
+      "component_name": "Energy Function",
+      "variant_name": "no_compactness",
+      "baseline_rmsd": 10.0,
+      "ablated_rmsd": 19.949361238766738,
+      "baseline_energy": -149.64920416953166,
+      "ablated_energy": -77.77056858943182,
+      "performance_drop": 99.49361238766737,
+      "statistical_significance": 20.0,
+      "runtime_seconds": 1.178256940272011,
+      "notes": "Remove compactness bonus"
+    },
+    {
+      "component_name": "Energy Function",
+      "variant_name": "harmonic_only",
+      "baseline_rmsd": 10.0,
+      "ablated_rmsd": 13.19240480765484,
+      "baseline_energy": -149.64920416953166,
+      "ablated_energy": -82.9239237434868,
+      "performance_drop": 31.924048076548406,
+      "statistical_significance": 20.0,
+      "runtime_seconds": 1.2994622221395151,
+      "notes": "Only harmonic terms (bond + angle)"
+    },
+    {
+      "component_name": "Energy Function",
+      "variant_name": "nonbonded_only",
+      "baseline_rmsd": 10.0,
+      "ablated_rmsd": 19.704756100441923,
+      "baseline_energy": -149.64920416953166,
+      "ablated_energy": -182.4446782704087,
+      "performance_drop": 97.04756100441922,
+      "statistical_significance": 20.0,
+      "runtime_seconds": 1.2437950598293304,
+      "notes": "Only non-bonded terms (vdw + electrostatic)"
+    }
+  ],
+  "statistical_summary": {
+    "mean_rmsd_drop": 27.760812373664123,
+    "std_rmsd_drop": 41.51650247102288,
+    "max_rmsd_drop": 99.49361238766737,
+    "min_rmsd_drop": -24.788023725619766,
+    "significant_changes": 10,
+    "total_variants": 10,
+    "most_impactful": "no_compactness",
+    "least_impactful": "no_dihedral"
+  },
+  "runtime_total": 0.011501312255859375,
+  "timestamp": "2025-11-09 17:43:46"
+}

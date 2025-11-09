@@ -71,7 +71,7 @@ class ProteinAgent(IProteinAgent):
                  adaptive_config: Optional[AdaptiveConfig] = None,
                  enable_visualization: bool = False,
                  max_snapshots: int = 1000,
-                 native_structure: Optional[Conformation] = None,
+                 native_structure: Optional[Any] = None,
                  qcpp_integration: Optional[Any] = None,
                  qcpp_analysis_frequency: int = 5,
                  enable_thz_recording: bool = False,
@@ -190,15 +190,25 @@ class ProteinAgent(IProteinAgent):
         # Calculate RMSD for initial conformation if native structure is available
         if self._rmsd_calculator is not None and self._native_structure is not None:
             try:
-                rmsd_result = self._rmsd_calculator.calculate_rmsd(
-                    predicted_coords=self._current_conformation.atom_coordinates,
-                    native_coords=self._native_structure.ca_coords,
-                    calculate_metrics=True
-                )
-                self._current_conformation.rmsd_to_native = rmsd_result.rmsd
-                self._current_conformation.gdt_ts_score = rmsd_result.gdt_ts
-                self._current_conformation.tm_score = rmsd_result.tm_score
-                logger.info(f"Initial conformation RMSD: {rmsd_result.rmsd:.2f}Å")
+                # Handle both NativeStructure (ca_coords) and Conformation (atom_coordinates)
+                if hasattr(self._native_structure, 'ca_coords'):
+                    native_coords = self._native_structure.ca_coords
+                elif hasattr(self._native_structure, 'atom_coordinates'):
+                    native_coords = self._native_structure.atom_coordinates
+                else:
+                    logger.warning("Native structure has no coordinate attribute")
+                    native_coords = None
+                
+                if native_coords is not None:
+                    rmsd_result = self._rmsd_calculator.calculate_rmsd(
+                        predicted_coords=self._current_conformation.atom_coordinates,
+                        native_coords=native_coords,
+                        calculate_metrics=True
+                    )
+                    self._current_conformation.rmsd_to_native = rmsd_result.rmsd
+                    self._current_conformation.gdt_ts_score = rmsd_result.gdt_ts
+                    self._current_conformation.tm_score = rmsd_result.tm_score
+                    logger.info(f"Initial conformation RMSD: {rmsd_result.rmsd:.2f}Å")
             except Exception as e:
                 logger.warning(f"Failed to calculate RMSD for initial conformation: {e}")
                 self._current_conformation.rmsd_to_native = None
@@ -1048,35 +1058,40 @@ class ProteinAgent(IProteinAgent):
         # Task 5: Calculate RMSD, GDT-TS, and TM-score if native structure is provided
         if self._rmsd_calculator is not None and self._native_structure is not None:
             try:
-                # DEBUG: Check native structure attributes
-                logger.debug(f"Native structure type: {type(self._native_structure)}")
-                logger.debug(f"Native structure attributes: {dir(self._native_structure)}")
-                logger.debug(f"Has ca_coords: {hasattr(self._native_structure, 'ca_coords')}")
+                # Handle both NativeStructure (ca_coords) and Conformation (atom_coordinates)
+                if hasattr(self._native_structure, 'ca_coords'):
+                    native_coords = self._native_structure.ca_coords
+                elif hasattr(self._native_structure, 'atom_coordinates'):
+                    native_coords = self._native_structure.atom_coordinates
+                else:
+                    logger.warning("Native structure has no coordinate attribute")
+                    native_coords = None
                 
-                # Calculate RMSD and quality metrics
-                rmsd_result = self._rmsd_calculator.calculate_rmsd(
-                    predicted_coords=new_conformation.atom_coordinates,
-                    native_coords=self._native_structure.ca_coords,  # Use ca_coords attribute
-                    calculate_metrics=True
-                )
-
-                # Update conformation with validation metrics
-                new_conformation.rmsd_to_native = rmsd_result.rmsd
-                new_conformation.gdt_ts_score = rmsd_result.gdt_ts
-                new_conformation.tm_score = rmsd_result.tm_score
-
-                # Set native structure reference if not already set
-                if new_conformation.native_structure_ref is None:
-                    new_conformation.native_structure_ref = getattr(
-                        self._native_structure,
-                        'native_structure_ref',
-                        'native_structure'
+                if native_coords is not None:
+                    # Calculate RMSD and quality metrics
+                    rmsd_result = self._rmsd_calculator.calculate_rmsd(
+                        predicted_coords=new_conformation.atom_coordinates,
+                        native_coords=native_coords,
+                        calculate_metrics=True
                     )
 
-                logger.debug(
-                    f"RMSD validation: RMSD={rmsd_result.rmsd:.2f}Å, "
-                    f"GDT-TS={rmsd_result.gdt_ts:.1f}, TM-score={rmsd_result.tm_score:.3f}"
-                )
+                    # Update conformation with validation metrics
+                    new_conformation.rmsd_to_native = rmsd_result.rmsd
+                    new_conformation.gdt_ts_score = rmsd_result.gdt_ts
+                    new_conformation.tm_score = rmsd_result.tm_score
+
+                    # Set native structure reference if not already set
+                    if new_conformation.native_structure_ref is None:
+                        new_conformation.native_structure_ref = getattr(
+                            self._native_structure,
+                            'native_structure_ref',
+                            'native_structure'
+                        )
+
+                    logger.debug(
+                        f"RMSD validation: RMSD={rmsd_result.rmsd:.2f}Å, "
+                        f"GDT-TS={rmsd_result.gdt_ts:.1f}, TM-score={rmsd_result.tm_score:.3f}"
+                    )
 
             except ValueError as e:
                 # Handle structure mismatch errors gracefully

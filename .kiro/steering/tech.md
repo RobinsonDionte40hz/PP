@@ -152,12 +152,13 @@ inclusion: always
 - **Gamma Frequency**: `40 Hz` - Resonance coupling
 
 ### UBF Constants (config.py)
-- **Consciousness Frequency Range**: `3.0-15.0 Hz`
-- **Consciousness Coherence Range**: `0.2-1.0`
+- **Consciousness Frequency Range**: `3.0-15.0 Hz` (METAPHORICAL: dimensionless aggressiveness parameter)
+- **Consciousness Coherence Range**: `0.2-1.0` (METAPHORICAL: dimensionless consistency parameter)
 - **Memory Significance Threshold**: `0.3` (individual), `0.7` (shared)
 - **Max Memories Per Agent**: `50`
 - **Max Shared Memory Pool**: `10000`
 - **Consciousness Update Rules**: Success (+0.5 Hz, +0.05 coh), Failure (-0.3 Hz, -0.03 coh)
+  - **Note:** "Hz" notation is metaphorical - these are dimensionless optimization parameters
 - **Agent Diversity Profiles**: Cautious (33%), Balanced (34%), Aggressive (33%)
 - **Energy Quality Thresholds**: Folded (<0 kcal/mol), Native (-50 to -80 kcal/mol)
 - **RMSD Quality**: Excellent (<2Å), Good (2-4Å), Acceptable (4-5Å), Poor (≥5Å)

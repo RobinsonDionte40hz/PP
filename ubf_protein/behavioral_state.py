@@ -1,8 +1,20 @@
 """
-Behavioral state implementation for UBF protein system.
+Search strategy implementation (derived from exploration parameters).
 
-This module implements the behavioral state that is derived from consciousness
-coordinates and cached to avoid recomputation.
+⚠️ IMPORTANT DISCLAIMER:
+"Behavioral state" is derived from exploration parameters (metaphorically
+called "consciousness coordinates"). This is NOT about protein behavior or
+consciousness - it's a mathematical transformation.
+
+This module implements HEURISTIC derivations:
+- 5 search dimensions derived from 2 base parameters
+- Transformations are AD HOC, not theoretically derived
+- No claim these are optimal or unique transformations
+
+Mathematical Reality:
+- Input: 2D parameter space (aggressiveness, consistency)
+- Output: 5D search strategy space
+- Transformation: Heuristic functions (geometric mean, linear combinations)
 """
 
 import time
@@ -15,19 +27,28 @@ from .config import BEHAVIORAL_STATE_REGEN_THRESHOLD
 
 class BehavioralState(IBehavioralState):
     """
-    Implementation of cached behavioral state derived from consciousness coordinates.
+    Search strategy state derived from exploration parameters.
 
-    Behavioral state represents the agent's current behavioral preferences and
-    tendencies, derived from consciousness coordinates. This state is cached
-    to avoid recomputation on every access.
+    ⚠️ HEURISTIC TRANSFORMATION: The 5D search strategy is derived from 2D
+    exploration parameters using ad hoc mathematical formulas. These formulas
+    are NOT derived from first principles - they are empirical design choices.
+
+    Derivation formulas (HEURISTIC):
+    - exploration_energy = (aggressiveness - 3) / 12        [Linear normalization]
+    - structural_focus = consistency                         [Direct copy]
+    - hydrophobic_drive = sqrt(energy × focus)              [Geometric mean - why?]
+    - risk_tolerance = energy × (1 - consistency)            [Inverse relationship]
+    - native_state_ambition = consistency × 0.8 + 0.2       [Why 0.8 and 0.2?]
+
+    This state is cached to avoid recomputation on every access.
     """
 
     def __init__(self, consciousness_coordinates: ConsciousnessCoordinates):
         """
-        Initialize behavioral state from consciousness coordinates.
+        Initialize search strategy from exploration parameters.
 
         Args:
-            consciousness_coordinates: The consciousness coordinates to derive behavior from
+            consciousness_coordinates: Exploration parameters (aggressiveness, consistency)
         """
         self._behavioral_data = BehavioralStateData.from_consciousness(
             consciousness_coordinates.frequency,
@@ -44,14 +65,16 @@ class BehavioralState(IBehavioralState):
     @staticmethod
     def from_consciousness(frequency: float, coherence: float) -> 'BehavioralState':
         """
-        Create behavioral state from consciousness coordinates.
+        Create search strategy from exploration parameters.
 
         Args:
-            frequency: Consciousness frequency (3-15 Hz)
-            coherence: Consciousness coherence (0.2-1.0)
+            frequency: Aggressiveness parameter (3-15, dimensionless)
+            coherence: Consistency parameter (0.2-1.0, dimensionless)
 
         Returns:
-            New BehavioralState instance
+            New BehavioralState (search strategy) instance
+            
+        Note: "frequency" and "coherence" are metaphorical parameter names.
         """
         coordinates = ConsciousnessCoordinates(
             frequency=frequency,

@@ -1,0 +1,130 @@
+{
+  "study_name": "Move Evaluation Factors",
+  "baseline_performance": {
+    "rmsd": 23.873829267402748,
+    "energy": -245.32308750304185,
+    "runtime": 0.07448482513427734
+  },
+  "component_results": [
+    {
+      "component_name": "Move Evaluation",
+      "variant_name": "baseline",
+      "baseline_rmsd": 23.873829267402748,
+      "ablated_rmsd": 11.10461774703468,
+      "baseline_energy": -245.32308750304185,
+      "ablated_energy": -102.8851785386746,
+      "performance_drop": -53.48623120884554,
+      "statistical_significance": 8.377374143036175,
+      "runtime_seconds": 1.6447287025369264,
+      "notes": "All 5 evaluation factors"
+    },
+    {
+      "component_name": "Move Evaluation",
+      "variant_name": "no_physical",
+      "baseline_rmsd": 23.873829267402748,
+      "ablated_rmsd": 15.368004427368325,
+      "baseline_energy": -245.32308750304185,
+      "ablated_energy": -114.96977093517489,
+      "performance_drop": -35.62823854004959,
+      "statistical_significance": 8.377374143036175,
+      "runtime_seconds": 1.5821826151010951,
+      "notes": "Remove physical feasibility factor"
+    },
+    {
+      "component_name": "Move Evaluation",
+      "variant_name": "no_quantum",
+      "baseline_rmsd": 23.873829267402748,
+      "ablated_rmsd": 11.66001117028777,
+      "baseline_energy": -245.32308750304185,
+      "ablated_energy": -161.63749857161122,
+      "performance_drop": -51.159861957259146,
+      "statistical_significance": 8.377374143036175,
+      "runtime_seconds": 1.6016705332131216,
+      "notes": "Remove quantum alignment factor"
+    },
+    {
+      "component_name": "Move Evaluation",
+      "variant_name": "no_behavioral",
+      "baseline_rmsd": 23.873829267402748,
+      "ablated_rmsd": 13.806669100851156,
+      "baseline_energy": -245.32308750304185,
+      "ablated_energy": -116.34705760307442,
+      "performance_drop": -42.16818363653652,
+      "statistical_significance": 8.377374143036173,
+      "runtime_seconds": 1.3431978790731534,
+      "notes": "Remove behavioral preference factor"
+    },
+    {
+      "component_name": "Move Evaluation",
+      "variant_name": "no_historical",
+      "baseline_rmsd": 23.873829267402748,
+      "ablated_rmsd": 11.444675390080532,
+      "baseline_energy": -245.32308750304185,
+      "ablated_energy": -94.44575278480237,
+      "performance_drop": -52.06183615584846,
+      "statistical_significance": 8.377374143036173,
+      "runtime_seconds": 1.6598541876345472,
+      "notes": "Remove historical success factor"
+    },
+    {
+      "component_name": "Move Evaluation",
+      "variant_name": "no_goal",
+      "baseline_rmsd": 23.873829267402748,
+      "ablated_rmsd": 12.829784414474625,
+      "baseline_energy": -245.32308750304185,
+      "ablated_energy": -89.29166384945182,
+      "performance_drop": -46.26004789272589,
+      "statistical_significance": 8.377374143036173,
+      "runtime_seconds": 1.5822149209807392,
+      "notes": "Remove goal alignment factor"
+    },
+    {
+      "component_name": "Move Evaluation",
+      "variant_name": "physical_only",
+      "baseline_rmsd": 23.873829267402748,
+      "ablated_rmsd": 20.361408286627935,
+      "baseline_energy": -245.32308750304185,
+      "ablated_energy": -121.38050895095947,
+      "performance_drop": -14.712432351900336,
+      "statistical_significance": 8.377374143036173,
+      "runtime_seconds": 1.5107859405129942,
+      "notes": "Only physical feasibility"
+    },
+    {
+      "component_name": "Move Evaluation",
+      "variant_name": "random_weights",
+      "baseline_rmsd": 23.873829267402748,
+      "ablated_rmsd": 17.668652651836005,
+      "baseline_energy": -245.32308750304185,
+      "ablated_energy": -105.03951732389297,
+      "performance_drop": -25.99154306611077,
+      "statistical_significance": 8.377374143036173,
+      "runtime_seconds": 1.482457670618743,
+      "notes": "Random factor weights"
+    },
+    {
+      "component_name": "Move Evaluation",
+      "variant_name": "equal_weights",
+      "baseline_rmsd": 23.873829267402748,
+      "ablated_rmsd": 9.343416339353096,
+      "baseline_energy": -245.32308750304185,
+      "ablated_energy": -94.93461334987526,
+      "performance_drop": -60.86335277554083,
+      "statistical_significance": 8.377374143036173,
+      "runtime_seconds": 1.5353226503552528,
+      "notes": "Equal factor weights"
+    }
+  ],
+  "statistical_summary": {
+    "mean_rmsd_drop": -42.48130306497968,
+    "std_rmsd_drop": 13.866330159770074,
+    "max_rmsd_drop": -14.712432351900336,
+    "min_rmsd_drop": -60.86335277554083,
+    "significant_changes": 9,
+    "total_variants": 9,
+    "most_impactful": "equal_weights",
+    "least_impactful": "physical_only"
+  },
+  "runtime_total": 0.07787585258483887,
+  "timestamp": "2025-11-09 17:47:59"
+}

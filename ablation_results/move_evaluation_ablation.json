@@ -1,0 +1,130 @@
+{
+  "study_name": "Move Evaluation Factors",
+  "baseline_performance": {
+    "rmsd": 10.0,
+    "energy": -149.56675214223068,
+    "runtime": 0.010318994522094727
+  },
+  "component_results": [
+    {
+      "component_name": "Move Evaluation",
+      "variant_name": "baseline",
+      "baseline_rmsd": 10.0,
+      "ablated_rmsd": 8.956976433979936,
+      "baseline_energy": -149.56675214223068,
+      "ablated_energy": -92.92876913224265,
+      "performance_drop": -10.430235660200644,
+      "statistical_significance": 20.0,
+      "runtime_seconds": 1.5552504441489088,
+      "notes": "All 5 evaluation factors"
+    },
+    {
+      "component_name": "Move Evaluation",
+      "variant_name": "no_physical",
+      "baseline_rmsd": 10.0,
+      "ablated_rmsd": 16.131622272734017,
+      "baseline_energy": -149.56675214223068,
+      "ablated_energy": -123.11053897103339,
+      "performance_drop": 61.31622272734016,
+      "statistical_significance": 19.999999999999996,
+      "runtime_seconds": 1.1267590730664756,
+      "notes": "Remove physical feasibility factor"
+    },
+    {
+      "component_name": "Move Evaluation",
+      "variant_name": "no_quantum",
+      "baseline_rmsd": 10.0,
+      "ablated_rmsd": 9.32053086486761,
+      "baseline_energy": -149.56675214223068,
+      "ablated_energy": -104.94916550693604,
+      "performance_drop": -6.794691351323897,
+      "statistical_significance": 19.999999999999996,
+      "runtime_seconds": 1.4940499909754876,
+      "notes": "Remove quantum alignment factor"
+    },
+    {
+      "component_name": "Move Evaluation",
+      "variant_name": "no_behavioral",
+      "baseline_rmsd": 10.0,
+      "ablated_rmsd": 14.505046733650081,
+      "baseline_energy": -149.56675214223068,
+      "ablated_energy": -90.8025500959152,
+      "performance_drop": 45.05046733650081,
+      "statistical_significance": 20.0,
+      "runtime_seconds": 1.0179936341176712,
+      "notes": "Remove behavioral preference factor"
+    },
+    {
+      "component_name": "Move Evaluation",
+      "variant_name": "no_historical",
+      "baseline_rmsd": 10.0,
+      "ablated_rmsd": 11.314030299043207,
+      "baseline_energy": -149.56675214223068,
+      "ablated_energy": -127.40550874797921,
+      "performance_drop": 13.140302990432067,
+      "statistical_significance": 19.999999999999996,
+      "runtime_seconds": 1.2256544138676981,
+      "notes": "Remove historical success factor"
+    },
+    {
+      "component_name": "Move Evaluation",
+      "variant_name": "no_goal",
+      "baseline_rmsd": 10.0,
+      "ablated_rmsd": 12.473671406949018,
+      "baseline_energy": -149.56675214223068,
+      "ablated_energy": -87.87466028081525,
+      "performance_drop": 24.73671406949018,
+      "statistical_significance": 20.0,
+      "runtime_seconds": 1.4957043425004084,
+      "notes": "Remove goal alignment factor"
+    },
+    {
+      "component_name": "Move Evaluation",
+      "variant_name": "physical_only",
+      "baseline_rmsd": 10.0,
+      "ablated_rmsd": 19.184699928564534,
+      "baseline_energy": -149.56675214223068,
+      "ablated_energy": -136.51956348387975,
+      "performance_drop": 91.84699928564534,
+      "statistical_significance": 20.0,
+      "runtime_seconds": 1.2425337046876541,
+      "notes": "Only physical feasibility"
+    },
+    {
+      "component_name": "Move Evaluation",
+      "variant_name": "random_weights",
+      "baseline_rmsd": 10.0,
+      "ablated_rmsd": 17.054558097932677,
+      "baseline_energy": -149.56675214223068,
+      "ablated_energy": -93.00182505250666,
+      "performance_drop": 70.54558097932677,
+      "statistical_significance": 20.0,
+      "runtime_seconds": 1.2080816468272353,
+      "notes": "Random factor weights"
+    },
+    {
+      "component_name": "Move Evaluation",
+      "variant_name": "equal_weights",
+      "baseline_rmsd": 10.0,
+      "ablated_rmsd": 9.622687033259105,
+      "baseline_energy": -149.56675214223068,
+      "ablated_energy": -126.9557520864209,
+      "performance_drop": -3.7731296674089516,
+      "statistical_significance": 19.999999999999996,
+      "runtime_seconds": 1.4946115409254581,
+      "notes": "Equal factor weights"
+    }
+  ],
+  "statistical_summary": {
+    "mean_rmsd_drop": 31.737581189977984,
+    "std_rmsd_drop": 35.103140492253885,
+    "max_rmsd_drop": 91.84699928564534,
+    "min_rmsd_drop": -10.430235660200644,
+    "significant_changes": 9,
+    "total_variants": 9,
+    "most_impactful": "physical_only",
+    "least_impactful": "equal_weights"
+  },
+  "runtime_total": 0.012413501739501953,
+  "timestamp": "2025-11-09 17:43:46"
+}

@@ -1,0 +1,94 @@
+{
+  "study_name": "Exploration Parameters",
+  "baseline_performance": {
+    "rmsd": 23.4732172882933,
+    "energy": -242.5192441535251,
+    "runtime": 0.07301807403564453
+  },
+  "component_results": [
+    {
+      "component_name": "Exploration Parameters",
+      "variant_name": "baseline",
+      "baseline_rmsd": 23.4732172882933,
+      "ablated_rmsd": 10.800158895738663,
+      "baseline_energy": -242.5192441535251,
+      "ablated_energy": -145.19452033097946,
+      "performance_drop": -53.989439269899385,
+      "statistical_significance": 8.520348853062641,
+      "runtime_seconds": 1.4628530043424781,
+      "notes": "Standard consciousness-inspired transformations"
+    },
+    {
+      "component_name": "Exploration Parameters",
+      "variant_name": "linear_transform",
+      "baseline_rmsd": 23.4732172882933,
+      "ablated_rmsd": 8.200698275588966,
+      "baseline_energy": -242.5192441535251,
+      "ablated_energy": -112.4392691118597,
+      "performance_drop": -65.06359492663638,
+      "statistical_significance": 8.520348853062643,
+      "runtime_seconds": 1.8325308251127668,
+      "notes": "Linear parameter mapping"
+    },
+    {
+      "component_name": "Exploration Parameters",
+      "variant_name": "no_transform",
+      "baseline_rmsd": 23.4732172882933,
+      "ablated_rmsd": 11.313134866629056,
+      "baseline_energy": -242.5192441535251,
+      "ablated_energy": -123.17842655853916,
+      "performance_drop": -51.80407215728706,
+      "statistical_significance": 8.520348853062641,
+      "runtime_seconds": 1.5113447205196096,
+      "notes": "Direct parameter usage"
+    },
+    {
+      "component_name": "Exploration Parameters",
+      "variant_name": "random_params",
+      "baseline_rmsd": 23.4732172882933,
+      "ablated_rmsd": 18.17940311755968,
+      "baseline_energy": -242.5192441535251,
+      "ablated_energy": -91.52766899955091,
+      "performance_drop": -22.552571748968475,
+      "statistical_significance": 8.520348853062643,
+      "runtime_seconds": 1.349137127111142,
+      "notes": "Random parameter assignment"
+    },
+    {
+      "component_name": "Exploration Parameters",
+      "variant_name": "fixed_params",
+      "baseline_rmsd": 23.4732172882933,
+      "ablated_rmsd": 14.318215039476158,
+      "baseline_energy": -242.5192441535251,
+      "ablated_energy": -116.3569111282675,
+      "performance_drop": -39.00190645524752,
+      "statistical_significance": 8.520348853062643,
+      "runtime_seconds": 1.3232580775997038,
+      "notes": "Fixed parameter values"
+    },
+    {
+      "component_name": "Exploration Parameters",
+      "variant_name": "inverse_transform",
+      "baseline_rmsd": 23.4732172882933,
+      "ablated_rmsd": 12.612499998061365,
+      "baseline_energy": -242.5192441535251,
+      "ablated_energy": -90.3270480206983,
+      "performance_drop": -46.26855005363264,
+      "statistical_significance": 8.520348853062643,
+      "runtime_seconds": 0.9897759622029484,
+      "notes": "Inverse transformation functions"
+    }
+  ],
+  "statistical_summary": {
+    "mean_rmsd_drop": -46.446689101945246,
+    "std_rmsd_drop": 13.282627639377843,
+    "max_rmsd_drop": -22.552571748968475,
+    "min_rmsd_drop": -65.06359492663638,
+    "significant_changes": 6,
+    "total_variants": 6,
+    "most_impactful": "linear_transform",
+    "least_impactful": "random_params"
+  },
+  "runtime_total": 0.07635903358459473,
+  "timestamp": "2025-11-09 17:47:59"
+}
