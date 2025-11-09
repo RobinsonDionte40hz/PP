@@ -10,7 +10,7 @@ import random
 import logging
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import List, Tuple, Optional, Any
+from typing import List, Tuple, Optional, Any, Dict
 
 from .interfaces import IMultiAgentCoordinator, IProteinAgent, ISharedMemoryPool, IAdaptiveConfigurator
 from .models import ExplorationResults, ExplorationMetrics, Conformation, AdaptiveConfig, ProteinSizeClass
@@ -41,7 +41,10 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
                  qcpp_integration: Optional[Any] = None,
                  qcpp_analysis_frequency: int = 5,
                  enable_thz_recording: bool = False,
-                 target_geometry: str = 'none'):
+                 target_geometry: str = 'none',
+                 enable_mediators: bool = False,
+                 mediator_count: int = 2,
+                 mediator_config: Optional[Any] = None):
         """
         Initialize multi-agent coordinator with protein sequence.
 
@@ -55,10 +58,20 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
             qcpp_analysis_frequency: Analyze with QCPP every N iterations (default: 5 for performance)
             enable_thz_recording: Enable THz signature recording in agents (for determinism research, default: False)
             target_geometry: Target Platonic solid geometry for active agent guidance (default: 'none')
+            enable_mediators: Whether to enable Mediator Agents for pattern detection (default: False)
+            mediator_count: Number of Mediator Agents to initialize (default: 2)
+            mediator_config: Optional MediatorConfig instance (uses default if None)
         """
         self._protein_sequence = protein_sequence
         self._agents: List[IProteinAgent] = []
         self._shared_memory_pool: ISharedMemoryPool = SharedMemoryPool()
+        
+        # Mediator Agent configuration (Task 10.1)
+        self._enable_mediators = enable_mediators
+        self._mediator_count = mediator_count
+        self._mediator_config = mediator_config
+        self._mediators: List[Any] = []  # List of MediatorAgent instances
+        self._geometric_analyzer: Optional[Any] = None  # GeometricAttractorAnalyzer instance
         
         # Geometric targeting (NEW: Prescriptive targeting support)
         self._target_geometry = target_geometry
@@ -182,6 +195,173 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
 
         return self._agents
 
+    def initialize_mediators(self) -> List[Any]:
+        """
+        Initialize Mediator Agents for pattern detection.
+        
+        Creates mediator_count MediatorAgent instances with shared dependencies.
+        Mediators analyze conformations from exploration agents to detect:
+        - THz resonance patterns
+        - Folding dynamics (secondary structure formation)
+        - Geometric similarities between conformations
+        
+        Returns:
+            List of initialized Mediator Agents
+        
+        Raises:
+            ValueError: If mediators are disabled or dependencies are missing
+        
+        Example:
+            >>> coordinator = MultiAgentCoordinator(
+            ...     protein_sequence="ACDEFGH",
+            ...     enable_mediators=True,
+            ...     mediator_count=3
+            ... )
+            >>> mediators = coordinator.initialize_mediators()
+            >>> print(f"Initialized {len(mediators)} mediators")
+            Initialized 3 mediators
+        """
+        if not self._enable_mediators:
+            raise ValueError("Mediators are not enabled. Set enable_mediators=True in constructor.")
+        
+        # Initialize GeometricAttractorAnalyzer if not already initialized
+        if self._geometric_analyzer is None:
+            try:
+                from .geometric_attractor import GeometricAttractorAnalyzer
+                self._geometric_analyzer = GeometricAttractorAnalyzer()
+                logger.info("Initialized GeometricAttractorAnalyzer for Mediators")
+            except ImportError as e:
+                raise ValueError(f"Cannot import GeometricAttractorAnalyzer: {e}")
+        
+        # Get or create MediatorConfig
+        if self._mediator_config is None:
+            try:
+                from .mediator_config import MediatorConfig
+                self._mediator_config = MediatorConfig()
+                logger.info("Using default MediatorConfig")
+            except ImportError as e:
+                raise ValueError(f"Cannot import MediatorConfig: {e}")
+        
+        # Import MediatorAgent
+        try:
+            from .mediator_agent import MediatorAgent
+        except ImportError as e:
+            raise ValueError(f"Cannot import MediatorAgent: {e}")
+        
+        # Create Mediator Agents
+        self._mediators = []
+        for i in range(self._mediator_count):
+            try:
+                mediator = MediatorAgent(
+                    protein_sequence=self._protein_sequence,
+                    qcpp_adapter=self._qcpp_integration,
+                    geometric_analyzer=self._geometric_analyzer,
+                    shared_memory=self._shared_memory_pool,
+                    config=self._mediator_config
+                )
+                self._mediators.append(mediator)
+                logger.info(f"Initialized Mediator Agent {i+1}/{self._mediator_count}")
+            except Exception as e:
+                logger.error(f"Failed to initialize Mediator Agent {i+1}: {e}")
+                raise
+        
+        logger.info(
+            f"Initialized {len(self._mediators)} Mediator Agents with config: "
+            f"relay_frequency={self._mediator_config.relay_frequency}, "
+            f"thz_detection={self._mediator_config.enable_thz_detection}, "
+            f"folding_detection={self._mediator_config.enable_folding_detection}, "
+            f"geometric_detection={self._mediator_config.enable_geometric_detection}"
+        )
+        
+        return self._mediators
+
+    def run_mediator_cycle(self, iteration: int, best_conformation: Optional[Conformation] = None) -> List[Any]:
+        """
+        Run pattern detection cycle for all Mediator Agents.
+        
+        This method is called periodically during exploration (every relay_frequency iterations)
+        to detect emergent patterns in protein conformations.
+        
+        The detection cycle:
+        1. Get best conformation from exploration agents
+        2. Each Mediator analyzes the conformation for patterns
+        3. Detected patterns are validated via QCPP relay
+        4. Significant patterns are broadcast to exploration agents
+        
+        Args:
+            iteration: Current exploration iteration number
+            best_conformation: Best conformation found so far (optional, will find if None)
+        
+        Returns:
+            List of all PatternDetection objects found by Mediators
+        
+        Example:
+            >>> coordinator = MultiAgentCoordinator(...)
+            >>> coordinator.initialize_agents(count=10)
+            >>> coordinator.initialize_mediators()
+            >>> 
+            >>> # During exploration
+            >>> for iteration in range(100):
+            ...     # ... exploration steps ...
+            ...     if iteration % relay_frequency == 0:
+            ...         patterns = coordinator.run_mediator_cycle(iteration)
+            ...         print(f"Detected {len(patterns)} patterns")
+        """
+        if not self._enable_mediators or len(self._mediators) == 0:
+            return []
+        
+        # Get best conformation if not provided
+        if best_conformation is None:
+            if self._best_conformation is None:
+                # No conformation to analyze yet
+                return []
+            best_conformation = self._best_conformation
+        
+        all_patterns = []
+        
+        # Update iteration counter in each mediator
+        for mediator in self._mediators:
+            mediator.current_iteration = iteration
+        
+        # Run detection cycle for each mediator
+        for mediator_idx, mediator in enumerate(self._mediators):
+            try:
+                # Detect patterns in best conformation
+                patterns = mediator.detect_patterns(best_conformation)
+                
+                # Process each detected pattern
+                for pattern in patterns:
+                    # Relay to QCPP for validation
+                    qcpp_metrics = mediator.relay_to_qcpp(pattern, best_conformation)
+                    
+                    # Broadcast to exploration agents
+                    success = mediator.broadcast_to_agents(pattern, qcpp_metrics)
+                    
+                    if success:
+                        logger.debug(
+                            f"Mediator {mediator_idx} broadcast pattern: "
+                            f"type={pattern.pattern_type.value}, "
+                            f"significance={pattern.significance.value}"
+                        )
+                    
+                    # Add to results
+                    all_patterns.append(pattern)
+                
+            except Exception as e:
+                # Log error but continue with other mediators
+                logger.warning(f"Mediator {mediator_idx} detection cycle failed: {e}")
+                continue
+        
+        if all_patterns:
+            logger.info(
+                f"Mediator cycle {iteration}: Detected {len(all_patterns)} patterns "
+                f"(THz={sum(1 for p in all_patterns if p.pattern_type.value == 'thz')}, "
+                f"Folding={sum(1 for p in all_patterns if p.pattern_type.value == 'folding')}, "
+                f"Geometric={sum(1 for p in all_patterns if p.pattern_type.value == 'geometric')})"
+            )
+        
+        return all_patterns
+
     def run_parallel_exploration(self, iterations: int) -> ExplorationResults:
         """
         Run all agents in parallel (simultaneously) for N iterations using threading.
@@ -283,6 +463,46 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
             # Sync shared memories to agents every 20 iterations
             if (iteration + 1) % 20 == 0:
                 self._sync_shared_memories_to_agents()
+            
+            # Task 10.4: Run Mediator detection cycle at relay_frequency intervals
+            if self._enable_mediators and len(self._mediators) > 0:
+                # Get relay frequency from mediator config
+                relay_frequency = self._mediator_config.relay_frequency if self._mediator_config else 10
+                
+                if (iteration + 1) % relay_frequency == 0:
+                    try:
+                        patterns = self.run_mediator_cycle(
+                            iteration=self._total_iterations,
+                            best_conformation=self._best_conformation
+                        )
+                        
+                        # Update reference conformations in mediators with best conformation
+                        if self._best_conformation is not None and self._geometric_analyzer is not None:
+                            for mediator in self._mediators:
+                                # Get geometric score from analyzer
+                                try:
+                                    conf_dict = {
+                                        'coordinates': self._best_conformation.atom_coordinates,
+                                        'sequence': self._best_conformation.sequence if hasattr(self._best_conformation, 'sequence') else None
+                                    }
+                                    geo_result = self._geometric_analyzer.analyze_conformation(
+                                        conf_dict,
+                                        sequence=self._best_conformation.sequence if hasattr(self._best_conformation, 'sequence') else None
+                                    )
+                                    geometric_score = geo_result.golden_ratio_percentage
+                                except Exception:
+                                    geometric_score = 0.0
+                                
+                                # Add to reference set
+                                mediator.add_reference_conformation(
+                                    self._best_conformation,
+                                    agent_id=f"best_conf_iter_{self._total_iterations}",
+                                    geometric_score=geometric_score
+                                )
+                    
+                    except Exception as e:
+                        # Log but don't crash - mediator cycle is non-critical
+                        logger.warning(f"Mediator cycle failed at iteration {self._total_iterations}: {e}")
             
             # Task 9: Record integrated trajectory point if QCPP enabled
             # Only record every N iterations to avoid performance bottleneck
@@ -781,6 +1001,120 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
             IntegratedTrajectoryRecorder if QCPP is enabled, None otherwise
         """
         return self._trajectory_recorder
+    
+    def get_mediator_statistics(self) -> Dict[str, Any]:
+        """
+        Get aggregated statistics from all Mediator Agents.
+        
+        Returns comprehensive metrics about pattern detection performance including:
+        - Total detections by type (THz, folding, geometric)
+        - Broadcast counts and throttle events
+        - Cache statistics (hit rate, size)
+        - Detection success rates
+        - QCPP validation counts
+        
+        Returns:
+            Dictionary with aggregated mediator statistics
+        
+        Raises:
+            ValueError: If mediators are not enabled
+        
+        Example:
+            >>> coordinator = MultiAgentCoordinator(
+            ...     protein_sequence="ACDEFGH",
+            ...     enable_mediators=True
+            ... )
+            >>> coordinator.initialize_agents(count=10)
+            >>> coordinator.initialize_mediators()
+            >>> coordinator.run_parallel_exploration(iterations=100)
+            >>> 
+            >>> stats = coordinator.get_mediator_statistics()
+            >>> print(f"Total detections: {stats['total_detections']}")
+            >>> print(f"Cache hit rate: {stats['cache_hit_rate']:.1%}")
+        """
+        if not self._enable_mediators:
+            raise ValueError("Mediators are not enabled. Cannot get statistics.")
+        
+        if len(self._mediators) == 0:
+            return {
+                'enabled': False,
+                'mediator_count': 0,
+                'total_detections': 0,
+                'thz_detections': 0,
+                'folding_detections': 0,
+                'geometric_detections': 0,
+                'broadcasts': 0,
+                'qcpp_validations': 0,
+                'cache_hit_rate': 0.0,
+                'cache_size': 0,
+                'reference_conformations': 0,
+            }
+        
+        # Aggregate statistics from all mediators
+        total_stats = {
+            'enabled': True,
+            'mediator_count': len(self._mediators),
+            'total_detections': 0,
+            'thz_detections': 0,
+            'folding_detections': 0,
+            'geometric_detections': 0,
+            'broadcasts': 0,
+            'qcpp_validations': 0,
+            'cache_hits': 0,
+            'cache_misses': 0,
+            'cache_size': 0,
+            'reference_conformations': 0,
+        }
+        
+        # Collect stats from each mediator
+        for mediator in self._mediators:
+            try:
+                med_stats = mediator.get_detection_statistics()
+                
+                total_stats['total_detections'] += med_stats.get('total_detections', 0)
+                total_stats['thz_detections'] += med_stats.get('thz_detections', 0)
+                total_stats['folding_detections'] += med_stats.get('folding_detections', 0)
+                total_stats['geometric_detections'] += med_stats.get('geometric_detections', 0)
+                total_stats['broadcasts'] += med_stats.get('broadcasts', 0)
+                total_stats['qcpp_validations'] += med_stats.get('qcpp_validations', 0)
+                total_stats['cache_hits'] += med_stats.get('cache_hits', 0)
+                total_stats['cache_misses'] += med_stats.get('cache_misses', 0)
+                total_stats['cache_size'] += med_stats.get('cache_size', 0)
+                total_stats['reference_conformations'] += med_stats.get('reference_conformations', 0)
+            
+            except Exception as e:
+                logger.warning(f"Failed to get statistics from mediator: {e}")
+                continue
+        
+        # Calculate aggregate metrics
+        total_cache_queries = total_stats['cache_hits'] + total_stats['cache_misses']
+        if total_cache_queries > 0:
+            cache_hit_rate = total_stats['cache_hits'] / total_cache_queries
+        else:
+            cache_hit_rate = 0.0
+        
+        # Average cache size per mediator
+        avg_cache_size = total_stats['cache_size'] / len(self._mediators) if self._mediators else 0
+        
+        # Average reference conformations per mediator
+        avg_references = total_stats['reference_conformations'] / len(self._mediators) if self._mediators else 0
+        
+        # Add computed metrics
+        total_stats['cache_hit_rate'] = cache_hit_rate
+        total_stats['avg_cache_size'] = avg_cache_size
+        total_stats['avg_reference_conformations'] = avg_references
+        
+        # Add configuration info
+        if self._mediator_config:
+            total_stats['config'] = {
+                'relay_frequency': self._mediator_config.relay_frequency,
+                'thz_detection_enabled': self._mediator_config.enable_thz_detection,
+                'folding_detection_enabled': self._mediator_config.enable_folding_detection,
+                'geometric_detection_enabled': self._mediator_config.enable_geometric_detection,
+                'broadcast_throttle_rate': self._mediator_config.broadcast_throttle_rate,
+            }
+        
+        return total_stats
     
     def export_best_conformation_coordinates(self) -> Optional[List[Tuple[float, float, float]]]:
         """

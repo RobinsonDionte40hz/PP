@@ -332,6 +332,21 @@ class ProteinAgent(IProteinAgent):
                                     f"to {self._target_geometry})"
                                 )
                         
+                        # Task 9: Apply pattern guidance from Mediator Agents
+                        if self._coordinator is not None:
+                            try:
+                                shared_memory_pool = self._coordinator.get_shared_memory_pool()
+                                pattern_guidance = self._get_pattern_guidance(move, shared_memory_pool)
+                                weight *= pattern_guidance
+                                
+                                if pattern_guidance != 1.0:
+                                    logger.debug(
+                                        f"Applied {pattern_guidance:.2f}× pattern guidance "
+                                        f"to move {move.move_type}"
+                                    )
+                            except Exception as e:
+                                logger.warning(f"Error applying pattern guidance: {e}")
+                        
                         move_weights.append((move, weight))
                     except Exception as e:
                         logger.warning(f"Error evaluating move {move.move_id}: {e}")
@@ -782,6 +797,103 @@ class ProteinAgent(IProteinAgent):
             'resonance': 0.5,  # 0-1 scale
             'water_shielding': 0.5  # 0-1 scale
         }
+    
+    def _get_pattern_guidance(self, move, shared_memory_pool) -> float:
+        """
+        Get move evaluation adjustment based on Mediator Agent pattern broadcasts.
+        
+        This method retrieves recent pattern detections from shared memory and
+        adjusts move weights to guide exploration toward:
+        - Geometric attractors (phi patterns, Platonic similarities)
+        - THz resonance regions (vibrational stability)
+        - Secondary structure formation (helix/sheet regions)
+        
+        Args:
+            move: ConformationalMove being evaluated
+            shared_memory_pool: Shared memory pool with pattern broadcasts
+        
+        Returns:
+            Multiplicative guidance factor (0.8-1.5):
+            - 1.0: Neutral (no relevant patterns)
+            - >1.0: Move aligns with detected patterns
+            - <1.0: Move conflicts with patterns
+        
+        Example:
+            >>> guidance = agent._get_pattern_guidance(move, shared_memory)
+            >>> weight *= guidance  # Apply to move weight
+        """
+        if not shared_memory_pool:
+            return 1.0
+        
+        try:
+            # Retrieve recent patterns (last 100 iterations)
+            patterns = shared_memory_pool.retrieve_recent_patterns(
+                current_iteration=self._iterations_completed,
+                max_age=100
+            )
+            
+            if not patterns:
+                return 1.0
+            
+            # Accumulate guidance from different pattern types
+            geometric_bonus = 1.0
+            thz_bonus = 1.0
+            folding_bonus = 1.0
+            
+            for pattern in patterns:
+                pattern_type = pattern.get('pattern_type', '')
+                significance = pattern.get('significance', 'low')
+                
+                # Weight by significance
+                sig_weight = {'low': 1.05, 'medium': 1.10, 'high': 1.20}.get(significance, 1.0)
+                
+                # Geometric similarity patterns
+                if pattern_type == 'geometric_similarity':
+                    geo_data = pattern.get('geometric_data', {})
+                    
+                    # Prioritize moves toward golden ratio patterns
+                    if geo_data.get('golden_ratio_percentage', 0) > 20.0:
+                        geometric_bonus *= sig_weight
+                    
+                    # Prioritize moves toward dominant Platonic solid
+                    dominant_solid = geo_data.get('dominant_platonic_solid', '')
+                    if dominant_solid in ['icosahedron', 'dodecahedron']:
+                        # These have phi-based geometries
+                        geometric_bonus *= 1.05
+                
+                # THz resonance patterns
+                elif pattern_type == 'thz_resonance':
+                    thz_data = pattern.get('thz_data', {})
+                    
+                    # Prioritize moves that might maintain resonance
+                    # (favor small, local adjustments over large jumps)
+                    if move.move_type.value in ['backbone_rotation', 'sidechain_adjust']:
+                        thz_bonus *= sig_weight
+                    elif move.move_type.value == 'large_jump':
+                        thz_bonus *= 0.9  # Slight penalty for large moves
+                
+                # Folding dynamics patterns
+                elif pattern_type == 'folding_dynamics':
+                    fold_data = pattern.get('folding_data', {})
+                    
+                    # Encourage continuation of detected secondary structure
+                    helix_pct = fold_data.get('helix_percentage', 0)
+                    sheet_pct = fold_data.get('sheet_percentage', 0)
+                    
+                    if helix_pct > 30.0 and move.move_type.value == 'helix_formation':
+                        folding_bonus *= sig_weight
+                    elif sheet_pct > 20.0 and move.move_type.value == 'sheet_formation':
+                        folding_bonus *= sig_weight
+            
+            # Combine bonuses (multiplicative)
+            total_guidance = geometric_bonus * thz_bonus * folding_bonus
+            
+            # Clamp to reasonable range [0.8, 1.5]
+            return max(0.8, min(1.5, total_guidance))
+        
+        except Exception as e:
+            logger.warning(f"Error retrieving pattern guidance: {e}")
+            return 1.0
 
     def _execute_move(self, move) -> Conformation:
         """

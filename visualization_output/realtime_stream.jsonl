@@ -1,0 +1,5 @@
+{"timestamp": 1762700438.4687505, "iteration": 1, "agent_id": "agent_2303112630288", "energy": -48.26388029584069, "rmsd": 0.0, "frequency": 9.5, "coherence": 0.7}
+{"timestamp": 1762700438.470269, "iteration": 3, "agent_id": "agent_2303112630288", "energy": -48.718084312357355, "rmsd": 0.0, "frequency": 9.899999999999999, "coherence": 0.8}
+{"timestamp": 1762700438.4712305, "iteration": 5, "agent_id": "agent_2303112630288", "energy": -49.54646860958013, "rmsd": 0.0, "frequency": 10.299999999999997, "coherence": 0.9000000000000001}
+{"timestamp": 1762700438.4723501, "iteration": 7, "agent_id": "agent_2303112630288", "energy": -49.57963009788788, "rmsd": 0.0, "frequency": 10.699999999999996, "coherence": 1.0}
+{"timestamp": 1762700438.4753268, "iteration": 9, "agent_id": "agent_2303112630288", "energy": -49.813839594937576, "rmsd": 0.0, "frequency": 11.099999999999994, "coherence": 1.0}

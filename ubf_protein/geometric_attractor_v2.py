@@ -884,15 +884,27 @@ class GeometricAttractorV2:
             eigenvalues = sorted([Ixx/trace, Iyy/trace, Izz/trace], reverse=True)
             
             # Compactness (spherical character) - high when eigenvalues equal
-            ev_spread = eigenvalues[0] - eigenvalues[2]
-            compactness = max(0.0, (1.0 - ev_spread) * 100)
+            # Use variance of eigenvalues: low variance = more spherical
+            ev_mean = sum(eigenvalues) / 3.0
+            ev_variance = sum((ev - ev_mean)**2 for ev in eigenvalues) / 3.0
+            compactness = max(0.0, (1.0 - ev_variance * 10) * 100)  # Scale variance to 0-100
             
-            # Elongation (rod-like) - high when one eigenvalue dominates
-            elongation = eigenvalues[0] * 100
+            # Elongation (rod-like) - high when first eigenvalue >> others
+            # Use ratio of largest to smallest eigenvalue
+            if eigenvalues[2] > 1e-6:
+                elongation_ratio = eigenvalues[0] / eigenvalues[2]
+                elongation = min(100.0, (elongation_ratio - 1.0) * 20)  # Scale to 0-100
+            else:
+                elongation = 100.0  # Perfect rod (zero minor axes)
             
             # Planarity (disk-like) - high when two eigenvalues similar, third small
-            planarity = ((eigenvalues[0] + eigenvalues[1]) / 2.0 - eigenvalues[2]) * 100
-            planarity = max(0.0, min(100.0, planarity))
+            # Use ratio of middle/small vs largest
+            middle_minor_avg = (eigenvalues[1] + eigenvalues[2]) / 2.0
+            if eigenvalues[0] > 1e-6:
+                planarity_ratio = (eigenvalues[0] - middle_minor_avg) / eigenvalues[0]
+                planarity = planarity_ratio * 100
+            else:
+                planarity = 0.0
         else:
             compactness = 0.0
             elongation = 0.0

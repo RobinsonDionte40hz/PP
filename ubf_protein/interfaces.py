@@ -212,6 +212,40 @@ class ISharedMemoryPool(ABC):
     def get_total_memories(self) -> int:
         """Get total number of memories in the pool"""
         pass
+    
+    # ========================================================================
+    # Pattern Broadcasting (Task 9: Mediator Agent Information Relay)
+    # ========================================================================
+    
+    @abstractmethod
+    def broadcast_pattern(self, pattern_data: Dict[str, Any]) -> None:
+        """
+        Broadcast pattern detection from Mediator Agent to all exploration agents.
+        
+        Args:
+            pattern_data: Dictionary containing pattern type, significance, 
+                         iteration, and type-specific data
+        """
+        pass
+    
+    @abstractmethod
+    def retrieve_recent_patterns(self, current_iteration: int, max_age: int = 100) -> List[Dict[str, Any]]:
+        """
+        Retrieve recent pattern broadcasts for consumption by exploration agents.
+        
+        Args:
+            current_iteration: Current exploration iteration
+            max_age: Maximum age of patterns to retrieve (in iterations)
+        
+        Returns:
+            List of pattern data dictionaries from last max_age iterations
+        """
+        pass
+    
+    @abstractmethod
+    def get_pattern_count(self) -> int:
+        """Get total number of pattern broadcasts stored"""
+        pass
 
 class IMultiAgentCoordinator(ABC):
     """Interface for coordinating multiple agents"""

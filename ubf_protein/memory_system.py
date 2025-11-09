@@ -575,6 +575,10 @@ class SharedMemoryPool(ISharedMemoryPool):
         """
         self._shared_memories: List[ConformationalMemory] = []
         self._memory_count = 0
+        
+        # Pattern broadcasts from Mediator Agents (Task 9)
+        # Store pattern detection broadcasts for consumption by exploration agents
+        self.pattern_broadcasts: List[Dict] = []
 
     def share_memory(self, memory: ConformationalMemory) -> None:
         """
@@ -664,3 +668,76 @@ class SharedMemoryPool(ISharedMemoryPool):
             Total memory count
         """
         return self._memory_count
+    
+    # ========================================================================
+    # Pattern Broadcasting (Task 9: Mediator Agent Information Relay)
+    # ========================================================================
+    
+    def broadcast_pattern(self, pattern_data: Dict[str, Any]) -> None:
+        """
+        Broadcast pattern detection from Mediator Agent to all exploration agents.
+        
+        Stores pattern broadcast in pool for consumption by agents. Patterns include:
+        - THz resonance clusters
+        - Folding dynamics (secondary structure)
+        - Geometric similarities (convergent pathways)
+        
+        Args:
+            pattern_data: Dictionary containing:
+                - pattern_type: str (thz_resonance, folding_dynamics, geometric_similarity)
+                - significance: str (low, medium, high)
+                - iteration: int (when pattern was detected)
+                - timestamp: float (unix timestamp)
+                - conformation_hash: str (hash of conformation)
+                - type-specific data (thz_data, folding_data, geometric_data)
+                - qcpp_metrics: dict (optional QCPP validation)
+        """
+        self.pattern_broadcasts.append(pattern_data)
+        
+        # Maintain size limit (prevent unbounded growth)
+        # Keep last 1000 patterns by default
+        max_patterns = 1000
+        if len(self.pattern_broadcasts) > max_patterns:
+            # Remove oldest patterns
+            self.pattern_broadcasts = self.pattern_broadcasts[-max_patterns:]
+    
+    def retrieve_recent_patterns(self, current_iteration: int, max_age: int = 100) -> List[Dict[str, Any]]:
+        """
+        Retrieve recent pattern broadcasts for consumption by exploration agents.
+        
+        Filters patterns by age to only return recent, relevant patterns. Older
+        patterns are ignored as they may no longer be relevant to current exploration.
+        
+        Args:
+            current_iteration: Current exploration iteration
+            max_age: Maximum age of patterns to retrieve (in iterations, default 100)
+        
+        Returns:
+            List of pattern data dictionaries from last max_age iterations
+            
+        Example:
+            >>> patterns = shared_memory.retrieve_recent_patterns(
+            ...     current_iteration=500,
+            ...     max_age=100
+            ... )
+            >>> for pattern in patterns:
+            ...     if pattern['pattern_type'] == 'geometric_similarity':
+            ...         print(f"Geometric attractor found: {pattern['geometric_data']}")
+        """
+        cutoff_iteration = current_iteration - max_age
+        
+        recent_patterns = [
+            pattern for pattern in self.pattern_broadcasts
+            if pattern.get('iteration', 0) >= cutoff_iteration
+        ]
+        
+        return recent_patterns
+    
+    def get_pattern_count(self) -> int:
+        """
+        Get total number of pattern broadcasts stored.
+        
+        Returns:
+            Number of pattern broadcasts in pool
+        """
+        return len(self.pattern_broadcasts)

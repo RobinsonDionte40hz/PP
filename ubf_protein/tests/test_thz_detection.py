@@ -512,8 +512,12 @@ class TestTHzDetectionIntegration:
         # Should not raise exception
         patterns = mediator.detect_patterns(conformation)
         
-        # Should return empty patterns
-        assert patterns == []
+        # Folding detection is QCPP-independent, so should still return folding patterns
+        # even when QCPP/THz fails. THz pattern should be absent.
+        assert len(patterns) >= 1  # At least folding pattern
+        pattern_types = [p.pattern_type for p in patterns]
+        assert PatternType.FOLDING in pattern_types  # Folding detection works
+        assert PatternType.THZ not in pattern_types  # THz detection failed as expected
     
     def _create_mediator_with_qcpp(self):
         """Create mediator with mock QCPP."""

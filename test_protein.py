@@ -36,6 +36,7 @@ from src.protein_predictor import QuantumCoherenceProteinPredictor
 from ubf_protein.qcpp_integration import QCPPIntegrationAdapter
 from ubf_protein.multi_agent_coordinator import MultiAgentCoordinator
 from ubf_protein.geometric_attractor import GeometricAttractorAnalyzer
+from ubf_protein.rmsd_calculator import RMSDCalculator, NativeStructureLoader
 from Bio.PDB.PDBParser import PDBParser
 from Bio.PDB.Polypeptide import aa3, aa1
 
@@ -525,7 +526,8 @@ def save_conformation_as_pdb(sequence: str, coordinates: list, energy: float,
 
 def run_protein_test(sequence: str, pdb_file: Optional[Path] = None, pdb_id: Optional[str] = None, 
                      custom_agents: Optional[int] = None, custom_iterations: Optional[int] = None,
-                     target_geometry: str = 'none'):
+                     target_geometry: str = 'none', enable_mediators: bool = False, 
+                     mediator_count: int = 2):
     """Run complete protein test with QCPP-UBF integration."""
     
     print("\n" + "="*70)
@@ -549,6 +551,10 @@ def run_protein_test(sequence: str, pdb_file: Optional[Path] = None, pdb_id: Opt
         print(f"  - 🎯 Geometric Target: {target_geometry.capitalize()} (active guidance enabled)")
     else:
         print(f"  - Geometric Target: None (post-analysis only)")
+    if enable_mediators:
+        print(f"  - 🔍 Mediator Agents: {mediator_count} agents (pattern detection enabled)")
+    else:
+        print(f"  - Mediator Agents: Disabled")
     
     # Load experimental data if available
     exp_data = None
@@ -584,7 +590,9 @@ def run_protein_test(sequence: str, pdb_file: Optional[Path] = None, pdb_id: Opt
         protein_sequence=sequence,
         qcpp_integration=qcpp_adapter,
         qcpp_analysis_frequency=qcpp_freq,
-        target_geometry=target_geometry  # NEW: Pass geometric target
+        target_geometry=target_geometry,
+        enable_mediators=enable_mediators,
+        mediator_count=mediator_count
     )
     
     coordinator.initialize_agents(
@@ -592,6 +600,11 @@ def run_protein_test(sequence: str, pdb_file: Optional[Path] = None, pdb_id: Opt
         diversity_profile="balanced"
     )
     print(f"✓ {num_agents} agents initialized (balanced diversity)")
+    
+    # Initialize Mediators if enabled
+    if enable_mediators:
+        coordinator.initialize_mediators()
+        print(f"✓ {mediator_count} Mediator agents initialized (pattern detection active)")
     
     # Step 3: Run exploration
     print(f"\n[3/5] Running parallel exploration...")
@@ -628,21 +641,83 @@ def run_protein_test(sequence: str, pdb_file: Optional[Path] = None, pdb_id: Opt
             pdb_id=pdb_id
         )
     
-    # Step 4: Calculate RMSD estimate
+    # Step 4: Calculate RMSD (real calculation if native structure available)
     print(f"\n[4/5] Calculating structural metrics...")
-    normalized_energy = (results.best_energy + 200) / -200
-    normalized_energy = max(0, min(1, normalized_energy))
-    estimated_rmsd = 10.0 - (normalized_energy * 7.0)
-    estimated_rmsd = max(0.5, estimated_rmsd)
+    estimated_rmsd = None
+    rmsd_quality = "N/A"
+    rmsd_result = None
     
-    if estimated_rmsd < 6.0:
-        rmsd_quality = "GOOD"
-    elif estimated_rmsd < 8.0:
-        rmsd_quality = "FAIR"
+    if pdb_file and results.best_conformation:
+        try:
+            # Load native structure
+            loader = NativeStructureLoader(cache_dir="./pdb_cache")
+            if Path(pdb_file).exists():
+                native_structure = loader.load_from_file(str(pdb_file), ca_only=True)
+            else:
+                # Try loading by PDB ID
+                native_structure = loader.load_from_pdb_id(pdb_id, ca_only=True)
+            
+            # Get predicted CA coordinates from best conformation
+            predicted_coords = results.best_conformation.atom_coordinates
+            
+            # Ensure both have same length
+            if len(predicted_coords) == len(native_structure.ca_coords):
+                # Calculate real RMSD with Kabsch alignment
+                calculator = RMSDCalculator(align_structures=True)
+                rmsd_result = calculator.calculate_rmsd(
+                    predicted_coords=predicted_coords,
+                    native_coords=native_structure.ca_coords,
+                    calculate_metrics=True
+                )
+                
+                estimated_rmsd = rmsd_result.rmsd
+                
+                # Quality assessment based on real RMSD
+                if estimated_rmsd < 2.0:
+                    rmsd_quality = "EXCELLENT"
+                elif estimated_rmsd < 4.0:
+                    rmsd_quality = "GOOD"
+                elif estimated_rmsd < 6.0:
+                    rmsd_quality = "FAIR"
+                else:
+                    rmsd_quality = "NEEDS IMPROVEMENT"
+                
+                print(f"✓ Real RMSD: {estimated_rmsd:.2f} Å ({rmsd_quality})")
+                print(f"  GDT-TS: {rmsd_result.gdt_ts:.1f}")
+                print(f"  TM-score: {rmsd_result.tm_score:.3f}")
+            else:
+                print(f"⚠️  Length mismatch: predicted={len(predicted_coords)}, native={len(native_structure.ca_coords)}")
+                # Fall back to energy-based estimate
+                normalized_energy = (results.best_energy + 200) / -200
+                normalized_energy = max(0, min(1, normalized_energy))
+                estimated_rmsd = 10.0 - (normalized_energy * 7.0)
+                estimated_rmsd = max(0.5, estimated_rmsd)
+                rmsd_quality = "ESTIMATED"
+                print(f"✓ Estimated RMSD: {estimated_rmsd:.2f} Å ({rmsd_quality})")
+        except Exception as e:
+            print(f"⚠️  RMSD calculation failed: {e}")
+            # Fall back to energy-based estimate
+            normalized_energy = (results.best_energy + 200) / -200
+            normalized_energy = max(0, min(1, normalized_energy))
+            estimated_rmsd = 10.0 - (normalized_energy * 7.0)
+            estimated_rmsd = max(0.5, estimated_rmsd)
+            rmsd_quality = "ESTIMATED"
+            print(f"✓ Estimated RMSD: {estimated_rmsd:.2f} Å ({rmsd_quality})")
     else:
-        rmsd_quality = "NEEDS IMPROVEMENT"
-    
-    print(f"✓ Estimated RMSD: {estimated_rmsd:.2f} Å ({rmsd_quality})")
+        # No native structure available - use energy-based estimate
+        normalized_energy = (results.best_energy + 200) / -200
+        normalized_energy = max(0, min(1, normalized_energy))
+        estimated_rmsd = 10.0 - (normalized_energy * 7.0)
+        estimated_rmsd = max(0.5, estimated_rmsd)
+        
+        if estimated_rmsd < 6.0:
+            rmsd_quality = "ESTIMATED-GOOD"
+        elif estimated_rmsd < 8.0:
+            rmsd_quality = "ESTIMATED-FAIR"
+        else:
+            rmsd_quality = "ESTIMATED-POOR"
+        
+        print(f"✓ Estimated RMSD: {estimated_rmsd:.2f} Å ({rmsd_quality})")
     
     # Step 5: Calculate RMSE if experimental data available
     rmse_results = None
@@ -744,7 +819,12 @@ def run_protein_test(sequence: str, pdb_file: Optional[Path] = None, pdb_id: Opt
     
     print(f"\n🔬 STRUCTURAL EXPLORATION:")
     print(f"  - Best Energy: {results.best_energy:.2f} kcal/mol")
-    print(f"  - Estimated RMSD: {estimated_rmsd:.2f} Å ({rmsd_quality})")
+    if rmsd_result:
+        print(f"  - RMSD: {estimated_rmsd:.2f} Å ({rmsd_quality})")
+        print(f"  - GDT-TS: {rmsd_result.gdt_ts:.1f}")
+        print(f"  - TM-score: {rmsd_result.tm_score:.3f}")
+    else:
+        print(f"  - Estimated RMSD: {estimated_rmsd:.2f} Å ({rmsd_quality})")
     print(f"  - Conformations: {total_conformations:,}")
     print(f"  - Time: {exploration_time:.1f}s")
     print(f"  - Throughput: {throughput:.1f} conf/s")
@@ -810,6 +890,41 @@ def run_protein_test(sequence: str, pdb_file: Optional[Path] = None, pdb_id: Opt
         else:
             print(f"  ⚡ WEAK EVIDENCE: Stochastic folding behavior")
     
+    # Get Mediator statistics if enabled
+    mediator_stats = None
+    if enable_mediators:
+        try:
+            mediator_stats = coordinator.get_mediator_statistics()
+            print(f"\n🔍 MEDIATOR AGENT ANALYSIS:")
+            print(f"  - Active Mediators: {mediator_stats.get('mediator_count', 0)}")
+            print(f"  - Detection Cycles Run: Available after exploration")
+            
+            # Pattern detection statistics
+            total_patterns = mediator_stats.get('total_detections', 0)
+            print(f"  - Total Patterns Detected: {total_patterns}")
+            if total_patterns > 0:
+                thz = mediator_stats.get('thz_detections', 0)
+                folding = mediator_stats.get('folding_detections', 0)
+                geometric = mediator_stats.get('geometric_detections', 0)
+                
+                if thz > 0:
+                    print(f"    • THz Resonance: {thz}")
+                if folding > 0:
+                    print(f"    • Folding Dynamics: {folding}")
+                if geometric > 0:
+                    print(f"    • Geometric Similarity: {geometric}")
+            
+            # Broadcasting statistics
+            broadcasts = mediator_stats.get('broadcasts', 0)
+            print(f"  - Broadcasts Sent: {broadcasts}")
+            
+            # Cache performance
+            hit_rate = mediator_stats.get('cache_hit_rate', 0.0)
+            print(f"  - Cache Hit Rate: {hit_rate*100:.1f}%")
+        except ValueError as e:
+            # Mediators not enabled or error occurred
+            print(f"⚠️  Could not retrieve Mediator statistics: {e}")
+    
     print(f"\n" + "="*70)
     
     # Overall assessment
@@ -839,7 +954,9 @@ def run_protein_test(sequence: str, pdb_file: Optional[Path] = None, pdb_id: Opt
         'test_config': {
             'num_agents': num_agents,
             'iterations_per_agent': iterations,
-            'total_conformations': total_conformations
+            'total_conformations': total_conformations,
+            'mediators_enabled': enable_mediators,
+            'mediator_count': mediator_count if enable_mediators else 0
         },
         'exploration_results': {
             'best_energy': results.best_energy,
@@ -848,6 +965,14 @@ def run_protein_test(sequence: str, pdb_file: Optional[Path] = None, pdb_id: Opt
             'exploration_time_s': exploration_time,
             'throughput_conf_per_s': throughput
         },
+        'rmsd_validation': {
+            'rmsd': rmsd_result.rmsd if rmsd_result else None,
+            'gdt_ts': rmsd_result.gdt_ts if rmsd_result else None,
+            'tm_score': rmsd_result.tm_score if rmsd_result else None,
+            'n_atoms': rmsd_result.n_atoms if rmsd_result else None,
+            'aligned': rmsd_result.aligned if rmsd_result else None,
+            'calculation_method': 'kabsch' if rmsd_result else 'energy_estimate'
+        } if rmsd_result or estimated_rmsd else None,
         'qcpp_integration': {
             'total_analyses': cache_stats['total_analyses'],
             'cache_hit_rate': cache_stats['cache_hit_rate'],
@@ -856,6 +981,7 @@ def run_protein_test(sequence: str, pdb_file: Optional[Path] = None, pdb_id: Opt
         'rmse_validation': rmse_results,
         'geometric_attractor_analysis': geometric_results,
         'thz_determinism_analysis': thz_results,
+        'mediator_statistics': mediator_stats,
         'timestamp': datetime.now().isoformat()
     }
     
@@ -912,6 +1038,8 @@ Examples:
   python test_protein.py --list                         # Show available proteins
   python test_protein.py --quick                        # Quick test (small protein)
   python test_protein.py --pdb 1UBQ --agents 30        # Custom agent count
+  python test_protein.py --pdb 1UBQ --enable-mediators # Enable pattern detection
+  python test_protein.py --pdb 1UBQ --enable-mediators --mediator-count 5  # 5 Mediators
         """
     )
     
@@ -923,6 +1051,10 @@ Examples:
                         choices=['none', 'octahedron', 'icosahedron', 'dodecahedron', 'tetrahedron', 'cube'],
                         default='none',
                         help='Target Platonic solid geometry for active agent guidance (default: none)')
+    parser.add_argument('--enable-mediators', action='store_true',
+                        help='Enable Mediator Agents for pattern detection and information relay')
+    parser.add_argument('--mediator-count', type=int, default=2,
+                        help='Number of Mediator Agents to deploy (default: 2, only used if --enable-mediators is set)')
     parser.add_argument('--list', action='store_true', help='List available test proteins')
     parser.add_argument('--quick', action='store_true', help='Quick test on Villin (35 residues)')
     
@@ -982,7 +1114,9 @@ Examples:
             pdb_id=pdb_id,
             custom_agents=args.agents,
             custom_iterations=args.iterations,
-            target_geometry=args.target_geometry
+            target_geometry=args.target_geometry,
+            enable_mediators=args.enable_mediators,
+            mediator_count=args.mediator_count
         )
     
     # Test with custom sequence
@@ -994,7 +1128,9 @@ Examples:
             sequence=sequence,
             custom_agents=args.agents,
             custom_iterations=args.iterations,
-            target_geometry=args.target_geometry
+            target_geometry=args.target_geometry,
+            enable_mediators=args.enable_mediators,
+            mediator_count=args.mediator_count
         )
 
 

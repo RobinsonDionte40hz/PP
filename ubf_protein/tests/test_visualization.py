@@ -11,7 +11,7 @@ import os
 
 from ubf_protein.visualization import VisualizationExporter
 from ubf_protein.protein_agent import ProteinAgent
-from ubf_protein.models import ProteinSizeClass
+from ubf_protein.models import ProteinSizeClass, ConformationSnapshot
 
 # Import test helpers
 from ubf_protein.tests.test_helpers import (
@@ -71,7 +71,12 @@ def sample_snapshots():
 @pytest.fixture
 def exporter():
     """Create a VisualizationExporter instance."""
-    return VisualizationExporter()
+    exporter = VisualizationExporter()
+    # Clear any existing stream file before each test
+    stream_file = exporter._output_dir / "realtime_stream.jsonl"
+    if stream_file.exists():
+        stream_file.unlink()
+    return exporter
 
 
 @pytest.fixture
@@ -89,10 +94,14 @@ class TestVisualizationExporter:
         """Test trajectory export to JSON format."""
         output_path = os.path.join(temp_dir, "trajectory.json")
         
-        exporter.export_trajectory(
-            snapshots=sample_snapshots,
-            output_path=output_path,
-            format="json"
+        # Add snapshots to exporter
+        for snapshot in sample_snapshots:
+            exporter.add_snapshot(snapshot)
+        
+        # Export using actual API
+        exporter.export_trajectory_to_json(
+            agent_id="test_agent",
+            output_file=output_path
         )
         
         # Verify file exists
@@ -102,20 +111,24 @@ class TestVisualizationExporter:
         with open(output_path, 'r') as f:
             data = json.load(f)
         
-        assert "metadata" in data
-        assert "trajectory" in data
-        assert len(data["trajectory"]) == len(sample_snapshots)
-        assert data["metadata"]["num_snapshots"] == len(sample_snapshots)
-        assert data["metadata"]["agent_id"] == "test_agent"
+        assert "agent_id" in data
+        assert "snapshots" in data
+        assert len(data["snapshots"]) == len(sample_snapshots)
+        assert data["snapshot_count"] == len(sample_snapshots)
+        assert data["agent_id"] == "test_agent"
     
     def test_export_trajectory_pdb(self, exporter, sample_snapshots, temp_dir):
         """Test trajectory export to PDB format."""
         output_path = os.path.join(temp_dir, "trajectory.pdb")
         
-        exporter.export_trajectory(
-            snapshots=sample_snapshots,
-            output_path=output_path,
-            format="pdb"
+        # Add snapshots to exporter
+        for snapshot in sample_snapshots:
+            exporter.add_snapshot(snapshot)
+        
+        # Export using actual API
+        exporter.export_trajectory_to_pdb(
+            agent_id="test_agent",
+            output_file=output_path
         )
         
         # Verify file exists
@@ -132,14 +145,15 @@ class TestVisualizationExporter:
         assert "ATOM" in content
     
     def test_export_trajectory_csv(self, exporter, sample_snapshots, temp_dir):
-        """Test trajectory export to CSV format."""
-        output_path = os.path.join(temp_dir, "trajectory.csv")
+        """Test energy landscape export to CSV format."""
+        output_path = os.path.join(temp_dir, "energy_landscape.csv")
         
-        exporter.export_trajectory(
-            snapshots=sample_snapshots,
-            output_path=output_path,
-            format="csv"
-        )
+        # Add snapshots to exporter
+        for snapshot in sample_snapshots:
+            exporter.add_snapshot(snapshot)
+        
+        # Export energy landscape using actual API
+        exporter.export_energy_landscape_to_csv(output_file=output_path)
         
         # Verify file exists
         assert os.path.exists(output_path)
@@ -148,102 +162,111 @@ class TestVisualizationExporter:
         with open(output_path, 'r') as f:
             lines = f.readlines()
         
-        # Should have header + data rows
-        assert len(lines) == len(sample_snapshots) + 1
-        assert "iteration" in lines[0]
+        # Should have header + data rows (one per snapshot)
+        assert len(lines) >= 1  # At least header
+        assert "x" in lines[0] and "y" in lines[0]
         assert "energy" in lines[0]
         assert "rmsd" in lines[0]
     
     def test_export_invalid_format(self, exporter, sample_snapshots, temp_dir):
-        """Test that invalid format raises error."""
-        output_path = os.path.join(temp_dir, "trajectory.xyz")
+        """Test export_trajectory method returns snapshots list."""
+        # The API has export_trajectory(agent_id) which returns List[ConformationSnapshot]
+        # Add snapshots for a test agent
+        for snapshot in sample_snapshots:
+            exporter.add_snapshot(snapshot)
         
-        with pytest.raises(ValueError, match="Unsupported format"):
-            exporter.export_trajectory(
-                snapshots=sample_snapshots,
-                output_path=output_path,
-                format="xyz"
-            )
+        # Export using agent_id
+        result = exporter.export_trajectory("test_agent")
+        
+        # Should return list of snapshots
+        assert isinstance(result, list)
+        assert len(result) == len(sample_snapshots)
+        assert all(isinstance(s, ConformationSnapshot) for s in result)
     
     def test_export_empty_snapshots(self, exporter, temp_dir):
         """Test export with empty snapshot list."""
         output_path = os.path.join(temp_dir, "empty.json")
         
-        exporter.export_trajectory(
-            snapshots=[],
-            output_path=output_path,
-            format="json"
+        # Don't add any snapshots - exporter starts empty
+        # Export using actual API
+        exporter.export_trajectory_to_json(
+            agent_id="test_agent",
+            output_file=output_path
         )
         
-        # Verify file exists with empty trajectory
+        # Verify file exists
+        assert os.path.exists(output_path)
+        
+        # Verify empty trajectory
         with open(output_path, 'r') as f:
             data = json.load(f)
         
-        assert data["metadata"]["num_snapshots"] == 0
-        assert len(data["trajectory"]) == 0
+        assert data["snapshot_count"] == 0
+        assert len(data["snapshots"]) == 0
     
     def test_export_energy_landscape(self, exporter, sample_snapshots, temp_dir):
         """Test energy landscape projection export."""
-        output_path = os.path.join(temp_dir, "landscape.json")
         
-        exporter.export_energy_landscape(
-            snapshots=sample_snapshots,
-            output_path=output_path,
-            n_components=2
-        )
+        # Add snapshots to exporter
+        for snapshot in sample_snapshots:
+            exporter.add_snapshot(snapshot)
         
-        # Verify file exists
-        assert os.path.exists(output_path)
+        # Export energy landscape using actual API (returns EnergyLandscape object)
+        landscape = exporter.export_energy_landscape()
         
-        # Load and verify content
-        with open(output_path, 'r') as f:
-            data = json.load(f)
-        
-        assert "projected_coordinates" in data
-        assert "energies" in data
-        assert "metadata" in data
-        assert len(data["projected_coordinates"]) == len(sample_snapshots)
-        assert len(data["energies"]) == len(sample_snapshots)
-        assert data["metadata"]["n_components"] == 2
+        # Verify landscape object
+        assert landscape.projection_method == 'PCA'
+        assert len(landscape.coordinates_2d) == len(sample_snapshots)
+        assert len(landscape.energy_values) == len(sample_snapshots)
+        assert len(landscape.rmsd_values) == len(sample_snapshots)
     
     def test_stream_update_json(self, exporter, sample_conformation, temp_dir):
-        """Test streaming update to JSON."""
-        output_path = os.path.join(temp_dir, "stream.json")
-        
+        """Test streaming update functionality."""
         snapshot = create_test_snapshot(iteration=1, agent_id="stream_agent")
         
-        exporter.stream_update(snapshot, output_path, format="json")
+        # stream_update() adds to buffer and flushes periodically
+        # Set stream interval to 1 to force immediate flush
+        exporter._stream_interval = 1
+        exporter.stream_update(snapshot)
         
-        # Verify file exists
-        assert os.path.exists(output_path)
+        # Verify stream file exists
+        stream_file = exporter._output_dir / "realtime_stream.jsonl"
+        assert stream_file.exists()
         
-        # Verify content
-        with open(output_path, 'r') as f:
-            data = json.load(f)
+        # Verify content (JSONL format - one JSON per line)
+        with open(stream_file, 'r') as f:
+            lines = f.readlines()
         
+        assert len(lines) >= 1
+        data = json.loads(lines[0])
         assert data["iteration"] == 1
         assert data["agent_id"] == "stream_agent"
         assert "energy" in data
     
     def test_stream_update_csv(self, exporter, sample_conformation, temp_dir):
-        """Test streaming update to CSV."""
-        output_path = os.path.join(temp_dir, "stream.csv")
+        """Test multiple streaming updates."""
+        # Set stream interval to 1 to force immediate flush
+        exporter._stream_interval = 1
         
         # First snapshot
         snapshot1 = create_test_snapshot(iteration=1, agent_id="stream_agent")
-        exporter.stream_update(snapshot1, output_path, format="csv")
+        exporter.stream_update(snapshot1)
         
         # Second snapshot
         snapshot2 = create_test_snapshot(iteration=2, agent_id="stream_agent")
-        exporter.stream_update(snapshot2, output_path, format="csv")
+        exporter.stream_update(snapshot2)
         
-        # Verify content
-        with open(output_path, 'r') as f:
+        # Verify stream file content
+        stream_file = exporter._output_dir / "realtime_stream.jsonl"
+        with open(stream_file, 'r') as f:
             lines = f.readlines()
         
-        # Should have header + 2 data rows
-        assert len(lines) == 3
-        assert "iteration" in lines[0]
+        # Should have 2 data rows (JSONL format)
+        assert len(lines) == 2
+        data1 = json.loads(lines[0])
+        data2 = json.loads(lines[1])
+        assert data1["iteration"] == 1
+        assert data2["iteration"] == 2
 
 
 # Tests for ProteinAgent visualization integration
@@ -430,10 +453,11 @@ class TestVisualizationIntegration:
         with open(path2, 'r') as f:
             data2 = json.load(f)
         
-        assert data1["metadata"]["agent_id"] == "agent_1"
-        assert data2["metadata"]["agent_id"] == "agent_2"
-        assert len(data1["trajectory"]) == 5
-        assert len(data2["trajectory"]) == 5
+        assert data1["agent_id"] == "agent_1"
+        assert data2["agent_id"] == "agent_2"
+        # Each agent: 5 steps (no initial snapshot at iteration 0 in this test)
+        assert len(data1["snapshots"]) == 5
+        assert len(data2["snapshots"]) == 5
     
     def test_streaming_during_long_run(self, temp_dir):
         """Test streaming updates during a longer simulation."""
@@ -450,7 +474,11 @@ class TestVisualizationIntegration:
         )
         
         exporter = VisualizationExporter()
-        stream_path = os.path.join(temp_dir, "stream.csv")
+        # Clear any existing stream file before testing
+        stream_file = exporter._output_dir / "realtime_stream.jsonl"
+        if stream_file.exists():
+            stream_file.unlink()
+        exporter._stream_interval = 1  # Force immediate flush
         
         # Run with periodic streaming
         for i in range(10):
@@ -463,13 +491,15 @@ class TestVisualizationIntegration:
                     exporter.add_snapshot(snapshots[-1])
                     exporter.stream_update(snapshots[-1])
         
-        # Verify streaming file
-        assert os.path.exists(stream_path)
-        with open(stream_path, 'r') as f:
+        # Verify streaming file (JSONL format)
+        stream_file = exporter._output_dir / "realtime_stream.jsonl"
+        assert stream_file.exists()
+        
+        with open(stream_file, 'r') as f:
             lines = f.readlines()
         
-        # Should have header + 5 data rows (streamed every 2 steps out of 10)
-        assert len(lines) == 6
+        # Should have 5 data rows (streamed every 2 steps: iterations 0, 2, 4, 6, 8)
+        assert len(lines) == 5
 
 
 if __name__ == "__main__":

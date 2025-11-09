@@ -259,3 +259,342 @@ class TestMultiAgentCoordinator:
         best_conf, best_energy, best_rmsd = coordinator.get_best_conformation()
         assert best_energy == 800.0
         assert best_rmsd == 4.0
+
+
+class TestMultiAgentCoordinatorWithMediators:
+    """Test suite for MultiAgentCoordinator with Mediator Agents (Task 10.6)"""
+
+    def test_mediator_initialization_disabled_by_default(self):
+        """Test that mediators are disabled by default"""
+        coordinator = MultiAgentCoordinator("TESTSEQ")
+        
+        # Mediators should be disabled
+        assert coordinator._enable_mediators is False
+        assert len(coordinator._mediators) == 0
+        
+        # Trying to initialize mediators should raise error
+        with pytest.raises(ValueError, match="Mediators are not enabled"):
+            coordinator.initialize_mediators()
+
+    def test_mediator_initialization_enabled(self):
+        """Test successful mediator initialization when enabled"""
+        coordinator = MultiAgentCoordinator(
+            protein_sequence="TESTSEQ",
+            enable_mediators=True,
+            mediator_count=3
+        )
+        
+        # Initialize mediators
+        mediators = coordinator.initialize_mediators()
+        
+        assert len(mediators) == 3
+        assert len(coordinator._mediators) == 3
+        assert coordinator._geometric_analyzer is not None
+        assert coordinator._mediator_config is not None
+
+    def test_mediator_initialization_with_custom_config(self):
+        """Test mediator initialization with custom configuration"""
+        from ubf_protein.mediator_config import MediatorConfig
+        
+        custom_config = MediatorConfig(
+            relay_frequency=5,
+            enable_thz_detection=True,
+            enable_folding_detection=False,
+            enable_geometric_detection=True
+        )
+        
+        coordinator = MultiAgentCoordinator(
+            protein_sequence="TESTSEQ",
+            enable_mediators=True,
+            mediator_count=2,
+            mediator_config=custom_config
+        )
+        
+        mediators = coordinator.initialize_mediators()
+        
+        assert len(mediators) == 2
+        # Access the actual config after initialization
+        config = coordinator._mediator_config
+        assert config is not None
+        assert config.relay_frequency == 5
+        assert config.enable_thz_detection is True
+        assert config.enable_folding_detection is False
+
+    def test_run_mediator_cycle_no_mediators(self):
+        """Test that mediator cycle returns empty list when mediators disabled"""
+        coordinator = MultiAgentCoordinator("TESTSEQ")
+        
+        patterns = coordinator.run_mediator_cycle(iteration=10)
+        
+        assert patterns == []
+
+    def test_run_mediator_cycle_with_mediators(self):
+        """Test mediator cycle execution with mock pattern detection"""
+        from ubf_protein.pattern_detection import PatternDetection, PatternType, PatternSignificance, THzResonanceData
+        
+        coordinator = MultiAgentCoordinator(
+            protein_sequence="TESTSEQ",
+            enable_mediators=True,
+            mediator_count=2
+        )
+        
+        coordinator.initialize_agents(2, "balanced")
+        coordinator.initialize_mediators()
+        
+        # Create mock best conformation
+        mock_conf = Mock()
+        mock_conf.atom_coordinates = [(1.0, 2.0, 3.0), (4.0, 5.0, 6.0)]
+        mock_conf.energy = 800.0
+        mock_conf.sequence = "TE"
+        coordinator._best_conformation = mock_conf
+        
+        # Mock pattern detection with THzResonanceData
+        thz_data = THzResonanceData(
+            cluster_id=1,
+            cluster_size=5,
+            similarity_score=0.85,
+            dominant_frequency=3.5,
+            spectral_entropy=2.1
+        )
+        
+        mock_pattern = PatternDetection(
+            pattern_type=PatternType.THZ,
+            significance=PatternSignificance.HIGH,
+            timestamp=1000.0,
+            iteration=10,
+            conformation_hash="abc123def4567890",  # 16 characters
+            thz_data=thz_data  # Now has data
+        )
+        
+        with patch('ubf_protein.mediator_agent.MediatorAgent.detect_patterns', return_value=[mock_pattern]):
+            with patch('ubf_protein.mediator_agent.MediatorAgent.relay_to_qcpp', return_value=None):
+                with patch('ubf_protein.mediator_agent.MediatorAgent.broadcast_to_agents', return_value=True):
+                    patterns = coordinator.run_mediator_cycle(iteration=10)
+        
+        # Should have detected patterns from both mediators
+        assert len(patterns) == 2  # 2 mediators * 1 pattern each
+
+    def test_mediator_integration_in_exploration(self):
+        """Test that mediator cycles are executed during exploration at relay frequency"""
+        coordinator = MultiAgentCoordinator(
+            protein_sequence="TESTSEQ",
+            enable_mediators=True,
+            mediator_count=1
+        )
+        
+        coordinator.initialize_agents(1, "balanced")
+        coordinator.initialize_mediators()
+        
+        # Mock exploration
+        with patch.object(ProteinAgent, 'explore_step') as mock_explore:
+            mock_outcome = Mock()
+            mock_outcome.significance = 0.5
+            mock_explore.return_value = mock_outcome
+            
+            mock_conf = Mock()
+            mock_conf.energy = 850.0
+            mock_conf.rmsd_to_native = 4.0
+            mock_conf.atom_coordinates = [(1.0, 2.0, 3.0)]
+            mock_conf.sequence = "T"
+            
+            with patch.object(ProteinAgent, 'get_current_conformation', return_value=mock_conf):
+                with patch.object(ProteinAgent, 'get_exploration_metrics', return_value={
+                    'iterations_completed': 10,
+                    'conformations_explored': 10,
+                    'memories_created': 2,
+                    'best_energy': 850.0,
+                    'best_rmsd': 4.0,
+                    'avg_decision_time_ms': 50.0,
+                    'stuck_in_minima_count': 0,  # Fixed typo
+                    'successful_escapes': 0
+                }):
+                    # Mock mediator cycle
+                    with patch.object(
+                        MultiAgentCoordinator,
+                        'run_mediator_cycle',
+                        return_value=[]
+                    ) as mock_mediator_cycle:
+                        # Run 20 iterations with relay frequency of 10
+                        # Set config after initialization
+                        if coordinator._mediator_config:
+                            coordinator._mediator_config.relay_frequency = 10
+                        coordinator.run_parallel_exploration(20)
+                        
+                        # Mediator cycle should be called at iterations 10 and 20
+                        assert mock_mediator_cycle.call_count == 2
+
+    def test_get_mediator_statistics_disabled(self):
+        """Test that getting mediator statistics raises error when disabled"""
+        coordinator = MultiAgentCoordinator("TESTSEQ")
+        
+        with pytest.raises(ValueError, match="Mediators are not enabled"):
+            coordinator.get_mediator_statistics()
+
+    def test_get_mediator_statistics_enabled(self):
+        """Test getting mediator statistics when enabled"""
+        coordinator = MultiAgentCoordinator(
+            protein_sequence="TESTSEQ",
+            enable_mediators=True,
+            mediator_count=2
+        )
+        
+        coordinator.initialize_mediators()
+        
+        # Mock mediator statistics
+        mock_stats = {
+            'total_detections': 10,
+            'thz_detections': 5,
+            'folding_detections': 3,
+            'geometric_detections': 2,
+            'broadcasts': 8,
+            'qcpp_validations': 10,
+            'cache_hits': 15,
+            'cache_misses': 5,
+            'cache_size': 10,
+            'reference_conformations': 5,
+            'cache_hit_rate': 0.75
+        }
+        
+        with patch('ubf_protein.mediator_agent.MediatorAgent.get_detection_statistics', return_value=mock_stats):
+            stats = coordinator.get_mediator_statistics()
+        
+        # Verify aggregated statistics
+        assert stats['enabled'] is True
+        assert stats['mediator_count'] == 2
+        assert stats['total_detections'] == 20  # 2 mediators * 10
+        assert stats['thz_detections'] == 10  # 2 mediators * 5
+        assert stats['folding_detections'] == 6  # 2 mediators * 3
+        assert stats['geometric_detections'] == 4  # 2 mediators * 2
+        assert stats['broadcasts'] == 16  # 2 mediators * 8
+        assert stats['cache_hit_rate'] > 0.0
+
+    def test_mediator_statistics_empty_mediators(self):
+        """Test mediator statistics with no mediators initialized"""
+        coordinator = MultiAgentCoordinator(
+            protein_sequence="TESTSEQ",
+            enable_mediators=True,
+            mediator_count=0
+        )
+        
+        stats = coordinator.get_mediator_statistics()
+        
+        assert stats['enabled'] is False
+        assert stats['mediator_count'] == 0
+        assert stats['total_detections'] == 0
+
+    def test_backward_compatibility_no_mediators(self):
+        """Test that existing code works without mediators (backward compatibility)"""
+        # Create coordinator without mediator parameters (old way)
+        coordinator = MultiAgentCoordinator("TESTSEQ")
+        
+        # Should work exactly as before
+        agents = coordinator.initialize_agents(2, "balanced")
+        assert len(agents) == 2
+        
+        # Mock exploration should work normally
+        with patch.object(ProteinAgent, 'explore_step') as mock_explore:
+            mock_outcome = Mock()
+            mock_outcome.significance = 0.5
+            mock_explore.return_value = mock_outcome
+            
+            mock_conf = Mock()
+            mock_conf.energy = 900.0
+            mock_conf.rmsd_to_native = 5.0
+            
+            with patch.object(ProteinAgent, 'get_current_conformation', return_value=mock_conf):
+                with patch.object(ProteinAgent, 'get_exploration_metrics', return_value={
+                    'iterations_completed': 5,
+                    'conformations_explored': 5,
+                    'memories_created': 1,
+                    'best_energy': 900.0,
+                    'best_rmsd': 5.0,
+                    'avg_decision_time_ms': 25.0,
+                    'stuck_in_minima_count': 0,
+                    'successful_escapes': 0
+                }):
+                    results = coordinator.run_parallel_exploration(5)
+        
+        # Verify normal operation
+        assert results.total_iterations == 5
+        assert len(results.agent_metrics) == 2
+
+    def test_mediator_reference_conformation_updates(self):
+        """Test that reference conformations are updated during exploration"""
+        from ubf_protein.geometric_attractor import GeometricAnalysisResult
+        
+        coordinator = MultiAgentCoordinator(
+            protein_sequence="TESTSEQ",
+            enable_mediators=True,
+            mediator_count=1
+        )
+        
+        coordinator.initialize_agents(1, "balanced")
+        coordinator.initialize_mediators()
+        
+        # Create mock best conformation
+        mock_conf = Mock()
+        mock_conf.atom_coordinates = [(1.0, 2.0, 3.0), (4.0, 5.0, 6.0)]
+        mock_conf.energy = 800.0
+        mock_conf.sequence = "TE"
+        coordinator._best_conformation = mock_conf
+        
+        # Mock geometric analysis
+        mock_geo_result = GeometricAnalysisResult(
+            golden_ratio_percentage=45.0,
+            phi_pattern_count=5,
+            tetrahedron_similarity=0.3,
+            cube_similarity=0.2,
+            octahedron_similarity=0.4,
+            dodecahedron_similarity=0.6,
+            icosahedron_similarity=0.5,
+            rotational_symmetry=0.7,
+            local_symmetry=0.6,
+            radius_of_gyration=10.0,
+            asphericity=0.3,
+            conformation_hash="abc123def4567890",  # 16 characters
+            timestamp=1000.0,
+            num_residues=2
+        )
+        
+        # Ensure geometric analyzer is initialized (it should be after initialize_mediators)
+        assert coordinator._geometric_analyzer is not None
+        
+        # Manually add reference to simulate what happens during exploration
+        # The reference update actually happens in run_parallel_exploration, not run_mediator_cycle
+        coordinator._mediators[0].add_reference_conformation(
+            mock_conf,
+            agent_id="test_agent",
+            geometric_score=45.0
+        )
+        
+        # Verify reference was added to mediator
+        assert len(coordinator._mediators[0].reference_conformations) == 1
+        assert coordinator._mediators[0].reference_conformations[0]['geometric_score'] == 45.0
+
+    def test_mediator_cycle_handles_errors_gracefully(self):
+        """Test that mediator cycle handles errors without crashing"""
+        coordinator = MultiAgentCoordinator(
+            protein_sequence="TESTSEQ",
+            enable_mediators=True,
+            mediator_count=2
+        )
+        
+        coordinator.initialize_mediators()
+        
+        # Mock one mediator to raise exception, other to succeed
+        def detect_side_effect(*args, **kwargs):
+            # First call raises, second succeeds
+            if not hasattr(detect_side_effect, 'call_count'):
+                detect_side_effect.call_count = 0
+            detect_side_effect.call_count += 1
+            
+            if detect_side_effect.call_count == 1:
+                raise Exception("Simulated detection failure")
+            return []
+        
+        with patch('ubf_protein.mediator_agent.MediatorAgent.detect_patterns', side_effect=detect_side_effect):
+            # Should not crash, just log warning
+            patterns = coordinator.run_mediator_cycle(iteration=10)
+        
+        # Should return empty list (both mediators failed or returned empty)
+        assert patterns == []

@@ -45,7 +45,7 @@ class IntegratedTrajectoryPoint:
         field_coherence: Field coherence metric (-1 to 1)
         stability_score: QCPP stability prediction (higher = more stable)
         phi_match_score: Golden ratio angle matching score (0-1)
-        qcpp_calculation_time_ms: Time taken for QCPP analysis (Task 12)
+        qcpp_calculation_time_ms: Time taken for QCPP analysis (Task 12, optional, defaults to 0.0)
         
         # Timestamp
         timestamp: Unix timestamp in milliseconds
@@ -63,10 +63,12 @@ class IntegratedTrajectoryPoint:
     field_coherence: float
     stability_score: float
     phi_match_score: float
-    qcpp_calculation_time_ms: float  # Task 12: Performance metric
     
     # Timestamp
     timestamp: int
+    
+    # Performance metric (optional, Task 12)
+    qcpp_calculation_time_ms: float = 0.0
     
     def __post_init__(self):
         """Validate trajectory point data."""
