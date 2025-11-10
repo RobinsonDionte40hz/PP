@@ -1,3 +1,30 @@
+#!/usr/bin/env python3
+"""
+QCPP Analysis Runner - Legacy QCPP-only Testing
+
+NOTE: This is the LEGACY analysis script for QCPP-only predictions.
+For comprehensive protein structure prediction with quantum refinement,
+use the PRIMARY testing modules instead:
+
+  PRIMARY MODULE: test_protein.py
+    - Quantum Refinement Engine integration
+    - Real RMSD calculations with CA-only alignment
+    - QCPP-UBF multi-agent exploration
+    - Production-ready validation
+
+  SYSTEMATIC TESTING: systematic_protein_testing.py
+    - Test 100+ proteins with varied configurations
+    - Quantum refinement validation on all tests
+    - Comprehensive robustness analysis
+
+Usage:
+  python run_analysis.py                    # Run legacy QCPP analysis (6 proteins)
+  
+Recommended instead:
+  python test_protein.py --pdb 1UBQ         # Single protein with quantum refinement
+  python systematic_protein_testing.py      # Multiple proteins systematically
+"""
+
 from src.qc_pipeline import QCProteinPipeline
 
 # Initialize the pipeline

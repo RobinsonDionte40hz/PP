@@ -1,0 +1,103 @@
+====================================================================================================
+SYSTEMATIC PROTEIN TESTING CAMPAIGN REPORT
+PRIMARY MODULE: Quantum Refinement Engine + Real RMSD Calculations
+====================================================================================================
+
+CAMPAIGN SUMMARY
+--------------------------------------------------
+Proteins tested: 11
+Configurations tested: 72
+Total tests: 0
+Successful: 0
+Success rate: 0.0%
+Campaign duration: 0.0 hours
+Average test time: 42.0 seconds
+
+⚛️  QUANTUM REFINEMENT METRICS:
+   Tests with quantum refinement: 17
+   Real RMSD calculations: 0
+   Estimated RMSD fallbacks: 72
+
+PERFORMANCE METRICS
+--------------------------------------------------
+RMSD Performance (All Tests):
+  Mean: 13.85 Å
+  Std Dev: 10.65 Å
+  Range: 6.34 - 56.31 Å
+  Sample size: 72
+
+Energy Performance:
+  Mean: -1.20 kcal/mol
+  Std Dev: 198.57 kcal/mol
+  Range: -304.55 - 215.89 kcal/mol
+  Sample size: 72
+
+CONFIGURATION ANALYSIS
+--------------------------------------------------
+Base Optimal:
+  Tests: 12
+  Avg RMSD: 9.10 Å
+  Avg Energy: -37.99 kcal/mol
+  Avg Time: 24.1s
+
+Mediators Only:
+  Tests: 11
+  Avg RMSD: 9.32 Å
+  Avg Energy: 9.33 kcal/mol
+  Avg Time: 35.9s
+
+Geometric Only:
+  Tests: 11
+  Avg RMSD: 9.32 Å
+  Avg Energy: 9.80 kcal/mol
+  Avg Time: 36.4s
+
+Full Features Qref:
+  Tests: 12
+  Avg RMSD: 27.66 Å
+  Avg Energy: 0.20 kcal/mol
+  Avg Time: 40.5s
+
+High Agents:
+  Tests: 11
+  Avg RMSD: 9.63 Å
+  Avg Energy: 80.32 kcal/mol
+  Avg Time: 77.6s
+
+High Iterations:
+  Tests: 10
+  Avg RMSD: 9.08 Å
+  Avg Energy: -13.77 kcal/mol
+  Avg Time: 44.9s
+
+Base Optimal Qref:
+  Tests: 1
+  Avg RMSD: 30.86 Å
+  Avg Energy: -117.34 kcal/mol
+  Avg Time: 22.3s
+
+Mediators Qref:
+  Tests: 1
+  Avg RMSD: 30.98 Å
+  Avg Energy: -111.91 kcal/mol
+  Avg Time: 24.4s
+
+Geometric Qref:
+  Tests: 1
+  Avg RMSD: 30.92 Å
+  Avg Energy: -117.66 kcal/mol
+  Avg Time: 26.1s
+
+High Agents Qref:
+  Tests: 1
+  Avg RMSD: 31.02 Å
+  Avg Energy: -111.73 kcal/mol
+  Avg Time: 36.8s
+
+High Iterations Qref:
+  Tests: 1
+  Avg RMSD: 30.66 Å
+  Avg Energy: -130.95 kcal/mol
+  Avg Time: 40.1s
+
+====================================================================================================

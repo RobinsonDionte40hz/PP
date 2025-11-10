@@ -1,0 +1,112 @@
+{
+  "campaign_summary": {
+    "total_proteins_tested": 11,
+    "total_configurations_tested": 72,
+    "total_tests_run": 0,
+    "successful_tests": 0,
+    "campaign_duration_seconds": 0.02234053611755371,
+    "average_test_time": 41.964513060119415,
+    "success_rate": 0,
+    "quantum_refinement_tests": 17,
+    "real_rmsd_calculations": 0,
+    "estimated_rmsd_calculations": 72
+  },
+  "performance_metrics": {
+    "rmsd_stats": {
+      "mean": 13.852393280981353,
+      "std": 10.6532431209108,
+      "min": 6.340678227018994,
+      "max": 56.310688508067216,
+      "count": 72
+    },
+    "real_rmsd_stats": {
+      "mean": null,
+      "std": null,
+      "min": null,
+      "max": null,
+      "count": 0
+    },
+    "energy_stats": {
+      "mean": -1.2049561204852368,
+      "std": 198.5680683961045,
+      "min": -304.55205065660016,
+      "max": 215.89420669760707,
+      "count": 72
+    },
+    "quantum_refinement_stats": {
+      "mean_improvement": null,
+      "std_improvement": null,
+      "max_improvement": null,
+      "count": 0
+    }
+  },
+  "configuration_analysis": {
+    "base_optimal": {
+      "count": 12,
+      "avg_rmsd": 9.102715657454329,
+      "avg_energy": -37.9869449889899,
+      "avg_time": 24.0719300309817
+    },
+    "mediators_only": {
+      "count": 11,
+      "avg_rmsd": 9.32136511967161,
+      "avg_energy": 9.329871944522601,
+      "avg_time": 35.85845615647056
+    },
+    "geometric_only": {
+      "count": 11,
+      "avg_rmsd": 9.318609929115347,
+      "avg_energy": 9.803980559203431,
+      "avg_time": 36.383022199977525
+    },
+    "full_features_qref": {
+      "count": 12,
+      "avg_rmsd": 27.656432143964864,
+      "avg_energy": 0.19749431758975314,
+      "avg_time": 40.453986962636314
+    },
+    "high_agents": {
+      "count": 11,
+      "avg_rmsd": 9.63348160293631,
+      "avg_energy": 80.31757496103377,
+      "avg_time": 77.6136768947948
+    },
+    "high_iterations": {
+      "count": 10,
+      "avg_rmsd": 9.081254628783677,
+      "avg_energy": -13.76620539012512,
+      "avg_time": 44.89784889221191
+    },
+    "base_optimal_qref": {
+      "count": 1,
+      "avg_rmsd": 30.86262566706736,
+      "avg_energy": -117.34218506219179,
+      "avg_time": 22.31522226333618
+    },
+    "mediators_qref": {
+      "count": 1,
+      "avg_rmsd": 30.982953873757218,
+      "avg_energy": -111.90581311293619,
+      "avg_time": 24.377906560897827
+    },
+    "geometric_qref": {
+      "count": 1,
+      "avg_rmsd": 30.920008716094674,
+      "avg_energy": -117.65752747414854,
+      "avg_time": 26.13600206375122
+    },
+    "high_agents_qref": {
+      "count": 1,
+      "avg_rmsd": 31.016977566053257,
+      "avg_energy": -111.72870763789189,
+      "avg_time": 36.8338828086853
+    },
+    "high_iterations_qref": {
+      "count": 1,
+      "avg_rmsd": 30.659407333861907,
+      "avg_energy": -130.9528475420734,
+      "avg_time": 40.08572602272034
+    }
+  },
+  "timestamp": "2025-11-09T20:08:59.904163"
+}

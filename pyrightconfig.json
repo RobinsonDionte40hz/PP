@@ -14,7 +14,7 @@
     "executionEnvironments": [
         {
             "root": ".",
-            "python": "./myvenv/Scripts/python",
+            "python": "./.venv/Scripts/python",
             "extraPaths": [
                 "."
             ]

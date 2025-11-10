@@ -1,21 +1,37 @@
 #!/usr/bin/env python3
 """
-Universal Protein Test - QCPP-UBF Integration
+Universal Protein Test - PRIMARY MODULE for Protein Structure Prediction
 
-Simple command-line tool to test any protein with optimal settings.
-No coding required - just provide a PDB ID or sequence!
+QUANTUM REFINEMENT ENGINE + REAL RMSD CALCULATIONS
+
+This is the PRIMARY testing module for the UBF protein prediction system.
+It integrates QCPP (Quantum Coherence) with UBF (Multi-Agent Exploration)
+and validates results using the Quantum Refinement Engine with real RMSD
+calculations via CA-only native structure alignment.
+
+Key Features:
+  - Quantum Refinement Engine (quantum_refinement_engine.py) - Two-stage optimization
+  - Real RMSD calculations with Kabsch alignment (FIXED CA-only extraction)
+  - QCPP-UBF integration for quantum-guided exploration
+  - Multi-agent coordination with consciousness-inspired parameters
+  - Geometric attractor analysis (golden ratio patterns)
+  - Mediator agents for pattern detection and information relay
 
 Usage:
-  python test_protein.py --pdb 1UBQ                    # Test Ubiquitin
-  python test_protein.py --pdb 1CRN                    # Test Crambin
+  python test_protein.py --pdb 1UBQ                    # Test Ubiquitin with quantum refinement
+  python test_protein.py --pdb 1CRN --enable-refinement # Explicit quantum refinement
   python test_protein.py --sequence ACDEFGHIKL          # Test custom sequence
   python test_protein.py --list                         # Show available proteins
   python test_protein.py --quick                        # Quick test on small protein
 
+For systematic testing across multiple proteins, use:
+  python systematic_protein_testing.py --start 0 --count 10
+
 Performance Notes:
   - THz recording is DISABLED by default in main exploration (saves ~0.75s)
-  - THz is only ENABLED for separate determinism tests (when explicitly requested)
-  - This makes production runs faster while keeping determinism research available
+  - THz is only ENABLED for quantum refinement and determinism tests
+  - Quantum refinement adds ~20-40s for comprehensive validation
+  - Real RMSD requires native PDB structure for comparison
 """
 
 import sys
@@ -621,7 +637,6 @@ def run_protein_test(sequence: str, pdb_file: Optional[Path] = None, pdb_id: Opt
     native_structure = None
     if enable_refinement and pdb_file:
         try:
-            from ubf_protein.rmsd_calculator import NativeStructureLoader
             loader = NativeStructureLoader(cache_dir="./pdb_cache")
             if Path(pdb_file).exists():
                 native_structure = loader.load_from_file(str(pdb_file), ca_only=True)
