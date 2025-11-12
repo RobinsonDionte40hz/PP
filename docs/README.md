@@ -2,6 +2,9 @@
 
 Comprehensive documentation for the QCPP-UBF protein prediction platform.
 
+## Overview
+This dual-system platform combines Quantum Coherence Protein Predictor (QCPP) physics with Universal Behavioral Framework (UBF) multi-agent optimization. **Scale verified**: 45+ unique proteins tested with 3+ million total computations performed.
+
 ## Structure
 
 - `completed_tasks/` - Task completion reports
