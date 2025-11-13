@@ -15,6 +15,48 @@ from .interfaces import IVisualizationExporter
 from .models import ConformationSnapshot, EnergyLandscape, Conformation
 
 
+def export_to_pdb(conformation: Conformation, output_file: str, sequence: str) -> None:
+    """
+    Export a single conformation to PDB format.
+    
+    Args:
+        conformation: Conformation to export
+        output_file: Path to output PDB file
+        sequence: Amino acid sequence
+    """
+    # Standard amino acid single-letter codes
+    aa_codes = {
+        'A': 'ALA', 'C': 'CYS', 'D': 'ASP', 'E': 'GLU',
+        'F': 'PHE', 'G': 'GLY', 'H': 'HIS', 'I': 'ILE',
+        'K': 'LYS', 'L': 'LEU', 'M': 'MET', 'N': 'ASN',
+        'P': 'PRO', 'Q': 'GLN', 'R': 'ARG', 'S': 'SER',
+        'T': 'THR', 'V': 'VAL', 'W': 'TRP', 'Y': 'TYR'
+    }
+    
+    with open(output_file, 'w') as f:
+        # Write header
+        f.write("HEADER    PROTEIN STRUCTURE PREDICTION\n")
+        f.write("TITLE     UBF PROTEIN PREDICTED STRUCTURE\n")
+        f.write(f"REMARK    SEQUENCE: {sequence}\n")
+        f.write(f"REMARK    ENERGY: {conformation.energy:.2f} kcal/mol\n")
+        if conformation.rmsd_to_native is not None:
+            f.write(f"REMARK    RMSD: {conformation.rmsd_to_native:.2f} Angstrom\n")
+        f.write("\n")
+        
+        # Write atom coordinates
+        atom_num = 1
+        for i, (aa_letter, coord) in enumerate(zip(sequence, conformation.atom_coordinates), 1):
+            res_name = aa_codes.get(aa_letter, 'UNK')
+            x, y, z = coord
+            
+            # PDB ATOM format: columns matter!
+            # ATOM   atom_num  atom_name res_name chain res_num    x      y      z    occ  temp
+            f.write(f"ATOM  {atom_num:5d}  CA  {res_name} A{i:4d}    {x:8.3f}{y:8.3f}{z:8.3f}  1.00  0.00           C\n")
+            atom_num += 1
+        
+        f.write("END\n")
+
+
 class VisualizationExporter(IVisualizationExporter):
     """
     Implementation of visualization export system.

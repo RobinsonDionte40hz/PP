@@ -2,14 +2,25 @@
 
 ## Integrated Testing Approach
 
-**Primary Testing Tool:** `test_protein.py` - Integrated testing of both QCPP and UBF systems
+**Primary Testing Tool:** `test_protein.py` (ROOT DIRECTORY) - Integrated testing of both QCPP and UBF systems
+
+**File Location:** `c:\Users\diont\OneDrive\Desktop\Projects\PP\test_protein.py`
+
+**Verification:** To ensure you're using the correct file:
+```bash
+# Check file path
+python test_protein.py --help
+
+# Should show: "Universal Protein Test - PRIMARY MODULE for Protein Structure Prediction"
+# Should mention: "QUANTUM REFINEMENT ENGINE + REAL RMSD CALCULATIONS"
+```
 
 This guide describes QCPP validation methodology, but in practice we use `test_protein.py` which integrates:
 - QCPP quantum coherence analysis (real-time)
 - UBF agent-based exploration
 - Mediator agents for pattern detection
-- Quantum refinement for structure optimization
-- Native PDB structure validation
+- Quantum refinement for structure optimization (quantum_refinement_engine.py)
+- Native PDB structure validation with real RMSD calculations (Kabsch alignment)
 
 ## Overview
 
@@ -237,32 +248,46 @@ rmsd = 2.5  # Å - structure vs native
 
 ## How to Run Integrated Testing
 
-### Primary Testing Tool: test_protein.py
+### ✅ Primary Testing Tool: test_protein.py (ROOT DIRECTORY)
+
+**Location:** `c:\Users\diont\OneDrive\Desktop\Projects\PP\test_protein.py`
 
 This is the **recommended and actively used** testing approach that integrates QCPP with UBF:
 
 ```bash
+# Verify you're using the correct file
+python test_protein.py --help
+# Expected: "Universal Protein Test - PRIMARY MODULE"
+# Expected: "QUANTUM REFINEMENT ENGINE + REAL RMSD CALCULATIONS"
+
 # Basic test with QCPP integration
 python test_protein.py --pdb 1UBQ --agents 10 --iterations 500
 
-# Full test with all modules
+# Full test with all modules (quantum refinement enabled by default)
 python test_protein.py --pdb 1UBQ --agents 10 --iterations 500 \
     --enable-mediators --mediator-count 3 \
-    --enable-refinement --target-geometry icosahedron
+    --enable-refinement
 
 # Test on larger protein
 python test_protein.py --pdb 1LYZ --agents 30 --iterations 100 \
     --enable-mediators --mediator-count 5 \
     --enable-refinement --target-geometry dodecahedron
+
+# Quick test on small protein
+python test_protein.py --quick
+
+# List available proteins
+python test_protein.py --list
 ```
 
 **QCPP Analysis Performed:**
 - ✅ Real-time quantum coherence parameter (QCP) calculation
 - ✅ Field coherence analysis
 - ✅ Golden ratio pattern detection
-- ✅ THz spectra generation
+- ✅ THz spectra generation (during refinement)
 - ✅ Mediator agent pattern broadcasts (THz, Folding, Geometric)
-- ✅ Quantum refinement guidance (45-58% RMSD improvement)
+- ✅ Quantum refinement guidance via `quantum_refinement_engine.py` (45-58% RMSD improvement)
+- ✅ Real RMSD calculations with Kabsch alignment (CA-only)
 
 **Tested Proteins (November 9, 2025):**
 - 1UBQ, 1CRN, 2MR9, 1VII, 1LYZ, 1TIM

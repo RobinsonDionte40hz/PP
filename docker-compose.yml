@@ -1,8 +1,7 @@
-\
 services:
   frontend:
     build:
-      context: ..
+      context: .
       dockerfile: docker/frontend/Dockerfile
     ports:
       - "3000:80"
@@ -15,7 +14,7 @@ services:
 
   backend:
     build:
-      context: ..
+      context: .
       dockerfile: docker/backend/Dockerfile
     ports:
       - "8000:8000"
@@ -35,7 +34,7 @@ services:
 
   worker:
     build:
-      context: ..
+      context: .
       dockerfile: docker/worker/Dockerfile
     depends_on:
       - redis

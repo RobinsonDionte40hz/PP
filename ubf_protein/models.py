@@ -1,3 +1,4 @@
+from __future__ import annotations
 from dataclasses import dataclass
 from typing import List, Tuple, Dict, Optional, Any, TYPE_CHECKING
 from enum import Enum

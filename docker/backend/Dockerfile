@@ -17,6 +17,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy backend code
 COPY backend/ .
 
+# Copy ubf_protein module (needed by prediction_tasks)
+COPY ubf_protein/ /ubf_protein/
+
+# Add parent directory to PYTHONPATH so ubf_protein can be imported
+ENV PYTHONPATH=/
+
 # Expose port
 EXPOSE 8000
 

@@ -5,8 +5,8 @@ class Settings(BaseSettings):
     APP_ENV: str = "development"
     SECRET_KEY: str = "development-secret-key"
     
-    # Database
-    DATABASE_URL: str = "postgresql://user:password@localhost:5432/pp_db"
+    # Database - Use SQLite file for development (shared between backend and celery)
+    DATABASE_URL: str = "sqlite:///./pp_dev.db"
     
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"

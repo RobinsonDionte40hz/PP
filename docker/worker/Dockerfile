@@ -17,5 +17,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy backend code
 COPY backend/ .
 
+# Copy ubf_protein module (needed by prediction_tasks) to parent of /app
+COPY ubf_protein/ /ubf_protein/
+
+# Add parent directory to PYTHONPATH so ubf_protein can be imported
+ENV PYTHONPATH=/
+
 # Run Celery worker
-CMD ["celery", "-A", "app.tasks", "worker", "--loglevel=info"]
+CMD ["celery", "-A", "celery_app", "worker", "--loglevel=info", "--pool=solo"]

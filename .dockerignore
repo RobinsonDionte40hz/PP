@@ -1,0 +1,67 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+*.log
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+dist/
+build/
+.vite/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Environment
+.env.local
+.env.*.local
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Test results
+test_results/
+systematic_test_results/
+validation/
+campaign_10_proteins/
+comprehensive_ablation_results/
+ablation_results/
+scaling_results/
+geometric_analysis/
+visualization_output/
+
+# Project specific
+checkpoints/
+pdb_cache/
+results/
+quantum_coherence_proteins/results/
+ubf_protein/__pycache__/
+frontend/build/

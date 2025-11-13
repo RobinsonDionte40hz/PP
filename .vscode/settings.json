@@ -3,6 +3,5 @@
     "python-envs.pythonProjects": [],
     "python.defaultInterpreterPath": "./myvenv/Scripts/python",
     "python.terminal.activateEnvironment": true,
-    "python.analysis.typeCheckingMode": "basic",
     "python-envs.defaultEnvManager": "ms-python.python:system"
 }
