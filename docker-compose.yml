@@ -1,0 +1,75 @@
+\
+services:
+  frontend:
+    build:
+      context: ..
+      dockerfile: docker/frontend/Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    environment:
+      - REACT_APP_API_URL=http://backend:8000
+    volumes:
+      - ./frontend/build:/usr/share/nginx/html:ro
+
+  backend:
+    build:
+      context: ..
+      dockerfile: docker/backend/Dockerfile
+    ports:
+      - "8000:8000"
+    depends_on:
+      - redis
+      - postgres
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=postgresql://user:password@postgres:5432/pp_db
+    volumes:
+      - ./backend:/app
+      - ./checkpoints:/app/checkpoints
+      - ./visualization_output:/app/visualization_output
+      - ./pdb_cache:/app/pdb_cache
+    env_file:
+      - .env
+
+  worker:
+    build:
+      context: ..
+      dockerfile: docker/worker/Dockerfile
+    depends_on:
+      - redis
+      - postgres
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=postgresql://user:password@postgres:5432/pp_db
+    volumes:
+      - ./backend:/app
+      - ./checkpoints:/app/checkpoints
+      - ./visualization_output:/app/visualization_output
+      - ./pdb_cache:/app/pdb_cache
+    env_file:
+      - .env
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+
+  postgres:
+    image: postgres:15-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=pp_db
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  redis_data:
+  postgres_data:
