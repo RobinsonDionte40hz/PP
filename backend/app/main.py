@@ -47,8 +47,11 @@ async def health_check():
 
 # Import and include routers
 from app.api import predictions, campaigns, results
+from app.routes import websocket_routes
+
 app.include_router(predictions.router, prefix="/api/predictions", tags=["predictions"])
 app.include_router(campaigns.router, prefix="/api/campaigns", tags=["campaigns"])
+app.include_router(websocket_routes.router, prefix="/api")  # WebSocket emission endpoints
 app.include_router(results.router, prefix="/api/results", tags=["results"])
 
 logger.info("✓ FastAPI app configured")

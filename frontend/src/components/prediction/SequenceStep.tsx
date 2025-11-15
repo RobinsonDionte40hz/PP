@@ -7,10 +7,12 @@ import {
   Alert,
   alpha,
   useTheme,
+  CircularProgress,
 } from '@mui/material';
 import {
   CloudUpload as UploadIcon,
   Science as ScienceIcon,
+  CheckCircle,
 } from '@mui/icons-material';
 
 interface SequenceStepProps {
@@ -24,6 +26,8 @@ interface SequenceStepProps {
 const SequenceStep: React.FC<SequenceStepProps> = ({ formData, onChange }) => {
   const theme = useTheme();
   const [sequenceError, setSequenceError] = useState<string>('');
+  const [pdbLoading, setPdbLoading] = useState(false);
+  const [pdbError, setPdbError] = useState<string>('');
 
   const validateSequence = (seq: string): boolean => {
     // Remove whitespace and convert to uppercase
@@ -82,6 +86,67 @@ const SequenceStep: React.FC<SequenceStepProps> = ({ formData, onChange }) => {
     // 1UBQ - Ubiquitin (76 residues)
     const exampleSeq = 'MQIFVKTLTGKTITLEVEPSDTIENVKAKIQDKEGIPPDQQRLIFAGKQLEDGRTLSDYNIQKESTLHLVLRLRGG';
     handleSequenceChange(exampleSeq);
+    onChange({ native_pdb_id: '1UBQ' });
+  };
+
+  const loadFromPDB = async () => {
+    const pdbId = formData.native_pdb_id?.trim().toUpperCase();
+    if (!pdbId || pdbId.length !== 4) {
+      setPdbError('Please enter a valid 4-character PDB ID');
+      return;
+    }
+
+    setPdbLoading(true);
+    setPdbError('');
+
+    try {
+      // Fetch PDB file from RCSB
+      const response = await fetch(`https://files.rcsb.org/download/${pdbId}.pdb`);
+      
+      if (!response.ok) {
+        throw new Error(`PDB ${pdbId} not found`);
+      }
+
+      const pdbText = await response.text();
+      
+      // Parse sequence from PDB SEQRES records
+      const seqresLines = pdbText.split('\n').filter(line => line.startsWith('SEQRES'));
+      
+      if (seqresLines.length === 0) {
+        throw new Error('No sequence found in PDB file');
+      }
+
+      // Extract amino acids from SEQRES lines
+      const aaMap: { [key: string]: string } = {
+        'ALA': 'A', 'CYS': 'C', 'ASP': 'D', 'GLU': 'E', 'PHE': 'F',
+        'GLY': 'G', 'HIS': 'H', 'ILE': 'I', 'LYS': 'K', 'LEU': 'L',
+        'MET': 'M', 'ASN': 'N', 'PRO': 'P', 'GLN': 'Q', 'ARG': 'R',
+        'SER': 'S', 'THR': 'T', 'VAL': 'V', 'TRP': 'W', 'TYR': 'Y'
+      };
+
+      let sequence = '';
+      seqresLines.forEach(line => {
+        const parts = line.split(/\s+/).slice(4); // Skip SEQRES, chain, number, count
+        parts.forEach(aa => {
+          if (aaMap[aa]) {
+            sequence += aaMap[aa];
+          }
+        });
+      });
+
+      if (sequence.length === 0) {
+        throw new Error('Could not extract sequence from PDB file');
+      }
+
+      // Update form with sequence
+      handleSequenceChange(sequence);
+      setPdbError('');
+      
+    } catch (error) {
+      setPdbError(error instanceof Error ? error.message : 'Failed to load PDB');
+    } finally {
+      setPdbLoading(false);
+    }
   };
 
   return (
@@ -145,14 +210,42 @@ const SequenceStep: React.FC<SequenceStepProps> = ({ formData, onChange }) => {
         <Typography variant="caption" color="text.secondary" display="block" mb={2}>
           Provide a PDB ID to calculate RMSD and validate structure quality
         </Typography>
-        <TextField
-          fullWidth
-          size="small"
-          value={formData.native_pdb_id || ''}
-          onChange={(e) => onChange({ native_pdb_id: e.target.value })}
-          placeholder="e.g., 1UBQ"
-          helperText="4-character PDB identifier (e.g., 1UBQ, 2MR9)"
-        />
+        <Box display="flex" gap={2} alignItems="flex-start">
+          <TextField
+            fullWidth
+            size="small"
+            value={formData.native_pdb_id || ''}
+            onChange={(e) => {
+              const value = e.target.value.toUpperCase().trim();
+              onChange({ native_pdb_id: value });
+              setPdbError('');
+            }}
+            placeholder="e.g., 1UBQ"
+            error={Boolean(pdbError) || (formData.native_pdb_id ? formData.native_pdb_id.length !== 4 : false)}
+            helperText={
+              pdbError ||
+              (formData.native_pdb_id 
+                ? formData.native_pdb_id.length === 4 
+                  ? `✓ PDB ID: ${formData.native_pdb_id} will be used for RMSD calculation`
+                  : `PDB ID must be exactly 4 characters (currently ${formData.native_pdb_id.length})`
+                : "4-character PDB identifier (e.g., 1UBQ, 2MR9, 1CRN)")
+            }
+            InputProps={{
+              endAdornment: formData.native_pdb_id && formData.native_pdb_id.length === 4 && !pdbError ? (
+                <CheckCircle color="success" fontSize="small" />
+              ) : null,
+            }}
+          />
+          <Button
+            variant="outlined"
+            onClick={loadFromPDB}
+            disabled={!formData.native_pdb_id || formData.native_pdb_id.length !== 4 || pdbLoading}
+            startIcon={pdbLoading ? <CircularProgress size={16} /> : <ScienceIcon />}
+            sx={{ minWidth: 140, whiteSpace: 'nowrap' }}
+          >
+            {pdbLoading ? 'Loading...' : 'Load from PDB'}
+          </Button>
+        </Box>
       </Box>
 
       {/* Info Alert */}

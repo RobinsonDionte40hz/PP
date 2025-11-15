@@ -49,7 +49,7 @@ const LiveMonitoring: React.FC = () => {
   });
 
   // WebSocket connection
-  const { isConnected, messages } = useWebSocket(id);
+  const { isConnected, latestProgress: wsLatestProgress, messages } = useWebSocket(id);
 
   // Process WebSocket messages
   useEffect(() => {
@@ -63,6 +63,19 @@ const LiveMonitoring: React.FC = () => {
       }
     });
   }, [messages, queryClient, id]);
+
+  // Use WebSocket latest progress or fall back to progressData
+  const latestProgress = wsLatestProgress || progressData[progressData.length - 1];
+  
+  // Debug logging
+  useEffect(() => {
+    console.log('🔍 LiveMonitoring debug:', {
+      wsLatestProgress,
+      progressDataLength: progressData.length,
+      latestProgress,
+      isConnected
+    });
+  }, [wsLatestProgress, progressData, latestProgress, isConnected]);
 
   // Control mutations
   const pauseMutation = useMutation({
@@ -135,8 +148,6 @@ const LiveMonitoring: React.FC = () => {
   const progress = prediction.total_iterations > 0
     ? (prediction.current_iteration / prediction.total_iterations) * 100
     : 0;
-
-  const latestProgress = progressData[progressData.length - 1];
 
   return (
     <Box sx={{ p: 3 }}>

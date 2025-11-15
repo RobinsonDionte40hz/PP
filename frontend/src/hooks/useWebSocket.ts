@@ -8,9 +8,11 @@ export function useWebSocket(predictionId: string | undefined) {
   const [messages, setMessages] = useState<WSMessage[]>([]);
 
   const handleMessage = useCallback((message: WSMessage) => {
+    console.log('📬 useWebSocket received message:', message);
     setMessages((prev) => [...prev, message]);
     
     if (message.type === 'progress') {
+      console.log('📊 Setting latestProgress:', message.data);
       setLatestProgress(message.data);
     }
   }, []);

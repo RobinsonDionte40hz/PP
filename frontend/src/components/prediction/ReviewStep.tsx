@@ -83,17 +83,20 @@ const ReviewStep: React.FC<ReviewStepProps> = ({ formData }) => {
           </Box>
 
           {formData.native_pdb_id && (
-            <Box>
+            <Box mt={2}>
               <Typography variant="caption" color="text.secondary" display="block">
-                Native Structure
+                Native Structure for RMSD Calculation
               </Typography>
               <Chip
-                label={formData.native_pdb_id}
+                label={`PDB ID: ${formData.native_pdb_id}`}
                 size="small"
-                color="primary"
-                variant="outlined"
+                color="success"
+                icon={<CheckIcon />}
                 sx={{ mt: 0.5 }}
               />
+              <Typography variant="caption" color="success.main" display="block" mt={0.5}>
+                RMSD will be calculated against native structure
+              </Typography>
             </Box>
           )}
         </Paper>

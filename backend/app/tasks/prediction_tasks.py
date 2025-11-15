@@ -129,6 +129,17 @@ def run_prediction(self, prediction_id: str):
             except Exception as e:
                 logger.warning(f"Failed to initialize QCPP integration: {e}")
         
+        # Load native structure if PDB ID provided
+        native_structure = None
+        if native_pdb:
+            try:
+                from ubf_protein.rmsd_calculator import NativeStructureLoader
+                native_loader = NativeStructureLoader()
+                native_structure = native_loader.load_pdb_structure(native_pdb, sequence)
+                logger.info(f"Loaded native structure from PDB ID: {native_pdb}")
+            except Exception as e:
+                logger.warning(f"Failed to load native structure {native_pdb}: {e}")
+        
         # Initialize multi-agent coordinator
         coordinator = MultiAgentCoordinator(
             protein_sequence=sequence,
@@ -141,8 +152,8 @@ def run_prediction(self, prediction_id: str):
             target_geometry=target_geometry
         )
         
-        # Initialize agents with diversity profile
-        coordinator.initialize_agents(count=agents, diversity_profile=diversity, native_structure=native_pdb)
+        # Initialize agents with diversity profile (pass loaded structure object, not PDB ID string)
+        coordinator.initialize_agents(count=agents, diversity_profile=diversity, native_structure=native_structure)
         
         # Initialize mediators if enabled
         if enable_mediators:
@@ -191,36 +202,75 @@ def run_prediction(self, prediction_id: str):
                 )
             )
             
-            # Emit WebSocket progress update
+            # Emit WebSocket progress update via HTTP (so it goes through actual Socket.IO server)
             try:
-                import asyncio
-                from app.websocket import socket_manager
+                import httpx
                 
-                # Create event loop if needed (Celery worker context)
-                try:
-                    loop = asyncio.get_event_loop()
-                except RuntimeError:
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
+                # Get average aggressiveness and consistency from all agents
+                agent_list = coordinator.get_agents()
+                avg_aggressiveness = sum(agent.get_consciousness_state().get_frequency() for agent in agent_list) / len(agent_list) if agent_list else None
+                avg_consistency = sum(agent.get_consciousness_state().get_coherence() for agent in agent_list) / len(agent_list) if agent_list else None
                 
-                # Emit progress update
-                loop.run_until_complete(
-                    socket_manager.emit_progress_update(
-                        prediction_id,
-                        {
+                progress_payload = {
+                    'prediction_id': prediction_id,
+                    'iteration': completed_iterations,
+                    'total_iterations': iterations,
+                    'progress_percentage': progress,
+                    'current_energy': float(best_energy) if best_energy is not None else None,
+                    'current_rmsd': float(best_rmsd) if best_rmsd is not None and best_rmsd != float('inf') else None,
+                    'conformations_explored': results.total_conformations_explored,
+                    'best_energy': float(results.best_energy) if results.best_energy is not None else None,
+                    'best_rmsd': float(results.best_rmsd) if results.best_rmsd is not None and results.best_rmsd != float('inf') else None,
+                    'aggressiveness': float(avg_aggressiveness) if avg_aggressiveness is not None else None,
+                    'consistency': float(avg_consistency) if avg_consistency is not None else None,
+                }
+                
+                logger.info(f"Attempting WebSocket emission for iteration {completed_iterations}/{iterations}...")
+                
+                # Call backend WebSocket emission endpoint using httpx (synchronous client)
+                with httpx.Client() as client:
+                    response = client.post(
+                        'http://localhost:8000/api/ws/emit/progress',
+                        json={
                             'prediction_id': prediction_id,
-                            'iteration': completed_iterations,
-                            'total_iterations': iterations,
-                            'progress_percentage': progress,
-                            'current_energy': best_energy,
-                            'current_rmsd': best_rmsd,
-                            'conformations_explored': results.total_conformations_explored
-                        }
+                            'data': progress_payload
+                        },
+                        timeout=5.0  # Increased timeout for localhost
                     )
-                )
-                logger.info(f"✓ WebSocket progress update emitted for iteration {completed_iterations}/{iterations}")
+                    
+                    if response.status_code == 200:
+                        result = response.json()
+                        logger.info(f"✓ WebSocket progress emitted: iteration {completed_iterations}/{iterations}, subscribers={result.get('subscribers', 0)}, energy={best_energy:.2f}")
+                        
+                        # Emit log event for significant energy improvements
+                        if chunk_idx > 0 and results.best_energy is not None:
+                            energy_improvement = (results.best_energy - initial_energy) if chunk_idx == 1 else None
+                            if energy_improvement and energy_improvement < -10:  # Significant improvement
+                                try:
+                                    from datetime import datetime
+                                    log_response = client.post(
+                                        'http://localhost:8000/api/ws/emit/log',
+                                        json={
+                                            'prediction_id': prediction_id,
+                                            'data': {
+                                                'level': 'success',
+                                                'message': f'Energy improved by {abs(energy_improvement):.2f} kcal/mol (now {results.best_energy:.2f})',
+                                                'timestamp': datetime.utcnow().isoformat()
+                                            }
+                                        },
+                                        timeout=5.0
+                                    )
+                                except Exception as log_err:
+                                    logger.debug(f"Failed to emit log event: {log_err}")
+                    else:
+                        logger.error(f"❌ Failed to emit WebSocket progress: {response.status_code} - {response.text}")
+                    
+            except httpx.TimeoutException as e:
+                logger.error(f"❌ WebSocket emission timeout for iteration {completed_iterations}: {e}")
+            except httpx.ConnectError as e:
+                logger.error(f"❌ Cannot connect to backend for WebSocket emission: {e}")
             except Exception as e:
-                logger.warning(f"Failed to emit WebSocket update: {e}", exc_info=True)
+                logger.error(f"❌ Failed to emit WebSocket update for iteration {completed_iterations}: {e}", exc_info=True)
             
             logger.debug(f"Progress: {completed_iterations}/{iterations} ({progress:.1f}%)")
         
@@ -279,16 +329,61 @@ def run_prediction(self, prediction_id: str):
                 refined_energy = best_energy
                 refined_rmsd = best_rmsd
         
-        # Save results
+        # Calculate additional metrics from agent results
+        initial_energy = None
+        energy_change = None
+        convergence_rate = None
+        final_aggressiveness = None
+        final_consistency = None
+        unique_structures = None
+        
+        if final_results.agent_metrics and len(final_results.agent_metrics) > 0:
+            # Get best and worst energies to calculate energy change
+            all_best_energies = [m.best_energy_found for m in final_results.agent_metrics]
+            if all_best_energies:
+                initial_energy = max(all_best_energies)  # Worst (highest) energy as "initial"
+                energy_change = refined_energy - initial_energy
+                if initial_energy != 0:
+                    convergence_rate = abs((initial_energy - refined_energy) / initial_energy * 100)
+            
+            # Count unique structures explored (approximation)
+            unique_structures = sum(m.conformations_explored for m in final_results.agent_metrics)
+        
+        # Note: Aggressiveness and consistency are stored in the agent's consciousness state,
+        # not in ExplorationMetrics. We don't have access to them here without storing them separately.
+        # Setting to None for now - can be added to ExplorationMetrics in future.
+        
+        # Get quantum metrics if QCPP integration is enabled
+        qaap_alignment = None
+        resonance_40hz = None
+        water_shielding = None
+        qcp_score = None
+        
+        if qcpp_integration:
+            try:
+                # Get latest QCPP analysis for best conformation
+                qcpp_result = qcpp_integration.analyze_conformation(refined_conf)
+                if qcpp_result:
+                    # Extract quantum metrics (these would come from QCPP analysis)
+                    qaap_alignment = qcpp_result.get('qaap_score', None)  # QAAP alignment score
+                    resonance_40hz = qcpp_result.get('resonance_score', None)  # 40 Hz resonance
+                    water_shielding = qcpp_result.get('water_shielding', None)  # Water shielding time
+                    qcp_score = qcpp_result.get('qcp_value', None)  # QCP score
+            except Exception as e:
+                logger.warning(f"Could not extract quantum metrics: {e}")
+        
+        # Save results with comprehensive metrics
         result_file = prediction_dir / "results.json"
         results_data = {
             "prediction_id": prediction_id,
             "sequence": sequence,
             "iterations": iterations,
-            "agents": agents,
+            "agent_count": agents,
             "diversity": diversity,
             "best_energy": refined_energy,
             "best_rmsd": refined_rmsd,
+            "final_energy": refined_energy,  # Alias for compatibility
+            "final_rmsd": refined_rmsd,  # Alias for compatibility
             "conformations_explored": final_results.total_conformations_explored,
             "runtime_seconds": final_results.total_runtime_seconds,
             "refinement_applied": refinement_applied,
@@ -296,6 +391,19 @@ def run_prediction(self, prediction_id: str):
                 "energy": best_energy,
                 "rmsd": best_rmsd
             } if refinement_applied else None,
+            "energy_change": energy_change,
+            "convergence_rate": convergence_rate,
+            "initial_energy": initial_energy,
+            "final_aggressiveness": final_aggressiveness,
+            "final_consistency": final_consistency,
+            "unique_structures": unique_structures,
+            "gdt_ts_score": final_results.best_gdt_ts,
+            "tm_score": final_results.best_tm_score,
+            "validation_quality": final_results.validation_quality,
+            "qaap_alignment": qaap_alignment,
+            "resonance_40hz": resonance_40hz,
+            "water_shielding": water_shielding,
+            "qcp_score": qcp_score,
             "best_conformation": {
                 "energy": refined_energy,
                 "rmsd_to_native": refined_rmsd,
@@ -317,7 +425,7 @@ def run_prediction(self, prediction_id: str):
         except Exception as e:
             logger.warning(f"Could not save PDB structure: {e}")
         
-        # Mark as completed
+        # Mark as completed with comprehensive metrics
         prediction_service.update_prediction(
             prediction_id,
             PredictionUpdateSchema(
@@ -325,7 +433,29 @@ def run_prediction(self, prediction_id: str):
                 progress_percentage=100.0,
                 result_path=str(prediction_dir),
                 checkpoint_path=str(checkpoint_dir) if checkpoint_dir.exists() else None,
-                metrics=results_data
+                metrics={
+                    "best_energy": refined_energy,
+                    "best_rmsd": refined_rmsd,
+                    "final_energy": refined_energy,
+                    "final_rmsd": refined_rmsd,
+                    "current_energy": refined_energy,
+                    "current_rmsd": refined_rmsd,
+                    "conformations_explored": final_results.total_conformations_explored,
+                    "energy_change": energy_change,
+                    "convergence_rate": convergence_rate,
+                    "initial_energy": initial_energy,
+                    "final_aggressiveness": final_aggressiveness,
+                    "final_consistency": final_consistency,
+                    "unique_structures": unique_structures,
+                    "gdt_ts_score": final_results.best_gdt_ts,
+                    "tm_score": final_results.best_tm_score,
+                    "validation_quality": final_results.validation_quality,
+                    "qaap_alignment": qaap_alignment,
+                    "resonance_40hz": resonance_40hz,
+                    "water_shielding": water_shielding,
+                    "qcp_score": qcp_score,
+                    "refinement_applied": refinement_applied
+                }
             )
         )
         

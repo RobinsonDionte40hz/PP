@@ -96,7 +96,10 @@ const PredictionForm: React.FC = () => {
     switch (activeStep) {
       case 0:
         // Sequence step - must have a sequence
-        return formData.sequence.length > 0;
+        // If PDB ID is provided, it must be exactly 4 characters
+        const hasValidSequence = formData.sequence.length > 0;
+        const pdbIdValid = !formData.native_pdb_id || formData.native_pdb_id.length === 4;
+        return hasValidSequence && pdbIdValid;
       case 1:
         // Configuration step - iterations must be > 0
         return (formData.iterations || 0) > 0;

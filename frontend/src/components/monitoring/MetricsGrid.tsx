@@ -9,35 +9,41 @@ interface MetricsGridProps {
 }
 
 const MetricsGrid: React.FC<MetricsGridProps> = ({ prediction, latestProgress }) => {
+  // Extract metrics from nested object - prefer WebSocket data for real-time updates
+  const bestEnergy = latestProgress?.best_energy ?? prediction.metrics?.best_energy ?? null;
+  const bestRMSD = latestProgress?.best_rmsd ?? prediction.metrics?.best_rmsd ?? null;
+  const currentEnergy = latestProgress?.current_energy ?? prediction.metrics?.current_energy ?? bestEnergy;
+  const currentRMSD = latestProgress?.current_rmsd ?? prediction.metrics?.current_rmsd ?? bestRMSD;
+
   const metrics = [
     {
       title: 'Current Energy',
-      value: latestProgress?.energy?.toFixed(2) || prediction.best_energy?.toFixed(2) || '-',
+      value: currentEnergy !== null && currentEnergy !== undefined ? currentEnergy.toFixed(2) : '-',
       unit: 'kcal/mol',
       color: 'primary' as const,
-      trend: (latestProgress && prediction.best_energy
-        ? latestProgress.energy < prediction.best_energy ? 'down' : 'up'
+      trend: (currentEnergy !== null && bestEnergy !== null
+        ? currentEnergy < bestEnergy ? 'down' : 'up'
         : undefined) as 'up' | 'down' | 'neutral' | undefined,
     },
     {
       title: 'Best Energy',
-      value: prediction.best_energy?.toFixed(2) || '-',
+      value: bestEnergy !== null ? bestEnergy.toFixed(2) : '-',
       unit: 'kcal/mol',
       color: 'success' as const,
     },
     {
       title: 'RMSD',
-      value: latestProgress?.rmsd?.toFixed(2) || prediction.best_rmsd?.toFixed(2) || '-',
+      value: currentRMSD !== null && currentRMSD !== Infinity ? currentRMSD.toFixed(2) : '-',
       unit: 'Å',
       color: 'info' as const,
-      trend: (latestProgress?.rmsd && prediction.best_rmsd
-        ? latestProgress.rmsd < prediction.best_rmsd ? 'down' : 'up'
+      trend: (currentRMSD !== null && bestRMSD !== null && currentRMSD !== Infinity && bestRMSD !== Infinity
+        ? currentRMSD < bestRMSD ? 'down' : 'up'
         : undefined) as 'up' | 'down' | 'neutral' | undefined,
     },
     {
       title: 'Best RMSD',
-      value: prediction.best_rmsd?.toFixed(2) || '-',
-      unit: 'Å',
+      value: bestRMSD !== null && bestRMSD !== Infinity ? bestRMSD.toFixed(2) : 'N/A',
+      unit: bestRMSD !== Infinity ? 'Å' : '',
       color: 'success' as const,
     },
     {

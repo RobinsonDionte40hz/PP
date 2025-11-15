@@ -35,7 +35,7 @@ class WebSocketService {
 
     // Join prediction room
     this.socket.on('connect', () => {
-      console.log('WebSocket connected');
+      console.log('✅ WebSocket connected, subscribing to:', predictionId);
       this.socket?.emit('subscribe', { prediction_id: predictionId });
     });
 

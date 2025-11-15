@@ -60,14 +60,18 @@ export interface PredictionListResponse {
 }
 
 export interface PredictionProgress {
+  prediction_id: string;
   iteration: number;
-  energy: number;
-  rmsd?: number;
-  aggressiveness: number;
-  consistency: number;
-  best_energy: number;
+  total_iterations: number;
+  progress_percentage: number;
+  current_energy: number;
+  current_rmsd?: number;
+  conformations_explored?: number;
+  best_energy?: number;
   best_rmsd?: number;
-  timestamp: string;
+  aggressiveness?: number;
+  consistency?: number;
+  timestamp?: string;
 }
 
 // Campaign Types
