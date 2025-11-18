@@ -508,15 +508,8 @@ class MediatorAgent(IProteinAgent):
             if not self.qcpp_adapter:
                 return None
             
-            # Convert conformation to format expected by QCPP
-            # QCPP expects dict with coordinates and optionally sequence
-            conformation_dict = {
-                'coordinates': conformation.atom_coordinates,
-                'sequence': conformation.sequence if hasattr(conformation, 'sequence') else None
-            }
-            
             # Invoke QCPP analysis
-            # Note: This depends on QCPPIntegrationAdapter implementation
+            # Note: QCPP expects a Conformation object, not a dictionary
             try:
                 # Check if adapter has analyze_conformation method
                 if not hasattr(self.qcpp_adapter, 'analyze_conformation'):
@@ -531,8 +524,8 @@ class MediatorAgent(IProteinAgent):
                         }
                     return None
                 
-                # Call QCPP adapter
-                qcpp_result = self.qcpp_adapter.analyze_conformation(conformation_dict)
+                # Call QCPP adapter with Conformation object (not dict)
+                qcpp_result = self.qcpp_adapter.analyze_conformation(conformation)
                 
                 # Extract metrics from result
                 # The exact structure depends on QCPPIntegrationAdapter implementation

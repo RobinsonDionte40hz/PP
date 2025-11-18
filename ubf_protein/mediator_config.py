@@ -81,7 +81,7 @@ class MediatorConfig:
     cache_ttl_seconds: int = 3600       # 1 hour
     
     # Performance tuning (feature flags)
-    enable_thz_detection: bool = True
+    enable_thz_detection: bool = False  # Disabled - incompatible with current QCPP adapter architecture
     enable_folding_detection: bool = True
     enable_geometric_detection: bool = True
     
