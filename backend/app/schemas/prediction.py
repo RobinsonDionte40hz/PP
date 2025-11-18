@@ -5,15 +5,16 @@ from datetime import datetime
 from typing import Optional, Dict, Any
 from pydantic import BaseModel, Field, field_validator
 from app.models.prediction import PredictionStatus
+from app.security import SecurityConfig, validate_sequence_security
 
 
 class PredictionConfigurationSchema(BaseModel):
     """Configuration for prediction"""
-    iterations: int = Field(default=1000, ge=100, le=10000, description="Number of iterations")
-    agents: int = Field(default=10, ge=1, le=100, description="Number of agents")
+    iterations: int = Field(default=1000, ge=SecurityConfig.MIN_ITERATIONS, le=SecurityConfig.MAX_ITERATIONS, description="Number of iterations")
+    agents: int = Field(default=10, ge=SecurityConfig.MIN_AGENTS, le=SecurityConfig.MAX_AGENTS, description="Number of agents")
     diversity: str = Field(default="balanced", description="Agent diversity: cautious, balanced, aggressive")
     enable_checkpointing: bool = Field(default=True, description="Enable checkpointing")
-    checkpoint_interval: int = Field(default=50, ge=10, le=1000, description="Checkpoint every N iterations")
+    checkpoint_interval: int = Field(default=50, ge=SecurityConfig.MIN_CHECKPOINT_INTERVAL, le=SecurityConfig.MAX_CHECKPOINT_INTERVAL, description="Checkpoint every N iterations")
     native_pdb: Optional[str] = Field(default=None, description="PDB ID for native structure comparison")
     qcpp_config: Optional[str] = Field(default=None, description="QCPP configuration: default, high_performance, high_accuracy")
     
@@ -44,12 +45,26 @@ class PredictionCreateSchema(BaseModel):
     @field_validator("sequence")
     @classmethod
     def validate_sequence(cls, v: str) -> str:
+        # Strip whitespace and convert to uppercase
+        v = v.strip().upper()
+        
+        # Length validation (prevent server overload)
+        if len(v) < SecurityConfig.MIN_SEQUENCE_LENGTH:
+            raise ValueError(f"Sequence too short (minimum {SecurityConfig.MIN_SEQUENCE_LENGTH} amino acids)")
+        if len(v) > SecurityConfig.MAX_SEQUENCE_LENGTH:
+            raise ValueError(f"Sequence too long (maximum {SecurityConfig.MAX_SEQUENCE_LENGTH} amino acids for performance)")
+        
         # Check if valid amino acid sequence
-        valid_amino_acids = set("ACDEFGHIKLMNPQRSTVWY")
-        invalid = set(v.upper()) - valid_amino_acids
+        invalid = set(v) - SecurityConfig.VALID_AMINO_ACIDS
         if invalid:
-            raise ValueError(f"Invalid amino acids in sequence: {invalid}")
-        return v.upper()
+            raise ValueError(f"Invalid amino acids in sequence: {', '.join(sorted(invalid))}. Only standard 20 amino acids allowed.")
+        
+        # Additional security validation
+        is_valid, error_msg = validate_sequence_security(v)
+        if not is_valid:
+            raise ValueError(error_msg)
+        
+        return v
 
 
 class PredictionMetricsSchema(BaseModel):

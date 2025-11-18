@@ -1,7 +1,7 @@
 """
 Prediction API endpoints
 """
-from fastapi import APIRouter, HTTPException, Query, Path, BackgroundTasks
+from fastapi import APIRouter, HTTPException, Query, Path, BackgroundTasks, Request
 from typing import Optional, List
 from app.schemas.prediction import (
     PredictionCreateSchema,
@@ -10,9 +10,14 @@ from app.schemas.prediction import (
 )
 from app.models.prediction import PredictionStatus
 from app.services.prediction_service import prediction_service
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 import logging
 
 logger = logging.getLogger(__name__)
+
+# Initialize rate limiter
+limiter = Limiter(key_func=get_remote_address)
 
 router = APIRouter()
 
@@ -24,7 +29,9 @@ router = APIRouter()
     summary="Create new prediction",
     description="Submit a new protein structure prediction job"
 )
+@limiter.limit("10/minute")
 async def create_prediction(
+    request: Request,
     data: PredictionCreateSchema,
     background_tasks: BackgroundTasks,
 ):
@@ -83,7 +90,9 @@ async def create_prediction(
     summary="List predictions",
     description="Get list of predictions with optional filtering"
 )
+@limiter.limit("30/minute")
 async def list_predictions(
+    request: Request,
     status: Optional[PredictionStatus] = Query(
         None,
         description="Filter by status"
