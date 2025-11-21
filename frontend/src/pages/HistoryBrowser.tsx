@@ -22,8 +22,8 @@ import HistoryFilters from '../components/history/HistoryFilters';
 import HistoryCardView from '../components/history/HistoryCardView';
 import HistoryTableView from '../components/history/HistoryTableView';
 import ComparisonModal from '../components/history/ComparisonModal';
-import LoadingSpinner from '../components/common/LoadingSpinner';
 import ErrorAlert from '../components/common/ErrorAlert';
+import { TableSkeleton } from '../components/common/skeletons';
 
 // Note: VirtualizedHistoryTable component available in codebase but needs react-window ESM fix for production use
 
@@ -153,7 +153,15 @@ const HistoryBrowser: React.FC = () => {
   if (isLoading) {
     return (
       <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
-        <LoadingSpinner message="Loading prediction history..." />
+        <Box sx={{ mb: 4 }}>
+          <Typography variant="h4" component="h1" gutterBottom>
+            Prediction History
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Loading prediction history...
+          </Typography>
+        </Box>
+        <TableSkeleton rows={10} columns={6} />
       </Container>
     );
   }

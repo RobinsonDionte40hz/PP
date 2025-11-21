@@ -27,7 +27,8 @@ import MetricsGrid from '../components/monitoring/MetricsGrid';
 import LiveCharts from '../components/monitoring/LiveCharts';
 import EventLog from '../components/monitoring/EventLog';
 import StructurePreviewModal from '../components/monitoring/StructurePreviewModal';
-import { LoadingSpinner, ErrorAlert } from '../components/common';
+import { ErrorAlert } from '../components/common';
+import { MetricsGridSkeleton, LiveChartsSkeleton } from '../components/common/skeletons';
 import type { PredictionProgress } from '../types/api';
 
 const LiveMonitoring: React.FC = () => {
@@ -128,8 +129,22 @@ const LiveMonitoring: React.FC = () => {
 
   if (isLoading) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
-        <LoadingSpinner size={60} />
+      <Box sx={{ p: 3 }}>
+        <Box sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
+          <IconButton onClick={() => navigate('/dashboard')}>
+            <BackIcon />
+          </IconButton>
+          <Box>
+            <Typography variant="h5" fontWeight="bold">
+              Loading Prediction...
+            </Typography>
+          </Box>
+        </Box>
+        <LinearProgress sx={{ mb: 3 }} />
+        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 2, mb: 3 }}>
+          <MetricsGridSkeleton count={6} />
+        </Box>
+        <LiveChartsSkeleton />
       </Box>
     );
   }
@@ -137,7 +152,12 @@ const LiveMonitoring: React.FC = () => {
   if (error || !prediction) {
     return (
       <Box p={3}>
-        <ErrorAlert message="Failed to load prediction details" />
+        <ErrorAlert 
+          error={error}
+          title="Unable to Load Prediction"
+          message={!prediction ? "The prediction could not be found. It may have been deleted." : undefined}
+          onRetry={() => window.location.reload()}
+        />
         <Button startIcon={<BackIcon />} onClick={() => navigate('/dashboard')} sx={{ mt: 2 }}>
           Back to Dashboard
         </Button>

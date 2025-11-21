@@ -24,12 +24,14 @@ const MetricsGrid: React.FC<MetricsGridProps> = React.memo(({ prediction, latest
       trend: (currentEnergy !== null && bestEnergy !== null
         ? currentEnergy < bestEnergy ? 'down' : 'up'
         : undefined) as 'up' | 'down' | 'neutral' | undefined,
+      tooltip: 'Current potential energy of the protein structure. Lower values indicate more stable conformations.',
     },
     {
       title: 'Best Energy',
       value: bestEnergy !== null ? bestEnergy.toFixed(2) : '-',
       unit: 'kcal/mol',
       color: 'success' as const,
+      tooltip: 'Lowest potential energy achieved during this prediction. The optimization goal is to minimize this value.',
     },
     {
       title: 'RMSD',
@@ -39,24 +41,28 @@ const MetricsGrid: React.FC<MetricsGridProps> = React.memo(({ prediction, latest
       trend: (currentRMSD !== null && bestRMSD !== null && currentRMSD !== Infinity && bestRMSD !== Infinity
         ? currentRMSD < bestRMSD ? 'down' : 'up'
         : undefined) as 'up' | 'down' | 'neutral' | undefined,
+      tooltip: 'Root Mean Square Deviation from native structure (if available). Lower is better. Values <2Å indicate excellent accuracy.',
     },
     {
       title: 'Best RMSD',
       value: bestRMSD !== null && bestRMSD !== Infinity ? bestRMSD.toFixed(2) : 'N/A',
       unit: bestRMSD !== Infinity ? 'Å' : '',
       color: 'success' as const,
+      tooltip: 'Best (lowest) RMSD achieved. <2Å = Excellent, 2-4Å = Good, 4-5Å = Acceptable, >5Å = Research phase.',
     },
     {
       title: 'Aggressiveness',
       value: latestProgress?.aggressiveness?.toFixed(1) || '-',
       unit: '',
       color: 'warning' as const,
+      tooltip: 'Exploration tempo (3-15). Higher values mean more aggressive conformational exploration. Adapts based on success.',
     },
     {
       title: 'Consistency',
       value: latestProgress?.consistency?.toFixed(2) || '-',
       unit: '',
       color: 'secondary' as const,
+      tooltip: 'Behavioral stability (0.2-1.0). Higher values indicate more consistent exploration patterns. Increases with success.',
     },
   ];
 

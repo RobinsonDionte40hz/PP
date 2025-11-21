@@ -29,6 +29,7 @@ import {
   TrajectoryTab,
   GeometricAnalysisTab,
 } from '../components/results';
+import { ResultsAnalysisSkeleton } from '../components/common/skeletons';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -141,8 +142,8 @@ const ResultsAnalysis: React.FC = () => {
 
   if (isLoading) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
-        <CircularProgress size={60} />
+      <Box sx={{ p: 3 }}>
+        <ResultsAnalysisSkeleton />
       </Box>
     );
   }

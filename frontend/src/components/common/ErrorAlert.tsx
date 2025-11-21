@@ -1,41 +1,53 @@
 import { Alert, AlertTitle, Box, Button, Collapse } from '@mui/material';
 import { useState } from 'react';
+import { toUserFriendlyError } from '../../utils/errorHandling';
 
 interface ErrorAlertProps {
   title?: string;
-  message: string;
+  message?: string;
   details?: string;
   severity?: 'error' | 'warning' | 'info';
   onRetry?: () => void;
   onDismiss?: () => void;
+  error?: unknown; // Raw error object that will be converted to user-friendly format
 }
 
 export default function ErrorAlert({
-  title = 'Error',
+  title,
   message,
   details,
-  severity = 'error',
+  severity,
   onRetry,
   onDismiss,
+  error,
 }: ErrorAlertProps) {
   const [showDetails, setShowDetails] = useState(false);
 
+  // If raw error provided, convert to user-friendly format
+  const friendlyError = error ? toUserFriendlyError(error) : null;
+  
+  const finalTitle = title || friendlyError?.title || 'Error';
+  const finalMessage = message || friendlyError?.message || 'An unexpected error occurred';
+  const finalDetails = details || friendlyError?.details;
+  const finalSeverity = severity || friendlyError?.severity || 'error';
+  const showRetry = onRetry && (friendlyError?.retryable !== false);
+
   return (
     <Alert
-      severity={severity}
+      severity={finalSeverity}
       onClose={onDismiss}
       action={
-        onRetry && (
+        showRetry && (
           <Button color="inherit" size="small" onClick={onRetry}>
             Retry
           </Button>
         )
       }
     >
-      <AlertTitle>{title}</AlertTitle>
-      {message}
+      <AlertTitle>{finalTitle}</AlertTitle>
+      {finalMessage}
       
-      {details && (
+      {finalDetails && (
         <Box sx={{ mt: 1 }}>
           <Button
             size="small"
@@ -58,7 +70,7 @@ export default function ErrorAlert({
                 wordBreak: 'break-word',
               }}
             >
-              {details}
+              {finalDetails}
             </Box>
           </Collapse>
         </Box>

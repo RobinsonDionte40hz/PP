@@ -1,9 +1,12 @@
+import { useState } from 'react';
 import { AppBar, Toolbar, IconButton, Typography, Box, Chip, Tooltip } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
 import NotificationsIcon from '@mui/icons-material/Notifications';
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import { useThemeStore } from '../../store/themeStore.ts';
+import KeyboardShortcutsDialog from '../common/KeyboardShortcutsDialog';
 
 interface HeaderProps {
   onMenuClick: () => void;
@@ -11,6 +14,7 @@ interface HeaderProps {
 
 export default function Header({ onMenuClick }: HeaderProps) {
   const { mode, toggleTheme } = useThemeStore();
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
 
   return (
     <AppBar 
@@ -55,6 +59,13 @@ export default function Header({ onMenuClick }: HeaderProps) {
           sx={{ mr: 2 }}
         />
         
+        {/* Keyboard Shortcuts Help */}
+        <Tooltip title="Keyboard shortcuts (Ctrl+/)">
+          <IconButton color="inherit" sx={{ mr: 1 }} onClick={() => setShortcutsOpen(true)}>
+            <HelpOutlineIcon />
+          </IconButton>
+        </Tooltip>
+        
         {/* Notifications */}
         <Tooltip title="Notifications">
           <IconButton color="inherit" sx={{ mr: 1 }}>
@@ -69,6 +80,8 @@ export default function Header({ onMenuClick }: HeaderProps) {
           </IconButton>
         </Tooltip>
       </Toolbar>
+      
+      <KeyboardShortcutsDialog open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
     </AppBar>
   );
 }

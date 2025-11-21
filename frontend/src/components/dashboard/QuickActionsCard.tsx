@@ -15,6 +15,7 @@ import {
   Settings as SettingsIcon,
 } from '@mui/icons-material';
 import type { NavigateFunction } from 'react-router-dom';
+import { animationStyles } from '../../utils/animations';
 
 interface QuickActionsCardProps {
   onNavigate: NavigateFunction;
@@ -82,8 +83,13 @@ const QuickActionsCard: React.FC<QuickActionsCardProps> = ({ onNavigate }) => {
         </Typography>
 
         <Box display="flex" flexWrap="wrap" gap={2}>
-          {actions.map((action) => (
-            <Box key={action.label} flex="1 1 calc(50% - 8px)" minWidth="250px">
+          {actions.map((action, index) => (
+            <Box 
+              key={action.label} 
+              flex="1 1 calc(50% - 8px)" 
+              minWidth="250px"
+              sx={animationStyles.staggerItem(index)}
+            >
               <Button
                 variant="outlined"
                 color={action.color}

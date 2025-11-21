@@ -1,6 +1,7 @@
-import { Card, CardContent, Typography, Box, Chip } from '@mui/material';
+import { Card, CardContent, Typography, Box, Chip, Tooltip, IconButton } from '@mui/material';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import TrendingDownIcon from '@mui/icons-material/TrendingDown';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 
 interface MetricCardProps {
   title: string;
@@ -10,6 +11,7 @@ interface MetricCardProps {
   trendValue?: string;
   color?: 'primary' | 'secondary' | 'success' | 'error' | 'warning' | 'info';
   icon?: React.ReactNode;
+  tooltip?: string; // Explanation of what this metric means
 }
 
 export default function MetricCard({
@@ -20,6 +22,7 @@ export default function MetricCard({
   trendValue,
   color = 'primary',
   icon,
+  tooltip,
 }: MetricCardProps) {
   const getTrendIcon = () => {
     if (trend === 'up') return <TrendingUpIcon fontSize="small" />;
@@ -37,9 +40,18 @@ export default function MetricCard({
     <Card>
       <CardContent>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-            {title}
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+              {title}
+            </Typography>
+            {tooltip && (
+              <Tooltip title={tooltip} arrow placement="top">
+                <IconButton size="small" sx={{ p: 0, ml: 0.5 }}>
+                  <InfoOutlinedIcon fontSize="small" sx={{ fontSize: '0.9rem', color: 'text.secondary' }} />
+                </IconButton>
+              </Tooltip>
+            )}
+          </Box>
           {icon && (
             <Box sx={{ color: `${color}.main` }}>
               {icon}

@@ -4,6 +4,7 @@ import { Box, useTheme, useMediaQuery } from '@mui/material';
 import Header from './Header.tsx';
 import Sidebar from './Sidebar.tsx';
 import Footer from './Footer.tsx';
+import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
 
 const DRAWER_WIDTH = 240;
 
@@ -11,6 +12,9 @@ export default function AppLayout() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
+
+  // Enable global keyboard shortcuts
+  useKeyboardShortcuts();
 
   const handleSidebarToggle = () => {
     setSidebarOpen(!sidebarOpen);

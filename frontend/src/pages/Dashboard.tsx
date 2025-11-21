@@ -13,7 +13,8 @@ import {
   RecentPredictionsCard,
   StatisticsCard,
 } from '../components/dashboard';
-import { LoadingSpinner } from '../components';
+import { DashboardSkeleton } from '../components/common/skeletons';
+import { animationStyles } from '../utils/animations';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -71,16 +72,24 @@ const Dashboard: React.FC = () => {
 
   if (predictionsLoading || statsLoading) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
-        <LoadingSpinner size={60} />
+      <Box sx={{ p: 3 }}>
+        <Box mb={4}>
+          <Typography variant="h4" fontWeight="bold" gutterBottom>
+            Dashboard
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Welcome to the Dual-System Protein Platform
+          </Typography>
+        </Box>
+        <DashboardSkeleton />
       </Box>
     );
   }
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box sx={{ p: 3, ...animationStyles.fadeIn }}>
       {/* Header */}
-      <Box mb={4}>
+      <Box mb={4} sx={animationStyles.fadeInDown}>
         <Typography variant="h4" fontWeight="bold" gutterBottom>
           Dashboard
         </Typography>
