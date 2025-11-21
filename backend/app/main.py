@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.database import create_tables
+from app.middleware import SecurityHeadersMiddleware, RequestLoggingMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -20,7 +21,7 @@ limiter = Limiter(key_func=get_remote_address)
 
 app = FastAPI(
     title="Protein Prediction Platform API",
-    description="API for managing protein structure predictions",
+    description="API for managing protein structure predictions with security hardening",
     version="1.0.0",
 )
 
@@ -32,17 +33,25 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 create_tables()
 logger.info("Database tables created/verified")
 
-# Configure CORS
+# Security Middleware (order matters - apply from innermost to outermost)
+# 1. Security headers (applied last, so added first)
+app.add_middleware(SecurityHeadersMiddleware, enable_hsts=settings.ENABLE_HSTS)
+logger.info("✓ Security headers middleware configured")
+
+# 2. Request logging for security audit
+app.add_middleware(RequestLoggingMiddleware)
+logger.info("✓ Request logging middleware configured")
+
+# Configure CORS (with environment-based origins)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",  # React default
-        "http://localhost:5173",  # Vite default
-    ],
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allow_headers=["*"],
+    expose_headers=["X-CSRF-Token", "X-Process-Time"],
 )
+logger.info(f"✓ CORS configured for origins: {settings.CORS_ORIGINS}")
 
 @app.get("/")
 async def root():
