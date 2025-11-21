@@ -8,7 +8,7 @@ interface MetricsGridProps {
   latestProgress?: PredictionProgress;
 }
 
-const MetricsGrid: React.FC<MetricsGridProps> = ({ prediction, latestProgress }) => {
+const MetricsGrid: React.FC<MetricsGridProps> = React.memo(({ prediction, latestProgress }) => {
   // Extract metrics from nested object - prefer WebSocket data for real-time updates
   const bestEnergy = latestProgress?.best_energy ?? prediction.metrics?.best_energy ?? null;
   const bestRMSD = latestProgress?.best_rmsd ?? prediction.metrics?.best_rmsd ?? null;
@@ -69,6 +69,8 @@ const MetricsGrid: React.FC<MetricsGridProps> = ({ prediction, latestProgress })
       ))}
     </Box>
   );
-};
+});
+
+MetricsGrid.displayName = 'MetricsGrid';
 
 export default MetricsGrid;

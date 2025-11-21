@@ -48,7 +48,23 @@ export interface PredictionResponse {
     current_iteration?: number;
     max_iterations?: number;
     current_energy?: number;
+    best_energy?: number;
+    final_energy?: number;
+    current_rmsd?: number;
+    best_rmsd?: number;
     final_rmsd?: number;
+    energy_change?: number;
+    convergence_rate?: number;
+    final_aggressiveness?: number;
+    final_consistency?: number;
+    conformations_explored?: number;
+    unique_structures?: number;
+    gdt_ts_score?: number;
+    tm_score?: number;
+    qaap_alignment?: number;
+    resonance_40hz?: number;
+    water_shielding?: number;
+    qcp_score?: number;
   };
 }
 

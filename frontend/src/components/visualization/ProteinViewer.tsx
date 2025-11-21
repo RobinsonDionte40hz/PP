@@ -38,7 +38,7 @@ export interface ProteinViewerProps {
   onError?: (error: Error) => void;
 }
 
-export const ProteinViewer: React.FC<ProteinViewerProps> = ({
+export const ProteinViewer: React.FC<ProteinViewerProps> = React.memo(({
   pdbData,
   pdbFile,
   nativePdbData,
@@ -226,6 +226,4 @@ export const ProteinViewer: React.FC<ProteinViewerProps> = ({
       />
     </Paper>
   );
-};
-
-export default ProteinViewer;
+});

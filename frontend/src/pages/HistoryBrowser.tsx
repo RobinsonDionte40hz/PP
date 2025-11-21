@@ -25,6 +25,8 @@ import ComparisonModal from '../components/history/ComparisonModal';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import ErrorAlert from '../components/common/ErrorAlert';
 
+// Note: VirtualizedHistoryTable component available in codebase but needs react-window ESM fix for production use
+
 type ViewMode = 'card' | 'table';
 
 interface FilterState {
@@ -84,7 +86,7 @@ const HistoryBrowser: React.FC = () => {
     refetch();
   };
 
-  // Apply client-side filtering and sorting
+  // Apply client-side filtering and sorting (memoized for performance)
   const filteredAndSortedPredictions = React.useMemo(() => {
     if (!predictions) return [];
 
@@ -236,6 +238,7 @@ const HistoryBrowser: React.FC = () => {
           onSelectPrediction={handleSelectPrediction}
         />
       ) : (
+        // Use standard table view (virtualization available but needs react-window fix)
         <HistoryTableView
           predictions={filteredAndSortedPredictions}
           selectedPredictions={selectedPredictions}

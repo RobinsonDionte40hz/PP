@@ -1,14 +1,25 @@
 import { createBrowserRouter } from 'react-router-dom';
+import { lazy, Suspense } from 'react';
 import AppLayout from '../components/layout/AppLayout';
 import ErrorBoundary from '../components/common/ErrorBoundary';
-import Dashboard from '../pages/Dashboard';
-import PredictionForm from '../pages/PredictionForm';
-import LiveMonitoring from '../pages/LiveMonitoring';
-import ResultsAnalysis from '../pages/ResultsAnalysis';
-import StructureVisualization from '../pages/StructureVisualization';
-import CampaignManagement from '../pages/CampaignManagement';
-import HistoryBrowser from '../pages/HistoryBrowser';
-import Settings from '../pages/Settings';
+import LoadingSpinner from '../components/common/LoadingSpinner';
+
+// Lazy load all page components for code splitting
+const Dashboard = lazy(() => import('../pages/Dashboard'));
+const PredictionForm = lazy(() => import('../pages/PredictionForm'));
+const LiveMonitoring = lazy(() => import('../pages/LiveMonitoring'));
+const ResultsAnalysis = lazy(() => import('../pages/ResultsAnalysis'));
+const StructureVisualization = lazy(() => import('../pages/StructureVisualization'));
+const CampaignManagement = lazy(() => import('../pages/CampaignManagement'));
+const HistoryBrowser = lazy(() => import('../pages/HistoryBrowser'));
+const Settings = lazy(() => import('../pages/Settings'));
+
+// Suspense wrapper for lazy-loaded components
+const withSuspense = (Component: React.LazyExoticComponent<React.ComponentType<any>>) => (
+  <Suspense fallback={<LoadingSpinner />}>
+    <Component />
+  </Suspense>
+);
 
 export const router = createBrowserRouter([
   {
@@ -21,47 +32,47 @@ export const router = createBrowserRouter([
     children: [
       {
         index: true,
-        element: <Dashboard />,
+        element: withSuspense(Dashboard),
       },
       {
         path: 'predict',
-        element: <PredictionForm />,
+        element: withSuspense(PredictionForm),
       },
       {
         path: 'predictions/new',
-        element: <PredictionForm />,
+        element: withSuspense(PredictionForm),
       },
       {
         path: 'monitor/:id',
-        element: <LiveMonitoring />,
+        element: withSuspense(LiveMonitoring),
       },
       {
         path: 'monitor/active',
-        element: <LiveMonitoring />,
+        element: withSuspense(LiveMonitoring),
       },
       {
         path: 'results/:id',
-        element: <ResultsAnalysis />,
+        element: withSuspense(ResultsAnalysis),
       },
       {
         path: 'results/latest',
-        element: <ResultsAnalysis />,
+        element: withSuspense(ResultsAnalysis),
       },
       {
         path: 'campaigns',
-        element: <CampaignManagement />,
+        element: withSuspense(CampaignManagement),
       },
       {
         path: 'history',
-        element: <HistoryBrowser />,
+        element: withSuspense(HistoryBrowser),
       },
       {
         path: 'visualization',
-        element: <StructureVisualization />,
+        element: withSuspense(StructureVisualization),
       },
       {
         path: 'settings',
-        element: <Settings />,
+        element: withSuspense(Settings),
       },
     ],
   },

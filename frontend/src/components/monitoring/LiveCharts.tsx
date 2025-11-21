@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Box,
   Paper,
@@ -26,13 +26,45 @@ interface LiveChartsProps {
 
 type ChartType = 'energy' | 'rmsd' | 'params' | 'all';
 
-const LiveCharts: React.FC<LiveChartsProps> = ({ progressData }) => {
+// Downsample data for better performance with large datasets
+const downsampleData = (data: PredictionProgress[], maxPoints: number = 500): PredictionProgress[] => {
+  if (data.length <= maxPoints) return data;
+  
+  const step = Math.ceil(data.length / maxPoints);
+  const downsampled: PredictionProgress[] = [];
+  
+  for (let i = 0; i < data.length; i += step) {
+    downsampled.push(data[i]);
+  }
+  
+  // Always include the last point
+  if (downsampled[downsampled.length - 1] !== data[data.length - 1]) {
+    downsampled.push(data[data.length - 1]);
+  }
+  
+  return downsampled;
+};
+
+const LiveCharts: React.FC<LiveChartsProps> = React.memo(({ progressData }) => {
   const theme = useTheme();
   const [chartType, setChartType] = useState<ChartType>('energy');
 
+  // Memoize downsampled data to prevent recalculation on every render
+  const chartData = useMemo(() => {
+    return downsampleData(progressData, 500);
+  }, [progressData]);
+
+  // Memoize latest timestamp for performance
+  const latestTimestamp = useMemo(() => {
+    if (progressData.length === 0) return null;
+    const lastItem = progressData[progressData.length - 1];
+    if (!lastItem.timestamp) return null;
+    return new Date(lastItem.timestamp).toLocaleTimeString();
+  }, [progressData]);
+
   const renderEnergyChart = () => (
     <ResponsiveContainer width="100%" height={300}>
-      <LineChart data={progressData}>
+      <LineChart data={chartData}>
         <CartesianGrid strokeDasharray="3 3" stroke={theme.palette.divider} />
         <XAxis
           dataKey="iteration"
@@ -75,7 +107,7 @@ const LiveCharts: React.FC<LiveChartsProps> = ({ progressData }) => {
 
   const renderRMSDChart = () => (
     <ResponsiveContainer width="100%" height={300}>
-      <LineChart data={progressData}>
+      <LineChart data={chartData}>
         <CartesianGrid strokeDasharray="3 3" stroke={theme.palette.divider} />
         <XAxis
           dataKey="iteration"
@@ -118,7 +150,7 @@ const LiveCharts: React.FC<LiveChartsProps> = ({ progressData }) => {
 
   const renderParamsChart = () => (
     <ResponsiveContainer width="100%" height={300}>
-      <LineChart data={progressData}>
+      <LineChart data={chartData}>
         <CartesianGrid strokeDasharray="3 3" stroke={theme.palette.divider} />
         <XAxis
           dataKey="iteration"
@@ -222,16 +254,25 @@ const LiveCharts: React.FC<LiveChartsProps> = ({ progressData }) => {
 
       <Box mt={2} display="flex" justifyContent="space-between">
         <Typography variant="caption" color="text.secondary">
-          Data points: {progressData.length}
+          Data points: {progressData.length} {chartData.length < progressData.length && `(showing ${chartData.length})`}
         </Typography>
-        {progressData.length > 0 && (
+        {latestTimestamp && (
           <Typography variant="caption" color="text.secondary">
-            Latest update: {new Date(progressData[progressData.length - 1].timestamp).toLocaleTimeString()}
+            Latest update: {latestTimestamp}
           </Typography>
         )}
       </Box>
     </Paper>
   );
-};
+}, (prevProps, nextProps) => {
+  // Custom comparison: only re-render if progressData length changes or last item changes
+  if (prevProps.progressData.length !== nextProps.progressData.length) return false;
+  if (prevProps.progressData.length === 0) return true;
+  const prevLast = prevProps.progressData[prevProps.progressData.length - 1];
+  const nextLast = nextProps.progressData[nextProps.progressData.length - 1];
+  return prevLast?.iteration === nextLast?.iteration;
+});
+
+LiveCharts.displayName = 'LiveCharts';
 
 export default LiveCharts;

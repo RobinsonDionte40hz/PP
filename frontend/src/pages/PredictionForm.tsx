@@ -72,7 +72,7 @@ const PredictionForm: React.FC = () => {
           enable_checkpointing: true,
           checkpoint_interval: formData.checkpoint_interval || 100,
           native_pdb: formData.native_pdb_id || undefined,
-          qcpp_config: formData.enable_qcpp ? (formData.qcpp_config || 'default') : undefined,
+          qcpp_config: formData.enable_qcpp ? ((formData.qcpp_config || 'default') as 'default' | 'high_performance' | 'high_accuracy') : undefined,
           enable_mediators: formData.enable_mediators || false,
           mediator_count: formData.mediator_count || 3,
           enable_refinement: formData.enable_refinement || false,
