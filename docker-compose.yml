@@ -39,9 +39,11 @@ services:
     depends_on:
       - redis
       - postgres
+      - backend
     environment:
       - REDIS_URL=redis://redis:6379/0
       - DATABASE_URL=postgresql://user:password@postgres:5432/pp_db
+      - BACKEND_URL=http://backend:8000
     volumes:
       - ./backend:/app
       - ./checkpoints:/app/checkpoints

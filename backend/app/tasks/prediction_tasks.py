@@ -228,9 +228,11 @@ def run_prediction(self, prediction_id: str):
                 logger.info(f"Attempting WebSocket emission for iteration {completed_iterations}/{iterations}...")
                 
                 # Call backend WebSocket emission endpoint using httpx (synchronous client)
+                # Use 'backend' service name when running in Docker, 'localhost' for development
+                backend_url = os.getenv('BACKEND_URL', 'http://backend:8000')
                 with httpx.Client() as client:
                     response = client.post(
-                        'http://localhost:8000/api/ws/emit/progress',
+                        f'{backend_url}/api/ws/emit/progress',
                         json={
                             'prediction_id': prediction_id,
                             'data': progress_payload
@@ -249,7 +251,7 @@ def run_prediction(self, prediction_id: str):
                                 try:
                                     from datetime import datetime
                                     log_response = client.post(
-                                        'http://localhost:8000/api/ws/emit/log',
+                                        f'{backend_url}/api/ws/emit/log',
                                         json={
                                             'prediction_id': prediction_id,
                                             'data': {
