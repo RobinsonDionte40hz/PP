@@ -44,7 +44,7 @@ def create_tables():
     """Create all tables"""
     try:
         # Import models to register them with Base
-        from app.models import prediction, campaign
+        from app.models import prediction, campaign, user
         
         Base.metadata.create_all(bind=engine)
         logger.info("Database tables created/verified")

@@ -1,7 +1,7 @@
 """
 Campaign database model
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 from enum import Enum
 
@@ -50,8 +50,8 @@ class Campaign:
         self.protein_ids = protein_ids
         self.status = status
         self.configuration = configuration or {}
-        self.created_at = created_at or datetime.utcnow()
-        self.updated_at = updated_at or datetime.utcnow()
+        self.created_at = created_at or datetime.now(timezone.utc)
+        self.updated_at = updated_at or datetime.now(timezone.utc)
         self.started_at = started_at
         self.completed_at = completed_at
         self.current_phase = current_phase

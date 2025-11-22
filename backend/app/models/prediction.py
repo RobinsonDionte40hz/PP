@@ -1,7 +1,7 @@
 """
 Prediction database model
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from enum import Enum
 from sqlalchemy import Column, String, DateTime, Integer, Float, Text, JSON
@@ -31,8 +31,8 @@ class Prediction(Base):
     sequence = Column(Text, nullable=False)
     status = Column(String, nullable=False, default=PredictionStatus.PENDING.value)
     configuration = Column(JSON, nullable=False, default=dict)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     started_at = Column(DateTime, nullable=True)
     completed_at = Column(DateTime, nullable=True)
     error_message = Column(Text, nullable=True)
