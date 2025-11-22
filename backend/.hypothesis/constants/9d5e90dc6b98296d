@@ -1,0 +1,4 @@
+# file: C:\Users\diont\OneDrive\Desktop\Projects\PP\backend\app\schemas\prediction.py
+# hypothesis_version: 6.148.2
+
+[0.0, 25.0, 250, 1000, '2025-11-12T10:00:00', '2025-11-12T10:05:00', 'Enable checkpointing', 'Number of agents', 'Number of iterations', 'agents', 'aggressive', 'balanced', 'cautious', 'configuration', 'created_at', 'current_iteration', 'default', 'diversity', 'example', 'high_accuracy', 'high_performance', 'id', 'iterations', 'pred_abc123', 'progress_percentage', 'qcpp_config', 'running', 'sequence', 'status', 'total_iterations', 'updated_at']

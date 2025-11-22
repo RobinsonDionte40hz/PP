@@ -1,0 +1,4 @@
+# file: C:\Users\diont\OneDrive\Desktop\Projects\PP\backend\app\services\campaign_service.py
+# hypothesis_version: 6.148.2
+
+[0.0, 'phase_number', 'proteins_completed', 'proteins_failed', 'proteins_passed', 'proteins_tested', 'results', 'status', 'success_rate', 'total_proteins']

@@ -1,0 +1,4 @@
+# file: C:\Users\diont\OneDrive\Desktop\Projects\PP\backend\app\websocket\events.py
+# hypothesis_version: 6.148.2
+
+['agent_id', 'agent_update', 'aggressiveness', 'consistency', 'data', 'energy', 'error_message', 'error_type', 'event_log', 'iteration', 'level', 'message', 'metrics_update', 'new_status', 'old_status', 'prediction_complete', 'prediction_error', 'prediction_id', 'progress_percentage', 'progress_update', 'rmsd', 'status', 'status_change', 'timestamp', 'total_iterations', 'type', 'unknown']

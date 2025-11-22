@@ -1,0 +1,4 @@
+# file: C:\Users\diont\OneDrive\Desktop\Projects\PP\backend\app\models\user.py
+# hypothesis_version: 6.148.2
+
+[150, 255, 'created_at', 'email', 'idx_email_active', 'idx_username_active', 'is_active', 'key_id', 'last_login', 'updated_at', 'username', 'users']

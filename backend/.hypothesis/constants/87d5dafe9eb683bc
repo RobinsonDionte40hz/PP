@@ -1,0 +1,4 @@
+# file: C:\Users\diont\OneDrive\Desktop\Projects\PP\ubf_protein\adaptive_config.py
+# hypothesis_version: 6.148.2
+
+[0.05, 0.5, 0.6, 0.67, 0.75, 1.0, 1.5, 2.0, 2.5, 10.0, 100.0, 100, 150, 2000, 'checkpoint_interval', 'convergence_energy', 'convergence_rmsd', 'max_iterations', 'max_memories', 'stuck_threshold', 'stuck_window']

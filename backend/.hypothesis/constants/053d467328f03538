@@ -1,0 +1,4 @@
+# file: C:\Users\diont\OneDrive\Desktop\Projects\PP\ubf_protein\interfaces.py
+# hypothesis_version: 6.148.2
+
+[100, 10000, 'AdaptiveConfig', 'Conformation', 'ConformationSnapshot', 'ConformationalMemory', 'EnergyLandscape', 'ExplorationResults', 'ProteinSizeClass', 'SystemCheckpoint', 'backbone_rotation', 'disulfide_bond', 'energy_minimization', 'helix_formation', 'hydrophobic_collapse', 'large_jump', 'salt_bridge', 'sheet_formation', 'sidechain_adjust', 'turn_formation']

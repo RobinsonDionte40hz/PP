@@ -1,0 +1,4 @@
+# file: C:\Users\diont\OneDrive\Desktop\Projects\PP\backend\app\websocket\socket_manager.py
+# hypothesis_version: 6.148.2
+
+['*', 'agent_update', 'asgi', 'error', 'event_log', 'message', 'metrics_update', 'prediction_complete', 'prediction_error', 'prediction_id', 'progress_update', 'socket.io', 'status_change', 'subscribed', 'unsubscribed']

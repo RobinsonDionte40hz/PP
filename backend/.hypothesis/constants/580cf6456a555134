@@ -1,0 +1,4 @@
+# file: C:\Users\diont\OneDrive\Desktop\Projects\PP\backend\app\tasks\__init__.py
+# hypothesis_version: 6.148.2
+
+['pause_prediction', 'run_prediction', 'stop_prediction']

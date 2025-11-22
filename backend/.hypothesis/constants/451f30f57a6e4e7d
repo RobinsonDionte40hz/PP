@@ -1,0 +1,4 @@
+# file: C:\Users\diont\OneDrive\Desktop\Projects\PP\backend\app\models\prediction.py
+# hypothesis_version: 6.148.2
+
+[0.0, 'checkpoint_path', 'completed', 'completed_at', 'configuration', 'created_at', 'current_iteration', 'error_message', 'failed', 'id', 'metrics', 'paused', 'pending', 'predictions', 'progress_percentage', 'queued', 'result_path', 'running', 'sequence', 'started_at', 'status', 'stopped', 'task_id', 'total_iterations', 'updated_at']

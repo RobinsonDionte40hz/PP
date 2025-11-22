@@ -1,0 +1,4 @@
+# file: C:\Users\diont\AppData\Roaming\Python\Python314\site-packages\socketio\zmq_manager.py
+# hypothesis_version: 6.148.2
+
+['+', ':', ':\\d+\\+\\d+$', 'channel', 'data', 'message', 'socketio', 'type', 'zmq', 'zmq+', 'zmq+tcp://']

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import {
   Box,
   Button,
@@ -13,11 +13,16 @@ import {
   IconButton,
 } from '@mui/material';
 import { Visibility, VisibilityOff, Login as LoginIcon } from '@mui/icons-material';
-import { login } from '../services/authService';
-import type { LoginRequest, AuthError } from '../types/auth';
+import { useAuth } from '../hooks/useAuth';
+import type { LoginRequest } from '../types/auth';
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { login, isLoading, error: authError } = useAuth();
+  
+  // Get the location user was trying to access before being redirected
+  const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/';
   
   // Form state
   const [formData, setFormData] = useState<LoginRequest>({
@@ -27,8 +32,10 @@ const Login: React.FC = () => {
   
   // UI state
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [localError, setLocalError] = useState<string | null>(null);
+  
+  // Use auth error or local error
+  const error = authError || localError;
   
   // Validation state
   const [touched, setTouched] = useState({
@@ -80,8 +87,8 @@ const Login: React.FC = () => {
       [name]: value,
     }));
     // Clear error when user starts typing
-    if (error) {
-      setError(null);
+    if (localError) {
+      setLocalError(null);
     }
   };
 
@@ -113,21 +120,17 @@ const Login: React.FC = () => {
       return;
     }
 
-    setIsLoading(true);
-    setError(null);
+    setLocalError(null);
 
     try {
-      const response = await login(formData);
+      await login(formData);
       
-      // Success - redirect to dashboard
-      console.log('Login successful:', response.user.username);
-      navigate('/');
+      // Success - redirect to the page user was trying to access or dashboard
+      console.log('Login successful, redirecting to:', from);
+      navigate(from, { replace: true });
     } catch (err) {
-      const authError = err as AuthError;
-      setError(authError.detail || 'Login failed. Please try again.');
-      console.error('Login error:', authError);
-    } finally {
-      setIsLoading(false);
+      console.error('Login error:', err);
+      // Error is handled by AuthContext
     }
   };
 

@@ -122,7 +122,7 @@ security = HTTPBearer(auto_error=False)
 def get_secret_key() -> str:
     """Get JWT secret key from config."""
     from app.config import settings
-    return settings.SECRET_KEY
+    return settings.JWT_SECRET_KEY
 
 
 def hash_password(password: str) -> str:

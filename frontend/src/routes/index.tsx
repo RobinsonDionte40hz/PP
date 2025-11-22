@@ -3,6 +3,9 @@ import { lazy, Suspense } from 'react';
 import AppLayout from '../components/layout/AppLayout';
 import ErrorBoundary from '../components/common/ErrorBoundary';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+import { AuthWrapper } from '../components/common/AuthWrapper';
+import ProtectedRoute from '../components/common/ProtectedRoute';
+import PublicRoute from '../components/common/PublicRoute';
 
 // Lazy load all page components for code splitting
 const Dashboard = lazy(() => import('../pages/Dashboard'));
@@ -23,30 +26,49 @@ const withSuspense = (Component: React.LazyExoticComponent<React.ComponentType<a
   </Suspense>
 );
 
+// Protected route wrapper with suspense
+const withProtectedSuspense = (Component: React.LazyExoticComponent<React.ComponentType<any>>) => (
+  <ProtectedRoute>
+    {withSuspense(Component)}
+  </ProtectedRoute>
+);
+
+// Public route wrapper with suspense (for login/register)
+const withPublicSuspense = (Component: React.LazyExoticComponent<React.ComponentType<any>>) => (
+  <PublicRoute>
+    {withSuspense(Component)}
+  </PublicRoute>
+);
+
 export const router = createBrowserRouter([
   {
-    path: '/login',
-    element: (
-      <ErrorBoundary>
-        {withSuspense(Login)}
-      </ErrorBoundary>
-    ),
-  },
-  {
-    path: '/register',
-    element: (
-      <ErrorBoundary>
-        {withSuspense(Register)}
-      </ErrorBoundary>
-    ),
-  },
-  {
-    path: '/',
-    element: (
-      <ErrorBoundary>
-        <AppLayout />
-      </ErrorBoundary>
-    ),
+    element: <AuthWrapper />,
+    children: [
+      {
+        path: '/login',
+        element: (
+          <ErrorBoundary>
+            {withPublicSuspense(Login)}
+          </ErrorBoundary>
+        ),
+      },
+      {
+        path: '/register',
+        element: (
+          <ErrorBoundary>
+            {withPublicSuspense(Register)}
+          </ErrorBoundary>
+        ),
+      },
+      {
+        path: '/',
+        element: (
+          <ErrorBoundary>
+            <ProtectedRoute>
+              <AppLayout />
+            </ProtectedRoute>
+          </ErrorBoundary>
+        ),
     children: [
       {
         index: true,
@@ -88,10 +110,12 @@ export const router = createBrowserRouter([
         path: 'visualization',
         element: withSuspense(StructureVisualization),
       },
-      {
-        path: 'settings',
-        element: withSuspense(Settings),
-      },
+        {
+          path: 'settings',
+          element: withSuspense(Settings),
+        },
+      ],
+    },
     ],
   },
 ]);

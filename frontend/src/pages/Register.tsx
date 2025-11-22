@@ -17,8 +17,8 @@ import {
   VisibilityOff, 
   PersonAdd as RegisterIcon 
 } from '@mui/icons-material';
-import { register, login } from '../services/authService';
-import type { RegisterRequest, AuthError } from '../types/auth';
+import { useAuth } from '../hooks/useAuth';
+import type { RegisterRequest } from '../types/auth';
 
 interface RegisterFormData extends RegisterRequest {
   confirmPassword: string;
@@ -26,6 +26,7 @@ interface RegisterFormData extends RegisterRequest {
 
 const Register: React.FC = () => {
   const navigate = useNavigate();
+  const { register, login, isLoading } = useAuth();
   
   // Form state
   const [formData, setFormData] = useState<RegisterFormData>({
@@ -38,9 +39,10 @@ const Register: React.FC = () => {
   // UI state
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [localError, setLocalError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  
+  const error = localError;
   
   // Validation state
   const [touched, setTouched] = useState({
@@ -142,8 +144,8 @@ const Register: React.FC = () => {
       [name]: value,
     }));
     // Clear messages when user starts typing
-    if (error) {
-      setError(null);
+    if (localError) {
+      setLocalError(null);
     }
     if (success) {
       setSuccess(null);
@@ -184,8 +186,7 @@ const Register: React.FC = () => {
       return;
     }
 
-    setIsLoading(true);
-    setError(null);
+    setLocalError(null);
     setSuccess(null);
 
     try {
@@ -196,9 +197,9 @@ const Register: React.FC = () => {
         email: formData.email || undefined,
       };
       
-      const registerResponse = await register(registerData);
+      await register(registerData);
       
-      console.log('Registration successful:', registerResponse.user.username);
+      console.log('Registration successful');
       setSuccess('Registration successful! Logging you in...');
       
       // Auto-login after successful registration
@@ -222,11 +223,8 @@ const Register: React.FC = () => {
       }, 1000);
       
     } catch (err) {
-      const authError = err as AuthError;
-      setError(authError.detail || 'Registration failed. Please try again.');
-      console.error('Registration error:', authError);
-    } finally {
-      setIsLoading(false);
+      setLocalError('Registration failed. Please try again.');
+      console.error('Registration error:', err);
     }
   };
 

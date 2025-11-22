@@ -1,0 +1,4 @@
+# file: C:\Users\diont\OneDrive\Desktop\Projects\PP\backend\app\utils\rate_limit.py
+# hypothesis_version: 6.148.2
+
+[300, 900, 3600, 86400]

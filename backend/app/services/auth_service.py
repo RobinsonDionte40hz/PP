@@ -8,7 +8,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
 from app.models.user import User
-from app.utils.password import hash_password, validate_password_strength, validate_credentials
+from app.utils.password import hash_password, validate_password_strength, validate_credentials, verify_password
+from app.services.session_manager import get_session_manager
+from app.security import create_access_token, create_refresh_token
 
 
 class AuthService:
@@ -265,6 +267,7 @@ class AuthService:
             db.refresh(user)
             
             # Return success with user and tokens
+            from app.config import settings
             return True, "Login successful", {
                 "user": user,
                 "access_token": access_token,
@@ -436,6 +439,7 @@ class AuthService:
             await session_manager.set_active_session(user_key_id, new_access_jti)
             
             # Return new access token
+            from app.config import settings
             return True, "Token refreshed successfully", {
                 "access_token": new_access_token,
                 "expires_in": settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES * 60,

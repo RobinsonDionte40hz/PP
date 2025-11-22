@@ -1,0 +1,4 @@
+# file: C:\Users\diont\OneDrive\Desktop\Projects\PP\backend\app\models\session.py
+# hypothesis_version: 6.148.2
+
+['192.168.1.1', '2025-11-22T10:30:00Z', '2025-11-22T11:00:00Z', 'SessionData', 'Username', 'created_at', 'example', 'expires_at', 'ip_address', 'john_doe', 'json_schema_extra', 'user_agent', 'user_key_id', 'username']

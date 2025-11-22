@@ -1,0 +1,4 @@
+# file: C:\Users\diont\OneDrive\Desktop\Projects\PP\backend\app\models\campaign.py
+# hypothesis_version: 6.148.2
+
+['Campaign', 'checkpoint_path', 'completed', 'completed_at', 'configuration', 'created_at', 'current_phase', 'error_message', 'failed', 'id', 'name', 'paused', 'pending', 'phases', 'protein_ids', 'running', 'started_at', 'statistics', 'status', 'stopped', 'total_phases', 'updated_at']

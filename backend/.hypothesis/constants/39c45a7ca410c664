@@ -1,0 +1,4 @@
+# file: C:\Users\diont\AppData\Roaming\Python\Python314\site-packages\celery\utils\deprecated.py
+# hypothesis_version: 6.148.2
+
+['Callable', 'Property', 'alternative', 'cannot set attribute', 'deprecation', 'description', 'removal', 'stacklevel', 'warn']

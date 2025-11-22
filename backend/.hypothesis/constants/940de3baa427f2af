@@ -1,0 +1,4 @@
+# file: C:\Users\diont\OneDrive\Desktop\Projects\PP\ubf_protein\rmsd_calculator.py
+# hypothesis_version: 6.148.2
+
+[0.0, 1e-10, 0.01, 0.1, 0.3, 0.5, 0.7, 1.0, 1.24, 1.8, 2.0, 3.0, 4.0, 6.0, 8.0, 30.0, 50.0, 70.0, 100.0, './pdb_cache', '.ent', '.pdb', 'A', 'ALA', 'ARG', 'ASN', 'ASP', 'ATOM', 'C', 'CA', 'CYS', 'D', 'E', 'ENDMDL', 'F', 'G', 'GLN', 'GLU', 'GLY', 'H', 'HIS', 'I', 'ILE', 'K', 'L', 'LEU', 'LYS', 'M', 'MET', 'MODEL', 'N', 'P', 'PHE', 'PRO', 'Q', 'R', 'S', 'SER', 'T', 'THR', 'TRP', 'TYR', 'V', 'VAL', 'W', 'X', 'Y', 'acceptable', 'excellent', 'good', 'pdb', 'poor', 'r', 'rb', 'wb']

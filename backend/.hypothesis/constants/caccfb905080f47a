@@ -1,0 +1,4 @@
+# file: C:\Users\diont\OneDrive\Desktop\Projects\PP\backend\app\utils\__init__.py
+# hypothesis_version: 6.148.2
+
+['hash_password', 'needs_rehash', 'validate_credentials', 'verify_password']
