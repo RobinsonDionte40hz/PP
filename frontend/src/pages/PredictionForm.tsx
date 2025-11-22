@@ -193,7 +193,7 @@ const PredictionForm: React.FC = () => {
           <Box sx={{ display: 'flex', gap: 2 }}>
             <Button
               variant="text"
-              onClick={() => navigate('/dashboard')}
+              onClick={() => navigate('/')}
             >
               Cancel
             </Button>

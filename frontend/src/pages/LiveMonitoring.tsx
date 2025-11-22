@@ -131,7 +131,7 @@ const LiveMonitoring: React.FC = () => {
     return (
       <Box sx={{ p: 3 }}>
         <Box sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
-          <IconButton onClick={() => navigate('/dashboard')}>
+          <IconButton onClick={() => navigate('/')}>
             <BackIcon />
           </IconButton>
           <Box>
@@ -158,7 +158,7 @@ const LiveMonitoring: React.FC = () => {
           message={!prediction ? "The prediction could not be found. It may have been deleted." : undefined}
           onRetry={() => window.location.reload()}
         />
-        <Button startIcon={<BackIcon />} onClick={() => navigate('/dashboard')} sx={{ mt: 2 }}>
+        <Button startIcon={<BackIcon />} onClick={() => navigate('/')} sx={{ mt: 2 }}>
           Back to Dashboard
         </Button>
       </Box>
@@ -175,7 +175,7 @@ const LiveMonitoring: React.FC = () => {
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
         <Box>
           <Box display="flex" alignItems="center" gap={2}>
-            <IconButton onClick={() => navigate('/dashboard')}>
+            <IconButton onClick={() => navigate('/')}>
               <BackIcon />
             </IconButton>
             <Typography variant="h4" fontWeight="bold">

@@ -1,5 +1,5 @@
 # Frontend Dockerfile
-FROM node:18-alpine AS build
+FROM node:22-alpine AS build
 
 WORKDIR /app
 
@@ -7,7 +7,7 @@ WORKDIR /app
 COPY frontend/package*.json ./
 
 # Install dependencies
-RUN npm ci --only=production
+RUN npm ci
 
 # Copy source code
 COPY frontend/ ./
@@ -16,10 +16,10 @@ COPY frontend/ ./
 RUN npm run build
 
 # Production stage
-FROM nginx:alpine
+FROM nginx:1.27-alpine
 
 # Copy built app from build stage
-COPY --from=build /app/build /usr/share/nginx/html
+COPY --from=build /app/dist /usr/share/nginx/html
 
 # Copy nginx configuration
 COPY docker/frontend/nginx.conf /etc/nginx/nginx.conf

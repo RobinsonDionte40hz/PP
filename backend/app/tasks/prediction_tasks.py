@@ -28,8 +28,23 @@ sys.path.insert(0, project_root)
 # Import UBF system
 from ubf_protein.multi_agent_coordinator import MultiAgentCoordinator
 from ubf_protein.adaptive_config import create_config_for_sequence
+import math
 
 logger = logging.getLogger(__name__)
+
+
+def sanitize_metrics(metrics: dict) -> dict:
+    """Convert Infinity and NaN values to None for JSON serialization"""
+    sanitized = {}
+    for key, value in metrics.items():
+        if isinstance(value, float):
+            if math.isinf(value) or math.isnan(value):
+                sanitized[key] = None
+            else:
+                sanitized[key] = value
+        else:
+            sanitized[key] = value
+    return sanitized
 
 
 class PredictionTask(Task):
@@ -184,13 +199,13 @@ def run_prediction(self, prediction_id: str):
             
             # Get best metrics - MultiAgentCoordinator returns (conformation, energy, rmsd) tuple
             best_conf, best_energy, best_rmsd = coordinator.get_best_conformation()
-            metrics = {
+            metrics = sanitize_metrics({
                 "current_energy": best_energy,
                 "current_rmsd": best_rmsd if best_rmsd is not None else None,
                 "conformations_explored": results.total_conformations_explored,
                 "best_energy": results.best_energy,
                 "best_rmsd": results.best_rmsd
-            }
+            })
             
             # Update prediction
             prediction_service.update_prediction(
@@ -435,7 +450,7 @@ def run_prediction(self, prediction_id: str):
                 progress_percentage=100.0,
                 result_path=str(prediction_dir),
                 checkpoint_path=str(checkpoint_dir) if checkpoint_dir.exists() else None,
-                metrics={
+                metrics=sanitize_metrics({
                     "best_energy": refined_energy,
                     "best_rmsd": refined_rmsd,
                     "final_energy": refined_energy,
@@ -457,7 +472,7 @@ def run_prediction(self, prediction_id: str):
                     "water_shielding": water_shielding,
                     "qcp_score": qcp_score,
                     "refinement_applied": refinement_applied
-                }
+                })
             )
         )
         

@@ -111,7 +111,16 @@ class PredictionService:
                 prediction.progress_percentage = data.progress_percentage
             
             if data.metrics is not None:
-                prediction.metrics.update(data.metrics)
+                # Ensure metrics is a dict and properly merge
+                if prediction.metrics is None:
+                    prediction.metrics = {}
+                if isinstance(prediction.metrics, dict):
+                    prediction.metrics.update(data.metrics)
+                else:
+                    prediction.metrics = data.metrics
+                # Mark as modified for SQLAlchemy to detect change
+                from sqlalchemy.orm.attributes import flag_modified
+                flag_modified(prediction, "metrics")
             
             if data.error_message is not None:
                 prediction.error_message = data.error_message

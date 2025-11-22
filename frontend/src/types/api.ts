@@ -39,10 +39,19 @@ export interface PredictionResponse {
   native_pdb_id?: string;
   error_message?: string;
   result_file?: string;
+  result_path?: string;
   config?: {
     num_agents?: number;
     qcpp_enabled?: boolean;
     temperature?: number;
+  };
+  configuration?: {
+    agents?: number;
+    iterations?: number;
+    diversity?: string;
+    qcpp_config?: string;
+    native_pdb?: string;
+    enable_checkpointing?: boolean;
   };
   metrics?: {
     current_iteration?: number;
@@ -50,6 +59,7 @@ export interface PredictionResponse {
     current_energy?: number;
     best_energy?: number;
     final_energy?: number;
+    initial_energy?: number;
     current_rmsd?: number;
     best_rmsd?: number;
     final_rmsd?: number;
@@ -61,10 +71,12 @@ export interface PredictionResponse {
     unique_structures?: number;
     gdt_ts_score?: number;
     tm_score?: number;
+    validation_quality?: string;
     qaap_alignment?: number;
     resonance_40hz?: number;
     water_shielding?: number;
     qcp_score?: number;
+    refinement_applied?: boolean;
   };
 }
 

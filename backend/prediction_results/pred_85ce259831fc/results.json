@@ -1,0 +1,79 @@
+{
+  "prediction_id": "pred_85ce259831fc",
+  "sequence": "ACDEFGHIK",
+  "iterations": 1000,
+  "agent_count": 10,
+  "diversity": "balanced",
+  "best_energy": -66.38849713303307,
+  "best_rmsd": Infinity,
+  "final_energy": -66.38849713303307,
+  "final_rmsd": Infinity,
+  "conformations_explored": 500,
+  "runtime_seconds": 0.8408703804016113,
+  "refinement_applied": false,
+  "original_metrics": null,
+  "energy_change": -2.1678662008744567,
+  "convergence_rate": 3.3756538504963416,
+  "initial_energy": -64.22063093215861,
+  "final_aggressiveness": null,
+  "final_consistency": null,
+  "unique_structures": 5418,
+  "gdt_ts_score": null,
+  "tm_score": null,
+  "validation_quality": null,
+  "qaap_alignment": null,
+  "resonance_40hz": null,
+  "water_shielding": null,
+  "qcp_score": null,
+  "best_conformation": {
+    "energy": -66.38849713303307,
+    "rmsd_to_native": Infinity,
+    "coordinates": [
+      [
+        3.3728503931992138,
+        -0.3906521763843406,
+        0.25432035954394006
+      ],
+      [
+        6.911252934129775,
+        0.33997647632101324,
+        -1.0375513957619569
+      ],
+      [
+        9.624259981260911,
+        -0.47351763739441166,
+        1.5612118914538713
+      ],
+      [
+        12.0829247231551,
+        -0.6017698612525194,
+        -1.297495428141416
+      ],
+      [
+        15.070518466876557,
+        1.0414424008518972,
+        0.2918068629018187
+      ],
+      [
+        18.26740946524156,
+        -0.9296562808220582,
+        0.00893093295901866
+      ],
+      [
+        21.183685612777214,
+        1.448059603082361,
+        0.753701893891041
+      ],
+      [
+        23.910462254588793,
+        -1.0443985305990084,
+        -0.25453373052882866
+      ],
+      [
+        27.532322400394182,
+        0.05602339989112677,
+        -0.24541333726644632
+      ]
+    ]
+  }
+}
