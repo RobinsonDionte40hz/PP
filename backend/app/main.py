@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.database import create_tables
-from app.middleware import SecurityHeadersMiddleware, RequestLoggingMiddleware
+from app.middleware import SecurityHeadersMiddleware, RequestLoggingMiddleware, CSRFMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -38,7 +38,12 @@ logger.info("Database tables created/verified")
 app.add_middleware(SecurityHeadersMiddleware, enable_hsts=settings.ENABLE_HSTS)
 logger.info("✓ Security headers middleware configured")
 
-# 2. Request logging for security audit
+# 2. CSRF protection (Requirement 6.2)
+if settings.ENABLE_CSRF:
+    app.add_middleware(CSRFMiddleware, secret_key=settings.SECRET_KEY)
+    logger.info("✓ CSRF protection middleware configured")
+
+# 3. Request logging for security audit
 app.add_middleware(RequestLoggingMiddleware)
 logger.info("✓ Request logging middleware configured")
 

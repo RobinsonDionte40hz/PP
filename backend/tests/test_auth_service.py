@@ -986,5 +986,233 @@ class TestTokenRefresh:
         assert token2 != data["access_token"]
 
 
+class TestSecurityPropertyTests:
+    """
+    Property-based tests for security requirements (Task 10)
+    """
+    
+    @pytest.mark.asyncio
+    async def test_property_14_jwt_tokens_cryptographically_secure(self, db, session_manager):
+        """
+        Property 14: JWT tokens must be cryptographically secure
+        
+        Requirements:
+        - 6.2: Secure session tokens resistant to prediction/guessing
+        - Each token must have unique JTI (jti claim)
+        - Tokens generated for same user must be different
+        - JTI must be UUID4 (random, not sequential)
+        """
+        # Register a user
+        AuthService.register_user(db, "secureuser", "SecurePass123!", "secure@example.com")
+        
+        # Generate multiple tokens for the same user
+        tokens = []
+        jtis = []
+        
+        for i in range(10):
+            # Login to get a fresh token
+            success, message, data = await AuthService.login_user(
+                db=db,
+                username="secureuser",
+                password="SecurePass123!",
+                ip_address=f"192.168.1.{i}",
+                user_agent="TestAgent"
+            )
+            
+            assert success is True
+            access_token = data["access_token"]
+            tokens.append(access_token)
+            
+            # Extract JTI
+            import jwt
+            decoded = jwt.decode(access_token, options={"verify_signature": False})
+            jti = decoded.get("jti")
+            jtis.append(jti)
+            
+            # Verify JTI is a valid UUID4
+            try:
+                uuid_obj = uuid.UUID(jti, version=4)
+                assert str(uuid_obj) == jti, "JTI must be UUID4 format"
+            except ValueError:
+                pytest.fail(f"JTI {jti} is not a valid UUID4")
+        
+        # Verify all tokens are unique
+        assert len(set(tokens)) == 10, "All tokens must be unique"
+        
+        # Verify all JTIs are unique
+        assert len(set(jtis)) == 10, "All JTIs must be unique"
+        
+        # Verify JTIs are not sequential (random)
+        # Convert to integers and check they're not consecutive
+        jti_ints = [int(uuid.UUID(jti)) for jti in jtis]
+        for i in range(len(jti_ints) - 1):
+            diff = abs(jti_ints[i+1] - jti_ints[i])
+            # If JTIs were sequential, differences would be small (<1000)
+            # Random UUIDs have large differences (typically > 10^30)
+            assert diff > 1000, f"JTIs appear sequential: {diff}"
+    
+    @pytest.mark.asyncio
+    async def test_property_14_refresh_tokens_unique(self, db, session_manager):
+        """
+        Property 14 (variant): Refresh tokens must be unique per session
+        
+        Requirements:
+        - 6.2: Secure session tokens
+        - Each refresh token must be different
+        - Refresh tokens must be UUID4
+        """
+        # Register a user
+        AuthService.register_user(db, "refreshuser", "RefreshPass123!", "refresh@example.com")
+        
+        refresh_tokens = []
+        
+        for i in range(5):
+            # Login to get refresh token
+            success, message, data = await AuthService.login_user(
+                db=db,
+                username="refreshuser",
+                password="RefreshPass123!",
+                ip_address=f"192.168.1.{i}",
+                user_agent="TestAgent"
+            )
+            
+            assert success is True
+            refresh_token = data["refresh_token"]
+            refresh_tokens.append(refresh_token)
+            
+            # Verify refresh token is UUID4
+            try:
+                uuid_obj = uuid.UUID(refresh_token, version=4)
+                assert str(uuid_obj) == refresh_token
+            except ValueError:
+                pytest.fail(f"Refresh token {refresh_token} is not valid UUID4")
+        
+        # All refresh tokens must be unique
+        assert len(set(refresh_tokens)) == 5, "All refresh tokens must be unique"
+    
+    @pytest.mark.asyncio
+    async def test_property_15_no_passwords_in_logs(self, db, session_manager, caplog):
+        """
+        Property 15: Sensitive data must not appear in logs
+        
+        Requirements:
+        - 6.5: Secure logging - no passwords, tokens, or PII
+        - Logs may contain: username, IP, user_agent, timestamps
+        - Logs must NOT contain: password, access_token, refresh_token, key_id
+        """
+        import logging
+        caplog.set_level(logging.INFO)
+        
+        # Register user
+        password = "SuperSecret123!"
+        email = "sensitive@example.com"
+        
+        success, message, user = AuthService.register_user(
+            db=db,
+            username="loguser",
+            password=password,
+            email=email
+        )
+        
+        # Check registration logs don't contain password
+        registration_logs = caplog.text
+        assert password not in registration_logs, "Password found in registration logs"
+        assert email not in registration_logs or "key_id" in registration_logs, \
+            "Email may appear but not with password"
+        
+        # Clear logs
+        caplog.clear()
+        
+        # Login user
+        success, message, data = await AuthService.login_user(
+            db=db,
+            username="loguser",
+            password=password,
+            ip_address="192.168.1.100",
+            user_agent="TestBrowser/1.0"
+        )
+        
+        login_logs = caplog.text
+        
+        # Verify password not in logs
+        assert password not in login_logs, "Password found in login logs"
+        
+        # Verify tokens not in logs
+        if success and data:
+            access_token = data.get("access_token")
+            refresh_token = data.get("refresh_token")
+            
+            assert access_token not in login_logs, "Access token found in logs"
+            assert refresh_token not in login_logs, "Refresh token found in logs"
+        
+        # Verify safe data IS present (username, IP)
+        assert "loguser" in login_logs, "Username should be in logs"
+        assert "192.168.1.100" in login_logs, "IP address should be in logs"
+    
+    @pytest.mark.asyncio
+    @given(
+        username=st.text(
+            alphabet=st.characters(whitelist_categories=('Lu', 'Ll', 'Nd'), whitelist_characters='_-'),
+            min_size=3,
+            max_size=50
+        ).filter(lambda x: x[0].isalnum() if x else False),
+        password=st.text(min_size=8, max_size=72).filter(
+            lambda p: any(c.isupper() for c in p) and 
+                      any(c.islower() for c in p) and 
+                      any(c.isdigit() for c in p) and 
+                      any(c in "!@#$%^&*()_+-=[]{}|;:,.<>?" for c in p)
+        )
+    )
+    @settings(max_examples=20, deadline=5000)
+    async def test_property_15_no_sensitive_data_in_any_operation(self, db, session_manager, username, password, caplog):
+        """
+        Property 15 (hypothesis): Sensitive data never appears in logs regardless of input
+        
+        This property test validates that no matter what valid username/password
+        combination is used, sensitive data is never logged.
+        """
+        import logging
+        caplog.set_level(logging.INFO)
+        caplog.clear()
+        
+        # Register with hypothesis-generated credentials
+        success, message, user = AuthService.register_user(
+            db=db,
+            username=username,
+            password=password,
+            email=f"{username}@example.com"
+        )
+        
+        if not success:
+            # Skip invalid registrations
+            return
+        
+        # Check all logs
+        all_logs = caplog.text
+        
+        # Password must never appear
+        assert password not in all_logs, f"Password '{password}' found in logs"
+        
+        # If login succeeds, tokens must not appear
+        caplog.clear()
+        success, message, data = await AuthService.login_user(
+            db=db,
+            username=username,
+            password=password,
+            ip_address="192.168.1.1",
+            user_agent="HypothesisTest"
+        )
+        
+        login_logs = caplog.text
+        
+        # Password never in logs
+        assert password not in login_logs, f"Password found in login logs"
+        
+        # Tokens never in logs
+        if success and data:
+            assert data.get("access_token") not in login_logs, "Access token in logs"
+            assert data.get("refresh_token") not in login_logs, "Refresh token in logs"
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

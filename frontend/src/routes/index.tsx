@@ -13,6 +13,8 @@ const StructureVisualization = lazy(() => import('../pages/StructureVisualizatio
 const CampaignManagement = lazy(() => import('../pages/CampaignManagement'));
 const HistoryBrowser = lazy(() => import('../pages/HistoryBrowser'));
 const Settings = lazy(() => import('../pages/Settings'));
+const Login = lazy(() => import('../pages/Login'));
+const Register = lazy(() => import('../pages/Register'));
 
 // Suspense wrapper for lazy-loaded components
 const withSuspense = (Component: React.LazyExoticComponent<React.ComponentType<any>>) => (
@@ -22,6 +24,22 @@ const withSuspense = (Component: React.LazyExoticComponent<React.ComponentType<a
 );
 
 export const router = createBrowserRouter([
+  {
+    path: '/login',
+    element: (
+      <ErrorBoundary>
+        {withSuspense(Login)}
+      </ErrorBoundary>
+    ),
+  },
+  {
+    path: '/register',
+    element: (
+      <ErrorBoundary>
+        {withSuspense(Register)}
+      </ErrorBoundary>
+    ),
+  },
   {
     path: '/',
     element: (

@@ -190,8 +190,27 @@ class AuthService:
             # User doesn't exist - return generic error to prevent username enumeration
             return False, "Invalid username or password", None
         
+        # Check for account lockout (Requirement 6.4: brute force protection)
+        try:
+            from app.utils.rate_limit import BruteForceProtection
+            session_manager_temp = get_session_manager()
+            brute_force = BruteForceProtection(session_manager_temp.redis_client)
+            
+            is_locked, retry_after = brute_force.is_locked_out(username)
+            if is_locked:
+                return False, f"Account temporarily locked. Try again in {retry_after} seconds", None
+        except Exception as e:
+            # Fail open if brute force check fails
+            pass
+        
         # Verify password (Requirement 2.4: constant-time comparison)
         if not verify_password(password, user.password_hash):
+            # Record failed attempt (Requirement 6.4)
+            try:
+                brute_force.record_failed_attempt(username)
+            except Exception:
+                pass
+            
             # Wrong password - return same generic error
             return False, "Invalid username or password", None
         
@@ -233,6 +252,12 @@ class AuthService:
                 ip_address=ip_address,
                 user_agent=user_agent,
             )
+            
+            # Reset failed attempts on successful login (Requirement 6.4)
+            try:
+                brute_force.reset_failed_attempts(username)
+            except Exception:
+                pass
             
             # Update user's last_login timestamp
             user.last_login = datetime.now(timezone.utc)

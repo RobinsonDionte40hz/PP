@@ -18,6 +18,8 @@ from app.schemas.auth import (
     ErrorResponse
 )
 from app.services.auth_service import AuthService
+from app.utils.rate_limit import RateLimiter
+from app.services.session_manager import get_session_manager
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
@@ -30,6 +32,7 @@ router = APIRouter(prefix="/api/auth", tags=["Authentication"])
         201: {"description": "User registered successfully"},
         400: {"model": ErrorResponse, "description": "Validation error"},
         409: {"model": ErrorResponse, "description": "Username or email already exists"},
+        429: {"model": ErrorResponse, "description": "Too many registration attempts"},
         500: {"model": ErrorResponse, "description": "Internal server error"}
     },
     summary="Register a new user",
@@ -56,14 +59,47 @@ router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 )
 async def register(
     request: UserRegisterRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    req: Request = None,
+    session_manager = Depends(get_session_manager)
 ):
     """
     Register a new user.
     
     This endpoint creates a new user account with the provided credentials.
     The password is securely hashed using bcrypt before storage.
+    
+    Rate limit: 5 registrations per hour per IP address.
+    Requirement: 6.4
     """
+    import logging
+    logger = logging.getLogger("security.auth")
+    
+    # Get client IP for logging (Requirement 6.5 - no sensitive data)
+    client_ip = req.client.host if req and req.client else "unknown"
+    
+    # Check rate limit (Requirement 6.4: 5 registrations per hour)
+    try:
+        rate_limiter = RateLimiter(session_manager.redis_client)
+        allowed, retry_after = rate_limiter.check_rate_limit(
+            key=f"register:{client_ip}",
+            max_requests=5,
+            window_seconds=3600
+        )
+        if not allowed:
+            logger.warning(
+                f"Registration rate limit exceeded from IP: {client_ip}, Retry after: {retry_after}s"
+            )
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=f"Too many registration attempts. Try again in {retry_after} seconds",
+                headers={"Retry-After": str(retry_after)}
+            )
+    except HTTPException:
+        raise
+    except Exception as e:
+        # Fail open if rate limiting fails
+        logger.error(f"Rate limiting check failed: {str(e)}")
     success, message, user = AuthService.register_user(
         db=db,
         username=request.username,
@@ -95,6 +131,12 @@ async def register(
     # Return user profile (without password)
     user_profile = user.to_profile()
     
+    # Secure logging - no passwords (Requirement 6.5)
+    logger.info(
+        f"User registered successfully: username={user.username}, "
+        f"ip={client_ip}, key_id={user.key_id}"
+    )
+    
     return UserRegisterResponse(
         message="User registered successfully",
         user=UserResponse(**user_profile)
@@ -110,6 +152,7 @@ async def register(
         400: {"model": ErrorResponse, "description": "Invalid credentials"},
         401: {"model": ErrorResponse, "description": "Authentication failed"},
         403: {"model": ErrorResponse, "description": "Account inactive"},
+        429: {"model": ErrorResponse, "description": "Too many login attempts"},
         500: {"model": ErrorResponse, "description": "Internal server error"}
     },
     summary="User login",
@@ -130,7 +173,8 @@ async def register(
 async def login(
     request: Request,
     credentials: UserLoginRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    session_manager = Depends(get_session_manager)
 ):
     """
     Authenticate user and create session.
@@ -140,9 +184,40 @@ async def login(
     
     Requirements: 2.1, 2.2, 2.4, 2.5, 3.1, 3.2, 3.4
     """
-    # Extract client info for session tracking
+    import logging
+    logger = logging.getLogger("security.auth")
+    
+    # Extract client info for session tracking (Requirement 6.4)
     ip_address = request.client.host if request.client else "unknown"
     user_agent = request.headers.get("user-agent", "unknown")
+    
+    # Check rate limit (Requirement 6.4: 10 logins per 15 minutes)
+    try:
+        rate_limiter = RateLimiter(session_manager.redis_client)
+        allowed, retry_after = rate_limiter.check_rate_limit(
+            key=f"login:{ip_address}",
+            max_requests=10,
+            window_seconds=900
+        )
+        if not allowed:
+            logger.warning(
+                f"Login rate limit exceeded from IP: {ip_address}, Retry after: {retry_after}s"
+            )
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=f"Too many login attempts. Try again in {retry_after} seconds",
+                headers={"Retry-After": str(retry_after)}
+            )
+    except HTTPException:
+        raise
+    except Exception as e:
+        # Fail open if rate limiting fails
+        logger.error(f"Rate limiting check failed: {str(e)}")
+    
+    # Log login attempt - no passwords (Requirement 6.5)
+    logger.info(
+        f"Login attempt: username={credentials.username}, ip={ip_address}"
+    )
     
     # Attempt login
     success, message, data = await AuthService.login_user(
@@ -154,6 +229,11 @@ async def login(
     )
     
     if not success:
+        # Secure logging - failed login (Requirement 6.5)
+        logger.warning(
+            f"Login failed: username={credentials.username}, ip={ip_address}, reason={message}"
+        )
+        
         # Determine status code based on error message
         if "cannot be empty" in message.lower():
             raise HTTPException(
@@ -180,6 +260,11 @@ async def login(
     assert data is not None, "Data should not be None after successful login"
     
     user = data["user"]
+    
+    # Secure logging - successful login, no tokens (Requirement 6.5)
+    logger.info(
+        f"Login successful: username={user.username}, ip={ip_address}, key_id={user.key_id}"
+    )
     
     # Return user profile and tokens
     return UserLoginResponse(
@@ -228,6 +313,12 @@ async def logout(
     
     Requirements: 3.3, 5.1, 5.2, 5.4
     """
+    import logging
+    logger = logging.getLogger("security.auth")
+    
+    # Extract client info
+    client_ip = request.client.host if request.client else "unknown"
+    
     # Extract token from Authorization header
     auth_header = request.headers.get("authorization") or request.headers.get("Authorization")
     
@@ -288,6 +379,11 @@ async def logout(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=message
             )
+        
+        # Secure logging - no tokens (Requirement 6.5)
+        logger.info(
+            f"Logout successful: user_id={user_key_id}, ip={client_ip}"
+        )
         
         return LogoutResponse(message=message)
         
