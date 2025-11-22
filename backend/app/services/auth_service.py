@@ -137,3 +137,284 @@ class AuthService:
             User object if found, None otherwise
         """
         return db.query(User).filter(User.key_id == key_id).first()
+    
+    @staticmethod
+    async def login_user(
+        db: Session,
+        username: str,
+        password: str,
+        ip_address: str,
+        user_agent: str,
+    ) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
+        """
+        Authenticate user and create session.
+        
+        This method:
+        1. Validates credentials against database
+        2. Checks for existing active session
+        3. Terminates old session if exists (single-session enforcement)
+        4. Generates new JWT tokens (access + refresh)
+        5. Creates session in Redis with user info
+        6. Updates user's last_login timestamp
+        
+        Args:
+            db: Database session
+            username: Username to authenticate
+            password: Plain text password
+            ip_address: Client IP address
+            user_agent: Client user agent string
+            
+        Returns:
+            Tuple of (success: bool, message: str, data: Optional[Dict])
+            data contains: user (User object), access_token, refresh_token
+            
+        Requirements: 2.1, 2.2, 2.4, 2.5, 3.1, 3.2, 3.4
+        
+        Example:
+            >>> success, message, data = await AuthService.login_user(
+            ...     db, "john_doe", "Pass123!", "192.168.1.1", "Mozilla/5.0"
+            ... )
+            >>> if success:
+            ...     print(f"Logged in: {data['user'].username}")
+            ...     print(f"Access token: {data['access_token']}")
+        """
+        # Validate credentials are not empty
+        valid, errors = validate_credentials(username, password)
+        if not valid:
+            return False, "; ".join(errors), None
+        
+        # Get user by username
+        user = db.query(User).filter(User.username == username).first()
+        
+        if not user:
+            # User doesn't exist - return generic error to prevent username enumeration
+            return False, "Invalid username or password", None
+        
+        # Verify password (Requirement 2.4: constant-time comparison)
+        if not verify_password(password, user.password_hash):
+            # Wrong password - return same generic error
+            return False, "Invalid username or password", None
+        
+        # Check if user account is active
+        if not user.is_active:
+            return False, "Account is inactive", None
+        
+        try:
+            # Generate JWT token IDs
+            access_jti = str(uuid.uuid4())
+            refresh_jti = str(uuid.uuid4())
+            
+            # Create token claims (Requirement 2.1, 2.5)
+            token_data = {
+                "sub": user.key_id,  # Subject: user's key_id
+                "username": user.username,
+                "jti": access_jti,  # JWT ID for session tracking
+            }
+            
+            # Generate JWT tokens (Requirement 2.1)
+            access_token = create_access_token(token_data)
+            refresh_token = create_refresh_token({
+                "sub": user.key_id,
+                "jti": refresh_jti,
+            })
+            
+            # Get session manager
+            session_manager = get_session_manager()
+            
+            # Enforce single-session-per-user (Requirements 3.1, 3.4)
+            # This will terminate any existing session before creating new one
+            await session_manager.enforce_single_session(user.key_id, access_jti)
+            
+            # Create new session in Redis (Requirement 3.2)
+            session_data = await session_manager.create_session(
+                token_jti=access_jti,
+                user_key_id=user.key_id,
+                username=user.username,
+                ip_address=ip_address,
+                user_agent=user_agent,
+            )
+            
+            # Update user's last_login timestamp
+            user.last_login = datetime.now(timezone.utc)
+            db.commit()
+            db.refresh(user)
+            
+            # Return success with user and tokens
+            return True, "Login successful", {
+                "user": user,
+                "access_token": access_token,
+                "refresh_token": refresh_token,
+                "expires_in": settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES * 60,  # In seconds
+            }
+            
+        except RuntimeError as e:
+            db.rollback()
+            # Session/Redis error
+            return False, f"Session creation failed: {str(e)}", None
+        except Exception as e:
+            db.rollback()
+            return False, f"Login failed: {str(e)}", None
+    
+    @staticmethod
+    async def logout_user(
+        token: str,
+        user_key_id: str,
+    ) -> Tuple[bool, str]:
+        """
+        Logout user and terminate session.
+        
+        This method:
+        1. Extracts token JTI from JWT (even if expired)
+        2. Deletes session from Redis
+        3. Removes user's active session mapping
+        4. Invalidates JWT token (session deletion prevents reuse)
+        
+        Args:
+            token: JWT access token (can be expired)
+            user_key_id: User's unique key ID for verification
+            
+        Returns:
+            Tuple of (success: bool, message: str)
+            
+        Requirements: 3.3, 5.1, 5.2, 5.4
+        
+        Example:
+            >>> success, message = await AuthService.logout_user(
+            ...     token="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+            ...     user_key_id="550e8400-e29b-41d4-a716-446655440000"
+            ... )
+            >>> if success:
+            ...     print("User logged out successfully")
+        """
+        try:
+            # Extract JTI from token (allow expired tokens for logout)
+            from app.security import extract_jti_from_token
+            
+            jti = extract_jti_from_token(token)
+            
+            if not jti:
+                # Token is invalid or malformed, but still try to succeed
+                # (graceful logout even with invalid token)
+                return True, "Logout successful"
+            
+            # Get session manager
+            session_manager = get_session_manager()
+            
+            # Terminate session (Requirements 3.3, 5.1, 5.2, 5.4)
+            # This will:
+            # - Delete session data from Redis
+            # - Remove user's active session mapping
+            # - Ensure session cannot be reused
+            terminated = await session_manager.terminate_session(jti)
+            
+            if terminated:
+                return True, "Logout successful"
+            else:
+                # Session not found (already logged out or expired)
+                # Still return success for idempotency
+                return True, "Logout successful"
+                
+        except RuntimeError as e:
+            # Session/Redis error
+            return False, f"Logout failed: {str(e)}"
+        except Exception as e:
+            return False, f"Logout failed: {str(e)}"
+    
+    @staticmethod
+    async def refresh_token(
+        refresh_token: str,
+    ) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
+        """
+        Refresh access token using refresh token.
+        
+        This method:
+        1. Validates refresh token (signature, expiration, type)
+        2. Checks that session still exists in Redis
+        3. Generates new access token with same claims
+        4. Updates session expiration in Redis
+        5. Returns new access token
+        
+        Args:
+            refresh_token: JWT refresh token
+            
+        Returns:
+            Tuple of (success: bool, message: str, data: Optional[Dict])
+            data contains: access_token, expires_in
+            
+        Requirement: 4.1
+        
+        Example:
+            >>> success, message, data = await AuthService.refresh_token(
+            ...     refresh_token="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+            ... )
+            >>> if success:
+            ...     print(f"New access token: {data['access_token']}")
+        """
+        try:
+            # Decode and validate refresh token
+            from app.security import decode_token, verify_token_type, create_access_token
+            
+            payload = decode_token(refresh_token)
+            
+            # Verify token type is 'refresh'
+            if not verify_token_type(payload, "refresh"):
+                return False, "Invalid token type", None
+            
+            # Extract user info
+            user_key_id = payload.get("sub")
+            refresh_jti = payload.get("jti")
+            
+            if not user_key_id or not refresh_jti:
+                return False, "Invalid token claims", None
+            
+            # Get session manager
+            session_manager = get_session_manager()
+            
+            # Check if user still has an active session
+            # Note: Refresh tokens are associated with the user, not a specific session
+            # We just verify the user has some active session
+            active_session_jti = await session_manager.get_active_session(user_key_id)
+            
+            if not active_session_jti:
+                return False, "No active session found", None
+            
+            # Get session data to retrieve username
+            session_data = await session_manager.get_session(active_session_jti)
+            
+            if not session_data:
+                return False, "Session not found or expired", None
+            
+            # Generate new access token with new JTI
+            new_access_jti = str(uuid.uuid4())
+            token_data = {
+                "sub": user_key_id,
+                "username": session_data.username,
+                "jti": new_access_jti,
+            }
+            
+            new_access_token = create_access_token(token_data)
+            
+            # Update the active session to use the new access token JTI
+            # First terminate old session
+            await session_manager.terminate_session(active_session_jti)
+            
+            # Create new session with new JTI
+            await session_manager.create_session(
+                token_jti=new_access_jti,
+                user_key_id=user_key_id,
+                username=session_data.username,
+                ip_address=session_data.ip_address,
+                user_agent=session_data.user_agent,
+            )
+            
+            # Set as active session
+            await session_manager.set_active_session(user_key_id, new_access_jti)
+            
+            # Return new access token
+            return True, "Token refreshed successfully", {
+                "access_token": new_access_token,
+                "expires_in": settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+            }
+            
+        except Exception as e:
+            return False, f"Token refresh failed: {str(e)}", None

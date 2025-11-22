@@ -5,7 +5,8 @@ from .security import (
     SecurityHeadersMiddleware,
     CSRFMiddleware,
     RateLimitMiddleware,
-    RequestLoggingMiddleware
+    RequestLoggingMiddleware,
+    AuthenticationMiddleware
 )
 
 __all__ = [
@@ -13,4 +14,5 @@ __all__ = [
     "CSRFMiddleware",
     "RateLimitMiddleware",
     "RequestLoggingMiddleware",
+    "AuthenticationMiddleware",
 ]

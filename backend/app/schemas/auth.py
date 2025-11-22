@@ -96,6 +96,122 @@ class UserRegisterResponse(BaseModel):
     }
 
 
+class UserLoginRequest(BaseModel):
+    """Request schema for user login"""
+    username: str = Field(..., min_length=1, description="Username")
+    password: str = Field(..., min_length=1, description="Password")
+    
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "username": "john_doe",
+                    "password": "SecurePass123!"
+                }
+            ]
+        }
+    }
+
+
+class TokenResponse(BaseModel):
+    """Response schema for JWT tokens"""
+    access_token: str = Field(..., description="JWT access token")
+    refresh_token: str = Field(..., description="JWT refresh token")
+    token_type: str = Field(default="bearer", description="Token type")
+    expires_in: int = Field(..., description="Access token expiration in seconds")
+    
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                    "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                    "token_type": "bearer",
+                    "expires_in": 1800
+                }
+            ]
+        }
+    }
+
+
+class UserLoginResponse(BaseModel):
+    """Response schema for successful login"""
+    message: str = Field(..., description="Success message")
+    user: UserResponse = Field(..., description="User profile data")
+    tokens: TokenResponse = Field(..., description="Authentication tokens")
+    
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "message": "Login successful",
+                    "user": {
+                        "key_id": "550e8400-e29b-41d4-a716-446655440000",
+                        "username": "john_doe",
+                        "email": "john@example.com",
+                        "created_at": "2025-11-22T10:30:00"
+                    },
+                    "tokens": {
+                        "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                        "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                        "token_type": "bearer",
+                        "expires_in": 1800
+                    }
+                }
+            ]
+        }
+    }
+
+
+class LogoutResponse(BaseModel):
+    """Response schema for logout"""
+    message: str = Field(..., description="Success message")
+    
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "message": "Logout successful"
+                }
+            ]
+        }
+    }
+
+
+class TokenRefreshRequest(BaseModel):
+    """Request schema for token refresh"""
+    refresh_token: str = Field(..., description="JWT refresh token")
+    
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                }
+            ]
+        }
+    }
+
+
+class TokenRefreshResponse(BaseModel):
+    """Response schema for token refresh"""
+    access_token: str = Field(..., description="New JWT access token")
+    token_type: str = Field(default="bearer", description="Token type")
+    expires_in: int = Field(..., description="Access token expiration in seconds")
+    
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                    "token_type": "bearer",
+                    "expires_in": 1800
+                }
+            ]
+        }
+    }
+
+
 class ErrorResponse(BaseModel):
     """Response schema for errors"""
     detail: str = Field(..., description="Error message")

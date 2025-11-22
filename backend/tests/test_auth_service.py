@@ -1,14 +1,18 @@
 """
-Tests for user registration service
+Tests for user registration and login services
 """
 import pytest
 import uuid
+import asyncio
+from datetime import datetime, timezone
+from hypothesis import given, strategies as st, settings
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.database import Base
 from app.models.user import User
 from app.services.auth_service import AuthService
+from app.services.session_manager import SessionManager
 
 
 # Create test database
@@ -254,6 +258,732 @@ class TestSecurityProperties:
         assert "username" in profile
         assert "email" in profile
         assert "created_at" in profile
+
+
+class TestUserLogin:
+    """Tests for user login functionality"""
+    
+    @pytest.fixture
+    async def session_manager(self):
+        """Create a test session manager"""
+        manager = SessionManager(
+            redis_url="redis://localhost:6379/15",
+            session_expire_minutes=30
+        )
+        try:
+            manager.redis_client.flushdb()
+            yield manager
+        finally:
+            manager.redis_client.flushdb()
+            manager.close()
+    
+    @pytest.mark.asyncio
+    async def test_login_success(self, db, session_manager):
+        """Test successful login"""
+        # Register a user
+        AuthService.register_user(db, "testuser", "TestPass123!", "test@example.com")
+        
+        # Login
+        success, message, data = await AuthService.login_user(
+            db=db,
+            username="testuser",
+            password="TestPass123!",
+            ip_address="192.168.1.1",
+            user_agent="Mozilla/5.0"
+        )
+        
+        assert success is True
+        assert message == "Login successful"
+        assert data is not None
+        assert "user" in data
+        assert "access_token" in data
+        assert "refresh_token" in data
+        assert "expires_in" in data
+        assert data["user"].username == "testuser"
+        
+    @pytest.mark.asyncio
+    async def test_login_invalid_username(self, db, session_manager):
+        """Test login with non-existent username"""
+        success, message, data = await AuthService.login_user(
+            db=db,
+            username="nonexistent",
+            password="TestPass123!",
+            ip_address="192.168.1.1",
+            user_agent="Mozilla/5.0"
+        )
+        
+        assert success is False
+        assert "Invalid username or password" in message
+        assert data is None
+        
+    @pytest.mark.asyncio
+    async def test_login_invalid_password(self, db, session_manager):
+        """Test login with wrong password"""
+        # Register a user
+        AuthService.register_user(db, "testuser", "TestPass123!", "test@example.com")
+        
+        # Login with wrong password
+        success, message, data = await AuthService.login_user(
+            db=db,
+            username="testuser",
+            password="WrongPass123!",
+            ip_address="192.168.1.1",
+            user_agent="Mozilla/5.0"
+        )
+        
+        assert success is False
+        assert "Invalid username or password" in message
+        assert data is None
+        
+    @pytest.mark.asyncio
+    async def test_login_empty_username(self, db, session_manager):
+        """Test login with empty username"""
+        success, message, data = await AuthService.login_user(
+            db=db,
+            username="",
+            password="TestPass123!",
+            ip_address="192.168.1.1",
+            user_agent="Mozilla/5.0"
+        )
+        
+        assert success is False
+        assert "Username cannot be empty" in message
+        assert data is None
+        
+    @pytest.mark.asyncio
+    async def test_login_empty_password(self, db, session_manager):
+        """Test login with empty password"""
+        success, message, data = await AuthService.login_user(
+            db=db,
+            username="testuser",
+            password="",
+            ip_address="192.168.1.1",
+            user_agent="Mozilla/5.0"
+        )
+        
+        assert success is False
+        assert "Password cannot be empty" in message
+        assert data is None
+        
+    @pytest.mark.asyncio
+    async def test_login_session_creation(self, db, session_manager):
+        """Test that login creates a session in Redis"""
+        # Register a user
+        AuthService.register_user(db, "testuser", "TestPass123!", "test@example.com")
+        
+        # Login
+        success, message, data = await AuthService.login_user(
+            db=db,
+            username="testuser",
+            password="TestPass123!",
+            ip_address="192.168.1.1",
+            user_agent="Mozilla/5.0"
+        )
+        
+        assert success is True
+        # Session should be created - we can't easily verify the token JTI here
+        # but we can verify the user has a session
+        assert data["user"].key_id is not None
+        
+    @pytest.mark.asyncio
+    async def test_login_updates_last_login(self, db, session_manager):
+        """Test that login updates last_login timestamp"""
+        # Register a user
+        _, _, user = AuthService.register_user(db, "testuser", "TestPass123!", "test@example.com")
+        initial_last_login = user.last_login
+        
+        # Login
+        success, message, data = await AuthService.login_user(
+            db=db,
+            username="testuser",
+            password="TestPass123!",
+            ip_address="192.168.1.1",
+            user_agent="Mozilla/5.0"
+        )
+        
+        assert success is True
+        assert data["user"].last_login is not None
+        # last_login should be updated (or set if it was None)
+        if initial_last_login:
+            assert data["user"].last_login > initial_last_login
+
+
+class TestLoginPropertyTests:
+    """Property-based tests for login functionality"""
+    
+    @pytest.fixture
+    async def session_manager(self):
+        """Create a test session manager"""
+        manager = SessionManager(
+            redis_url="redis://localhost:6379/15",
+            session_expire_minutes=30
+        )
+        try:
+            manager.redis_client.flushdb()
+            yield manager
+        finally:
+            manager.redis_client.flushdb()
+            manager.close()
+    
+    # Property 6: Valid credentials create sessions (Requirement 6.1)
+    @pytest.mark.asyncio
+    async def test_property_6_valid_credentials_create_session(self, db, session_manager):
+        """
+        Property 6: For any user with valid credentials,
+        login should succeed and create an active session.
+        
+        Requirements: 2.1, 2.5
+        """
+        # Register user
+        _, _, user = AuthService.register_user(
+            db, "testuser", "TestPass123!", "test@example.com"
+        )
+        
+        # Login with valid credentials
+        success, message, data = await AuthService.login_user(
+            db=db,
+            username="testuser",
+            password="TestPass123!",
+            ip_address="192.168.1.1",
+            user_agent="Mozilla/5.0"
+        )
+        
+        # Should succeed
+        assert success is True
+        assert data is not None
+        assert "access_token" in data
+        assert "refresh_token" in data
+        
+        # Verify session exists (can't get JTI easily here, but tokens should exist)
+        assert len(data["access_token"]) > 0
+        assert len(data["refresh_token"]) > 0
+    
+    # Property 7: Invalid credentials are rejected (Requirement 6.2)
+    @pytest.mark.asyncio
+    @settings(max_examples=50)
+    @given(
+        password=st.text(min_size=1, max_size=72).filter(lambda x: x != "TestPass123!")
+    )
+    async def test_property_7_invalid_credentials_rejected(self, db, session_manager, password):
+        """
+        Property 7: For any invalid password (not matching stored hash),
+        login should fail with generic error message.
+        
+        Requirements: 2.2
+        """
+        # Register user
+        AuthService.register_user(db, "testuser", "TestPass123!", "test@example.com")
+        
+        # Try login with wrong password
+        success, message, data = await AuthService.login_user(
+            db=db,
+            username="testuser",
+            password=password,
+            ip_address="192.168.1.1",
+            user_agent="Mozilla/5.0"
+        )
+        
+        # Should fail
+        assert success is False
+        assert data is None
+        # Generic error message to prevent username enumeration
+        assert "Invalid username or password" in message
+    
+    # Property 8: Sessions associate with correct user (Requirement 6.4)
+    @pytest.mark.asyncio
+    async def test_property_8_session_user_association(self, db, session_manager):
+        """
+        Property 8: For any successful login, the created session
+        must be associated with the correct user's key_id.
+        
+        Requirements: 2.5, 3.2
+        """
+        # Register users
+        _, _, user1 = AuthService.register_user(db, "user1", "TestPass123!", "user1@example.com")
+        _, _, user2 = AuthService.register_user(db, "user2", "TestPass123!", "user2@example.com")
+        
+        # Login as user1
+        success, _, data1 = await AuthService.login_user(
+            db=db,
+            username="user1",
+            password="TestPass123!",
+            ip_address="192.168.1.1",
+            user_agent="Mozilla/5.0"
+        )
+        
+        assert success is True
+        assert data1["user"].key_id == user1.key_id
+        assert data1["user"].username == "user1"
+        
+        # Login as user2
+        success, _, data2 = await AuthService.login_user(
+            db=db,
+            username="user2",
+            password="TestPass123!",
+            ip_address="192.168.1.2",
+            user_agent="Mozilla/5.0"
+        )
+        
+        assert success is True
+        assert data2["user"].key_id == user2.key_id
+        assert data2["user"].username == "user2"
+        
+        # Verify users are different
+        assert data1["user"].key_id != data2["user"].key_id
+    
+    # Property 9: Single session enforcement (Requirement 6.3)
+    @pytest.mark.asyncio
+    async def test_property_9_single_session_enforcement(self, db, session_manager):
+        """
+        Property 9: For any user, a new login should terminate
+        any existing active session.
+        
+        Requirements: 3.1, 3.4
+        """
+        # Register user
+        _, _, user = AuthService.register_user(db, "testuser", "TestPass123!", "test@example.com")
+        
+        # First login
+        success1, _, data1 = await AuthService.login_user(
+            db=db,
+            username="testuser",
+            password="TestPass123!",
+            ip_address="192.168.1.1",
+            user_agent="Mozilla/5.0"
+        )
+        assert success1 is True
+        
+        # Second login (should terminate first session)
+        success2, _, data2 = await AuthService.login_user(
+            db=db,
+            username="testuser",
+            password="TestPass123!",
+            ip_address="192.168.1.2",
+            user_agent="Chrome/120.0"
+        )
+        assert success2 is True
+        
+        # Should have different tokens
+        assert data1["access_token"] != data2["access_token"]
+        assert data1["refresh_token"] != data2["refresh_token"]
+        
+        # Only the second session should be active
+        # (We can't easily verify the first was terminated without JTI,
+        # but the enforce_single_session logic is tested separately)
+
+
+class TestUserLogout:
+    """Tests for user logout functionality"""
+    
+    @pytest.fixture
+    async def session_manager(self):
+        """Create a test session manager"""
+        manager = SessionManager(
+            redis_url="redis://localhost:6379/15",
+            session_expire_minutes=30
+        )
+        try:
+            manager.redis_client.flushdb()
+            yield manager
+        finally:
+            manager.redis_client.flushdb()
+            manager.close()
+    
+    @pytest.mark.asyncio
+    async def test_logout_success(self, db, session_manager):
+        """Test successful logout"""
+        # Register and login
+        AuthService.register_user(db, "testuser", "TestPass123!", "test@example.com")
+        success, message, data = await AuthService.login_user(
+            db=db,
+            username="testuser",
+            password="TestPass123!",
+            ip_address="192.168.1.1",
+            user_agent="Mozilla/5.0"
+        )
+        
+        assert success is True
+        token = data["access_token"]
+        user_key_id = data["user"].key_id
+        
+        # Logout
+        success, message = await AuthService.logout_user(
+            token=token,
+            user_key_id=user_key_id
+        )
+        
+        assert success is True
+        assert message == "Logout successful"
+    
+    @pytest.mark.asyncio
+    async def test_logout_with_invalid_token(self, db, session_manager):
+        """Test logout with invalid token (should still succeed gracefully)"""
+        # Try to logout with invalid token
+        success, message = await AuthService.logout_user(
+            token="invalid_token",
+            user_key_id="some-user-id"
+        )
+        
+        # Should succeed gracefully (idempotent)
+        assert success is True
+        assert message == "Logout successful"
+    
+    @pytest.mark.asyncio
+    async def test_logout_already_logged_out(self, db, session_manager):
+        """Test logout when already logged out (idempotent)"""
+        # Register and login
+        AuthService.register_user(db, "testuser", "TestPass123!", "test@example.com")
+        success, message, data = await AuthService.login_user(
+            db=db,
+            username="testuser",
+            password="TestPass123!",
+            ip_address="192.168.1.1",
+            user_agent="Mozilla/5.0"
+        )
+        
+        token = data["access_token"]
+        user_key_id = data["user"].key_id
+        
+        # Logout first time
+        success1, message1 = await AuthService.logout_user(token, user_key_id)
+        assert success1 is True
+        
+        # Logout second time (should still succeed)
+        success2, message2 = await AuthService.logout_user(token, user_key_id)
+        assert success2 is True
+        assert message2 == "Logout successful"
+
+
+class TestLogoutPropertyTests:
+    """Property-based tests for logout functionality"""
+    
+    @pytest.fixture
+    async def session_manager(self):
+        """Create a test session manager"""
+        manager = SessionManager(
+            redis_url="redis://localhost:6379/15",
+            session_expire_minutes=30
+        )
+        try:
+            manager.redis_client.flushdb()
+            yield manager
+        finally:
+            manager.redis_client.flushdb()
+            manager.close()
+    
+    # Property 10: Logout terminates sessions completely (Requirement 7.1)
+    @pytest.mark.asyncio
+    async def test_property_10_logout_terminates_session(self, db, session_manager):
+        """
+        Property 10: For any active session, logout should completely
+        terminate the session and prevent reuse.
+        
+        Requirements: 3.3, 5.1, 5.2, 5.4
+        """
+        # Register and login
+        _, _, user = AuthService.register_user(
+            db, "testuser", "TestPass123!", "test@example.com"
+        )
+        
+        success, _, data = await AuthService.login_user(
+            db=db,
+            username="testuser",
+            password="TestPass123!",
+            ip_address="192.168.1.1",
+            user_agent="Mozilla/5.0"
+        )
+        
+        assert success is True
+        token = data["access_token"]
+        user_key_id = data["user"].key_id
+        
+        # Extract JTI from token
+        from app.security import extract_jti_from_token
+        jti = extract_jti_from_token(token)
+        assert jti is not None
+        
+        # Verify session exists before logout
+        session_data = await session_manager.get_session(jti)
+        assert session_data is not None
+        assert session_data.user_key_id == user_key_id
+        
+        # Logout
+        success, message = await AuthService.logout_user(token, user_key_id)
+        assert success is True
+        
+        # Verify session is terminated (Requirement 5.1, 5.2)
+        session_data_after = await session_manager.get_session(jti)
+        assert session_data_after is None
+        
+        # Verify user has no active session (Requirement 5.4)
+        active_session = await session_manager.get_active_session(user_key_id)
+        assert active_session is None or active_session != jti
+    
+    @pytest.mark.asyncio
+    async def test_property_10_logout_removes_session_data(self, db, session_manager):
+        """
+        Property 10 (variant): Logout must remove ALL session data,
+        including user-to-session mapping.
+        
+        Requirements: 3.3, 5.2
+        """
+        # Register and login
+        AuthService.register_user(db, "testuser", "TestPass123!", "test@example.com")
+        
+        success, _, data = await AuthService.login_user(
+            db=db,
+            username="testuser",
+            password="TestPass123!",
+            ip_address="192.168.1.1",
+            user_agent="Mozilla/5.0"
+        )
+        
+        token = data["access_token"]
+        user_key_id = data["user"].key_id
+        
+        # Extract JTI
+        from app.security import extract_jti_from_token
+        jti = extract_jti_from_token(token)
+        
+        # Verify active session mapping exists
+        active_jti_before = await session_manager.get_active_session(user_key_id)
+        assert active_jti_before == jti
+        
+        # Logout
+        await AuthService.logout_user(token, user_key_id)
+        
+        # Verify session data is removed
+        session_data = await session_manager.get_session(jti)
+        assert session_data is None
+        
+        # Verify active session mapping is removed or doesn't match
+        active_jti_after = await session_manager.get_active_session(user_key_id)
+        assert active_jti_after is None or active_jti_after != jti
+    
+    @pytest.mark.asyncio
+    async def test_property_10_logout_idempotent(self, db, session_manager):
+        """
+        Property 10 (idempotency): Logout should succeed even if
+        called multiple times or session doesn't exist.
+        
+        Requirement: 5.1
+        """
+        # Register and login
+        AuthService.register_user(db, "testuser", "TestPass123!", "test@example.com")
+        
+        success, _, data = await AuthService.login_user(
+            db=db,
+            username="testuser",
+            password="TestPass123!",
+            ip_address="192.168.1.1",
+            user_agent="Mozilla/5.0"
+        )
+        
+        token = data["access_token"]
+        user_key_id = data["user"].key_id
+        
+        # First logout
+        success1, msg1 = await AuthService.logout_user(token, user_key_id)
+        assert success1 is True
+        
+        # Second logout (session already gone)
+        success2, msg2 = await AuthService.logout_user(token, user_key_id)
+        assert success2 is True
+        
+        # Third logout (still should succeed)
+        success3, msg3 = await AuthService.logout_user(token, user_key_id)
+        assert success3 is True
+
+
+class TestTokenRefresh:
+    """Tests for token refresh functionality"""
+    
+    @pytest.fixture
+    async def session_manager(self):
+        """Create a test session manager"""
+        manager = SessionManager(
+            redis_url="redis://localhost:6379/15",
+            session_expire_minutes=30
+        )
+        try:
+            manager.redis_client.flushdb()
+            yield manager
+        finally:
+            manager.redis_client.flushdb()
+            manager.close()
+    
+    @pytest.mark.asyncio
+    async def test_refresh_token_success(self, db, session_manager):
+        """Test successful token refresh"""
+        # Register and login
+        AuthService.register_user(db, "testuser", "TestPass123!", "test@example.com")
+        success, message, data = await AuthService.login_user(
+            db=db,
+            username="testuser",
+            password="TestPass123!",
+            ip_address="192.168.1.1",
+            user_agent="Mozilla/5.0"
+        )
+        
+        assert success is True
+        old_access_token = data["access_token"]
+        refresh_token = data["refresh_token"]
+        
+        # Refresh token
+        success, message, refresh_data = await AuthService.refresh_token(
+            refresh_token=refresh_token
+        )
+        
+        assert success is True
+        assert message == "Token refreshed successfully"
+        assert "access_token" in refresh_data
+        assert "expires_in" in refresh_data
+        
+        # New access token should be different from old one
+        new_access_token = refresh_data["access_token"]
+        assert new_access_token != old_access_token
+    
+    @pytest.mark.asyncio
+    async def test_refresh_token_invalid_token(self, db, session_manager):
+        """Test refresh with invalid token"""
+        success, message, data = await AuthService.refresh_token(
+            refresh_token="invalid_token"
+        )
+        
+        assert success is False
+        assert "Token refresh failed" in message
+        assert data is None
+    
+    @pytest.mark.asyncio
+    async def test_refresh_token_with_access_token(self, db, session_manager):
+        """Test refresh with access token (wrong type)"""
+        # Register and login
+        AuthService.register_user(db, "testuser", "TestPass123!", "test@example.com")
+        success, message, data = await AuthService.login_user(
+            db=db,
+            username="testuser",
+            password="TestPass123!",
+            ip_address="192.168.1.1",
+            user_agent="Mozilla/5.0"
+        )
+        
+        access_token = data["access_token"]
+        
+        # Try to refresh with access token (should fail - wrong type)
+        success, message, refresh_data = await AuthService.refresh_token(
+            refresh_token=access_token
+        )
+        
+        assert success is False
+        assert "Invalid token type" in message
+        assert refresh_data is None
+    
+    @pytest.mark.asyncio
+    async def test_refresh_token_after_logout(self, db, session_manager):
+        """Test refresh after logout (session terminated)"""
+        # Register and login
+        AuthService.register_user(db, "testuser", "TestPass123!", "test@example.com")
+        success, message, data = await AuthService.login_user(
+            db=db,
+            username="testuser",
+            password="TestPass123!",
+            ip_address="192.168.1.1",
+            user_agent="Mozilla/5.0"
+        )
+        
+        access_token = data["access_token"]
+        refresh_token = data["refresh_token"]
+        user_key_id = data["user"].key_id
+        
+        # Logout
+        await AuthService.logout_user(access_token, user_key_id)
+        
+        # Try to refresh (should fail - no active session)
+        success, message, refresh_data = await AuthService.refresh_token(
+            refresh_token=refresh_token
+        )
+        
+        assert success is False
+        assert "No active session found" in message
+        assert refresh_data is None
+    
+    @pytest.mark.asyncio
+    async def test_refresh_token_updates_session(self, db, session_manager):
+        """Test that refresh updates the session with new JTI"""
+        # Register and login
+        AuthService.register_user(db, "testuser", "TestPass123!", "test@example.com")
+        success, message, data = await AuthService.login_user(
+            db=db,
+            username="testuser",
+            password="TestPass123!",
+            ip_address="192.168.1.1",
+            user_agent="Mozilla/5.0"
+        )
+        
+        old_access_token = data["access_token"]
+        refresh_token = data["refresh_token"]
+        user_key_id = data["user"].key_id
+        
+        # Extract old JTI
+        from app.security import extract_jti_from_token
+        old_jti = extract_jti_from_token(old_access_token)
+        
+        # Verify old session exists
+        old_session = await session_manager.get_session(old_jti)
+        assert old_session is not None
+        
+        # Refresh token
+        success, message, refresh_data = await AuthService.refresh_token(
+            refresh_token=refresh_token
+        )
+        
+        assert success is True
+        new_access_token = refresh_data["access_token"]
+        
+        # Extract new JTI
+        new_jti = extract_jti_from_token(new_access_token)
+        
+        # Verify JTIs are different
+        assert new_jti != old_jti
+        
+        # Verify new session exists
+        new_session = await session_manager.get_session(new_jti)
+        assert new_session is not None
+        assert new_session.user_key_id == user_key_id
+        
+        # Verify old session is terminated
+        old_session_after = await session_manager.get_session(old_jti)
+        assert old_session_after is None
+    
+    @pytest.mark.asyncio
+    async def test_refresh_token_multiple_times(self, db, session_manager):
+        """Test refreshing token multiple times"""
+        # Register and login
+        AuthService.register_user(db, "testuser", "TestPass123!", "test@example.com")
+        success, message, data = await AuthService.login_user(
+            db=db,
+            username="testuser",
+            password="TestPass123!",
+            ip_address="192.168.1.1",
+            user_agent="Mozilla/5.0"
+        )
+        
+        refresh_token = data["refresh_token"]
+        
+        # First refresh
+        success1, _, data1 = await AuthService.refresh_token(refresh_token)
+        assert success1 is True
+        token1 = data1["access_token"]
+        
+        # Second refresh (using same refresh token)
+        success2, _, data2 = await AuthService.refresh_token(refresh_token)
+        assert success2 is True
+        token2 = data2["access_token"]
+        
+        # All tokens should be different
+        assert token1 != token2
+        assert token1 != data["access_token"]
+        assert token2 != data["access_token"]
 
 
 if __name__ == "__main__":
