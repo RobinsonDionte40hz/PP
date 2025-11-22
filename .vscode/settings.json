@@ -1,7 +1,10 @@
 {
     "kiroAgent.configureMCP": "Disabled",
     "python-envs.pythonProjects": [],
-    "python.defaultInterpreterPath": "./myvenv/Scripts/python",
+    "python.defaultInterpreterPath": "./backend/venv/Scripts/python.exe",
     "python.terminal.activateEnvironment": true,
-    "python-envs.defaultEnvManager": "ms-python.python:venv"
+    "python-envs.defaultEnvManager": "ms-python.python:venv",
+    "python.analysis.extraPaths": [
+        "./backend"
+    ]
 }

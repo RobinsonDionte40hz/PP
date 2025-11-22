@@ -112,11 +112,8 @@ def get_rate_limit_message(endpoint: str, limit: str) -> str:
 # Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# JWT Configuration
-SECRET_KEY = "CHANGE_THIS_IN_PRODUCTION"  # Override via environment variable
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
-REFRESH_TOKEN_EXPIRE_DAYS = 7
+# JWT Configuration (loaded from settings)
+# These are kept for backwards compatibility but settings take precedence
 
 # HTTP Bearer token scheme
 security = HTTPBearer(auto_error=False)
@@ -140,21 +137,38 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
     """
-    Create a JWT access token.
+    Create a JWT access token with user claims.
     
     Args:
-        data: Dictionary containing claims to encode in the token
+        data: Dictionary containing claims to encode in the token.
+              Should include: sub (user_key_id), username, jti (token ID)
         expires_delta: Optional custom expiration time
         
     Returns:
         Encoded JWT token string
+        
+    Example:
+        token = create_access_token({
+            "sub": user_key_id,
+            "username": "john_doe",
+            "jti": str(uuid.uuid4())
+        })
+    
+    Requirements: 2.1, 4.1, 6.2
     """
+    from app.config import settings
+    
     to_encode = data.copy()
+    
+    # Ensure jti is present (required for session management)
+    if "jti" not in to_encode:
+        import uuid
+        to_encode["jti"] = str(uuid.uuid4())
     
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire = datetime.utcnow() + timedelta(minutes=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES)
     
     to_encode.update({
         "exp": expire,
@@ -162,7 +176,7 @@ def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta]
         "type": "access"
     })
     
-    encoded_jwt = jwt.encode(to_encode, get_secret_key(), algorithm=ALGORITHM)
+    encoded_jwt = jwt.encode(to_encode, get_secret_key(), algorithm=settings.JWT_ALGORITHM)
     return encoded_jwt
 
 
@@ -171,13 +185,30 @@ def create_refresh_token(data: Dict[str, Any]) -> str:
     Create a JWT refresh token with longer expiration.
     
     Args:
-        data: Dictionary containing claims to encode in the token
+        data: Dictionary containing claims to encode in the token.
+              Should include: sub (user_key_id), jti (token ID)
         
     Returns:
         Encoded JWT refresh token string
+        
+    Example:
+        refresh_token = create_refresh_token({
+            "sub": user_key_id,
+            "jti": str(uuid.uuid4())
+        })
+    
+    Requirements: 4.1
     """
+    from app.config import settings
+    
     to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+    
+    # Ensure jti is present (required for session management)
+    if "jti" not in to_encode:
+        import uuid
+        to_encode["jti"] = str(uuid.uuid4())
+    
+    expire = datetime.utcnow() + timedelta(days=settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS)
     
     to_encode.update({
         "exp": expire,
@@ -185,7 +216,7 @@ def create_refresh_token(data: Dict[str, Any]) -> str:
         "type": "refresh"
     })
     
-    encoded_jwt = jwt.encode(to_encode, get_secret_key(), algorithm=ALGORITHM)
+    encoded_jwt = jwt.encode(to_encode, get_secret_key(), algorithm=settings.JWT_ALGORITHM)
     return encoded_jwt
 
 
@@ -197,20 +228,80 @@ def decode_token(token: str) -> Dict[str, Any]:
         token: JWT token string
         
     Returns:
-        Decoded token payload
+        Decoded token payload containing: sub, username, jti, type, iat, exp
         
     Raises:
-        HTTPException: If token is invalid or expired
+        HTTPException: If token is invalid, expired, or malformed
+        
+    Requirements: 2.1, 4.1, 6.2
     """
+    from app.config import settings
+    
     try:
-        payload = jwt.decode(token, get_secret_key(), algorithms=[ALGORITHM])
+        payload = jwt.decode(token, get_secret_key(), algorithms=[settings.JWT_ALGORITHM])
+        
+        # Validate required claims
+        if "sub" not in payload:
+            raise HTTPException(
+                status_code=401,
+                detail="Token missing required claims",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
         return payload
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(
+            status_code=401,
+            detail="Token has expired",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     except JWTError as e:
         raise HTTPException(
             status_code=401,
             detail="Could not validate credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+
+def verify_token_type(payload: Dict[str, Any], expected_type: str) -> bool:
+    """
+    Verify that a decoded token has the expected type.
+    
+    Args:
+        payload: Decoded JWT token payload
+        expected_type: Expected token type ('access' or 'refresh')
+        
+    Returns:
+        True if type matches, False otherwise
+        
+    Requirement: 2.1
+    """
+    return payload.get("type") == expected_type
+
+
+def extract_jti_from_token(token: str) -> Optional[str]:
+    """
+    Extract JTI (JWT ID) from a token without full validation.
+    Used for logout when token might be expired.
+    
+    Args:
+        token: JWT token string
+        
+    Returns:
+        JTI string if present, None otherwise
+    """
+    try:
+        from app.config import settings
+        # Decode without verification for logout purposes
+        payload = jwt.decode(
+            token, 
+            get_secret_key(), 
+            algorithms=[settings.JWT_ALGORITHM],
+            options={"verify_exp": False}  # Allow expired tokens for logout
+        )
+        return payload.get("jti")
+    except JWTError:
+        return None
 
 
 async def get_current_user(
@@ -226,6 +317,8 @@ async def get_current_user(
             if not user:
                 raise HTTPException(401, "Authentication required")
             return {"user": user}
+    
+    Requirement: 4.2
     """
     if not credentials:
         return None
@@ -234,7 +327,7 @@ async def get_current_user(
     payload = decode_token(token)
     
     # Verify token type
-    if payload.get("type") != "access":
+    if not verify_token_type(payload, "access"):
         raise HTTPException(
             status_code=401,
             detail="Invalid token type",
@@ -255,6 +348,8 @@ async def require_auth(
         @app.get("/protected")
         async def protected_route(user: Dict = Depends(require_auth)):
             return {"user": user}
+    
+    Requirement: 4.2
     """
     if not user:
         raise HTTPException(
@@ -263,6 +358,77 @@ async def require_auth(
             headers={"WWW-Authenticate": "Bearer"},
         )
     return user
+
+
+async def require_auth_with_session(
+    credentials: Optional[HTTPAuthorizationCredentials] = Security(security)
+) -> Dict[str, Any]:
+    """
+    FastAPI dependency that requires both valid JWT and active session.
+    Integrates with SessionManager for session validation.
+    
+    Usage:
+        @app.get("/protected")
+        async def protected_route(user: Dict = Depends(require_auth_with_session)):
+            return {"user": user}
+    
+    Requirements: 4.2, 4.5, 5.5
+    """
+    if not credentials:
+        raise HTTPException(
+            status_code=401,
+            detail="Authentication required",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    token = credentials.credentials
+    payload = decode_token(token)
+    
+    # Verify token type
+    if not verify_token_type(payload, "access"):
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid token type",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    # Extract JTI for session validation
+    jti = payload.get("jti")
+    if not jti:
+        raise HTTPException(
+            status_code=401,
+            detail="Token missing session identifier",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    # Validate session in Redis
+    try:
+        from app.services.session_manager import get_session_manager
+        session_manager = get_session_manager()
+        session_data = await session_manager.validate_session(jti)
+        
+        if not session_data:
+            raise HTTPException(
+                status_code=401,
+                detail="Session not found or expired",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
+        # Attach session info to payload
+        payload["session"] = {
+            "ip_address": session_data.ip_address,
+            "created_at": session_data.created_at.isoformat(),
+            "expires_at": session_data.expires_at.isoformat(),
+        }
+        
+        return payload
+        
+    except RuntimeError as e:
+        # Redis connection failed
+        raise HTTPException(
+            status_code=503,
+            detail="Session service unavailable",
+        )
 
 
 # ==================== CSRF Protection ====================

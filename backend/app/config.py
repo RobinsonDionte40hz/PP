@@ -12,6 +12,11 @@ class Settings(BaseSettings):
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
     
+    # Session Management (Redis DB 1, separate from Celery)
+    SESSION_REDIS_URL: str = "redis://localhost:6379/1"
+    SESSION_REDIS_PREFIX: str = "session:"
+    SESSION_EXPIRE_MINUTES: int = 30
+    
     # PP System Integration
     PP_RESULTS_DIR: str = "./results"
     PP_CHECKPOINTS_DIR: str = "./checkpoints"
@@ -30,6 +35,7 @@ class Settings(BaseSettings):
     JWT_SECRET_KEY: str = "jwt-secret-CHANGE-IN-PRODUCTION"
     JWT_ALGORITHM: str = "HS256"
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     
     class Config:
         env_file = ".env"

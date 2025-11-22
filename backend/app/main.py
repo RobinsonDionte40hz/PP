@@ -66,8 +66,9 @@ async def health_check():
 
 # Import and include routers
 from app.api import predictions, campaigns, results
-from app.routes import websocket_routes
+from app.routes import websocket_routes, auth
 
+app.include_router(auth.router)  # Authentication routes (/api/auth)
 app.include_router(predictions.router, prefix="/api/predictions", tags=["predictions"])
 app.include_router(campaigns.router, prefix="/api/campaigns", tags=["campaigns"])
 app.include_router(websocket_routes.router, prefix="/api")  # WebSocket emission endpoints
