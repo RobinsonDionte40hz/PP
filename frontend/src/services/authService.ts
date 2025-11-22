@@ -19,19 +19,43 @@ import type {
 export const login = async (credentials: LoginRequest): Promise<LoginResponse> => {
   try {
     const response = await withRetry(
-      () => api.post<LoginResponse>('/auth/login', credentials),
+      () => api.post<any>('/auth/login', credentials),
       authRetryOptions
     );
     
+    console.log('Login API response:', response.data);
+    
+    // Handle nested tokens structure (tokens.access_token) or flat structure (access_token)
+    const accessToken = response.data.tokens?.access_token || response.data.access_token;
+    const refreshToken = response.data.tokens?.refresh_token || response.data.refresh_token;
+    const user = response.data.user;
+    const expiresIn = response.data.tokens?.expires_in || response.data.expires_in;
+    
     // Store tokens in localStorage
-    if (response.data.access_token) {
-      localStorage.setItem('auth_token', response.data.access_token);
-      localStorage.setItem('refresh_token', response.data.refresh_token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
+    if (accessToken && user) {
+      localStorage.setItem('auth_token', accessToken);
+      localStorage.setItem('refresh_token', refreshToken);
+      localStorage.setItem('user', JSON.stringify(user));
+      
+      console.log('Auth data stored:', { 
+        hasToken: !!accessToken, 
+        hasRefresh: !!refreshToken, 
+        user: user.username 
+      });
+    } else {
+      console.error('Invalid login response structure:', response.data);
+      throw new Error('Invalid response from server');
     }
     
-    return response.data;
+    // Return normalized response
+    return {
+      user,
+      access_token: accessToken,
+      refresh_token: refreshToken,
+      expires_in: expiresIn || 1800,
+    };
   } catch (error: unknown) {
+    console.error('Login error:', error);
     const apiError = error as { response?: { data?: { detail?: string }; status?: number } };
     const authError: AuthError = {
       detail: apiError.response?.data?.detail || 'Login failed. Please check your credentials.',

@@ -58,6 +58,7 @@ class UserResponse(BaseModel):
     key_id: str = Field(..., description="User unique identifier (UUID)")
     username: str = Field(..., description="Username")
     email: Optional[str] = Field(None, description="Email address")
+    role: str = Field(default="user", description="User role (user, developer, admin)")
     created_at: str = Field(..., description="Account creation timestamp (ISO format)")
     
     model_config = {
@@ -67,6 +68,7 @@ class UserResponse(BaseModel):
                     "key_id": "550e8400-e29b-41d4-a716-446655440000",
                     "username": "john_doe",
                     "email": "john@example.com",
+                    "role": "user",
                     "created_at": "2025-11-22T10:30:00"
                 }
             ]

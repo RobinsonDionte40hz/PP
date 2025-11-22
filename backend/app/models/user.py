@@ -24,6 +24,9 @@ class User(Base):
     # Account status
     is_active = Column(Boolean, nullable=False, default=True)
     
+    # Role management (user, developer, admin)
+    role = Column(String(20), nullable=False, default='user')
+    
     # Timestamps
     created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
@@ -42,6 +45,7 @@ class User(Base):
             "username": self.username,
             "email": self.email,
             "is_active": self.is_active,
+            "role": self.role,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
             "last_login": self.last_login.isoformat() if self.last_login else None,
@@ -53,6 +57,7 @@ class User(Base):
             "key_id": self.key_id,
             "username": self.username,
             "email": self.email,
+            "role": self.role,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 

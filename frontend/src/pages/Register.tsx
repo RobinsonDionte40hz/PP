@@ -11,16 +11,55 @@ import {
   CircularProgress,
   InputAdornment,
   IconButton,
+  Chip,
+  Divider,
+  keyframes,
 } from '@mui/material';
 import { 
   Visibility, 
   VisibilityOff, 
-  PersonAdd as RegisterIcon 
+  PersonAdd as RegisterIcon,
+  Science,
+  Biotech,
+  AutoAwesome,
 } from '@mui/icons-material';
 import { useAuth } from '../hooks/useAuth';
 import { useNotification } from '../hooks/useNotification';
 import { getAuthErrorMessage } from '../utils/authErrors';
 import type { RegisterRequest } from '../types/auth';
+
+// Animations
+const float = keyframes`
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-20px) rotate(5deg); }
+`;
+
+const pulse = keyframes`
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.05); }
+`;
+
+const gradientShift = keyframes`
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+`;
+
+const shimmer = keyframes`
+  0% { background-position: -1000px 0; }
+  100% { background-position: 1000px 0; }
+`;
+
+const fadeInUp = keyframes`
+  from { 
+    opacity: 0; 
+    transform: translateY(30px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
+`;
 
 interface RegisterFormData extends RegisterRequest {
   confirmPassword: string;
@@ -264,34 +303,172 @@ const Register: React.FC = () => {
   };
 
   return (
-    <Container maxWidth="sm">
+    <Box
+      sx={{
+        minHeight: '100vh',
+        width: '100vw',
+        position: 'relative',
+        overflow: 'hidden',
+        background: (theme) => theme.palette.mode === 'dark' 
+          ? 'linear-gradient(-45deg, #293B5F 0%, #47597E 25%, #293B5F 50%, #47597E 75%, #293B5F 100%)'
+          : 'linear-gradient(-45deg, #47597E 0%, #DBE6FD 25%, #B2AB8C 50%, #DBE6FD 75%, #47597E 100%)',
+        backgroundSize: '400% 400%',
+        animation: `${gradientShift} 15s ease infinite`,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 0,
+        margin: 0,
+      }}
+    >
+      {/* Floating Particles */}
       <Box
         sx={{
-          minHeight: '100vh',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          py: 4,
+          position: 'absolute',
+          top: '10%',
+          left: '10%',
+          animation: `${float} 6s ease-in-out infinite`,
         }}
       >
-        <Paper
-          elevation={3}
+        <Science sx={{ fontSize: 60, color: 'rgba(255, 255, 255, 0.15)' }} />
+      </Box>
+      <Box
+        sx={{
+          position: 'absolute',
+          top: '20%',
+          right: '15%',
+          animation: `${float} 8s ease-in-out infinite 1s`,
+        }}
+      >
+        <Biotech sx={{ fontSize: 80, color: 'rgba(255, 255, 255, 0.1)' }} />
+      </Box>
+      <Box
+        sx={{
+          position: 'absolute',
+          bottom: '15%',
+          left: '15%',
+          animation: `${float} 7s ease-in-out infinite 2s`,
+        }}
+      >
+        <AutoAwesome sx={{ fontSize: 50, color: 'rgba(255, 255, 255, 0.12)' }} />
+      </Box>
+      <Box
+        sx={{
+          position: 'absolute',
+          bottom: '25%',
+          right: '10%',
+          animation: `${float} 9s ease-in-out infinite 0.5s`,
+        }}
+      >
+        <Science sx={{ fontSize: 70, color: 'rgba(255, 255, 255, 0.08)' }} />
+      </Box>
+
+      <Container maxWidth="sm" sx={{ position: 'relative', zIndex: 1, width: '100%' }}>
+        <Box
           sx={{
-            p: 4,
-            width: '100%',
-            borderRadius: 2,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            py: 4,
+            px: 2,
+            animation: `${fadeInUp} 0.6s ease-out`,
           }}
         >
-          {/* Header */}
-          <Box sx={{ textAlign: 'center', mb: 4 }}>
-            <RegisterIcon sx={{ fontSize: 48, color: 'primary.main', mb: 1 }} />
-            <Typography variant="h4" component="h1" gutterBottom>
-              Create Account
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Join us to start predicting protein structures
-            </Typography>
-          </Box>
+          <Paper
+            elevation={24}
+            sx={{
+              p: 4,
+              width: '100%',
+              borderRadius: 4,
+              background: (theme) => theme.palette.mode === 'dark'
+                ? 'rgba(30, 30, 30, 0.9)'
+                : 'rgba(255, 255, 255, 0.95)',
+              backdropFilter: 'blur(20px)',
+              border: (theme) => theme.palette.mode === 'dark'
+                ? '1px solid rgba(255, 255, 255, 0.1)'
+                : '1px solid rgba(255, 255, 255, 0.3)',
+              boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
+              transition: 'transform 0.3s ease',
+              '&:hover': {
+                transform: 'translateY(-5px)',
+              },
+            }}
+          >
+            {/* Header */}
+            <Box sx={{ textAlign: 'center', mb: 4 }}>
+              {/* Logo */}
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  mb: 3,
+                  animation: `${pulse} 3s ease-in-out infinite`,
+                }}
+              >
+                <Box
+                  component="img"
+                  src="/wefold-logo.svg"
+                  alt="WeFold"
+                  sx={{
+                    height: 80,
+                    width: 'auto',
+                    filter: (theme) => theme.palette.mode === 'dark' 
+                      ? 'brightness(1.2)' 
+                      : 'none',
+                  }}
+                />
+              </Box>
+              <Typography 
+                variant="h4" 
+                component="h1" 
+                gutterBottom
+                sx={{
+                  fontWeight: 700,
+                  background: (theme) => theme.palette.mode === 'dark'
+                    ? 'linear-gradient(135deg, #DBE6FD 0%, #B2AB8C 100%)'
+                    : 'linear-gradient(135deg, #B2AB8C 0%, #47597E 100%)',
+                  backgroundClip: 'text',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                }}
+              >
+                Create Account
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Join us to start predicting protein structures
+              </Typography>
+              
+              {/* Feature Chips */}
+              <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center', flexWrap: 'wrap', mt: 2 }}>
+                <Chip 
+                  icon={<Science />} 
+                  label="QCPP Powered" 
+                  size="small" 
+                  variant="outlined"
+                  sx={{ 
+                    borderColor: 'primary.main',
+                    animation: `${shimmer} 3s infinite`,
+                    background: 'linear-gradient(90deg, transparent, rgba(102, 126, 234, 0.1), transparent)',
+                    backgroundSize: '1000px 100%',
+                  }}
+                />
+                <Chip 
+                  icon={<Biotech />} 
+                  label="UBF System" 
+                  size="small" 
+                  variant="outlined"
+                  sx={{ 
+                    borderColor: 'secondary.main',
+                    animation: `${shimmer} 3s infinite 0.5s`,
+                    background: 'linear-gradient(90deg, transparent, rgba(244, 143, 177, 0.1), transparent)',
+                    backgroundSize: '1000px 100%',
+                  }}
+                />
+              </Box>
+            </Box>
+
+            <Divider sx={{ mb: 3, opacity: 0.3 }} />
 
           {/* Error Alert */}
           {error && (
@@ -408,7 +585,27 @@ const Register: React.FC = () => {
                 size="large"
                 fullWidth
                 disabled={isLoading || isSubmitting || !isFormValid}
-                sx={{ mt: 1 }}
+                sx={{ 
+                  mt: 1,
+                  py: 1.5,
+                  fontWeight: 600,
+                  fontSize: '1.1rem',
+                  background: 'linear-gradient(135deg, #B2AB8C 0%, #47597E 100%)',
+                  boxShadow: '0 4px 15px rgba(178, 171, 140, 0.4)',
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    background: 'linear-gradient(135deg, #47597E 0%, #B2AB8C 100%)',
+                    boxShadow: '0 6px 20px rgba(178, 171, 140, 0.6)',
+                    transform: 'translateY(-2px)',
+                  },
+                  '&:active': {
+                    transform: 'translateY(0)',
+                  },
+                  '&:disabled': {
+                    background: 'linear-gradient(135deg, #ccc 0%, #999 100%)',
+                    boxShadow: 'none',
+                  },
+                }}
               >
                 {isLoading || isSubmitting ? (
                   <>
@@ -429,18 +626,48 @@ const Register: React.FC = () => {
               <Link
                 to="/login"
                 style={{
-                  color: 'inherit',
+                  background: 'linear-gradient(135deg, #B2AB8C 0%, #47597E 100%)',
+                  backgroundClip: 'text',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
                   textDecoration: 'none',
-                  fontWeight: 500,
+                  fontWeight: 600,
+                  transition: 'all 0.3s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.textDecoration = 'underline';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.textDecoration = 'none';
                 }}
               >
                 Login here
               </Link>
             </Typography>
           </Box>
+
+          {/* Footer Badge */}
+          <Box sx={{ mt: 4, textAlign: 'center' }}>
+            <Typography 
+              variant="caption" 
+              color="text.secondary"
+              sx={{ 
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 0.5,
+                opacity: 0.7,
+              }}
+            >
+              <AutoAwesome sx={{ fontSize: 14 }} />
+              Quantum-Enhanced Protein Structure Prediction
+              <AutoAwesome sx={{ fontSize: 14 }} />
+            </Typography>
+          </Box>
         </Paper>
       </Box>
     </Container>
+    </Box>
   );
 };
 

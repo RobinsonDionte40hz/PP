@@ -21,7 +21,8 @@ class AuthService:
         db: Session,
         username: str,
         password: str,
-        email: Optional[str] = None
+        email: Optional[str] = None,
+        role: str = "user"
     ) -> Tuple[bool, str, Optional[User]]:
         """
         Register a new user with validation.
@@ -74,6 +75,7 @@ class AuthService:
                 username=username,
                 email=email,
                 password_hash=password_hash,
+                role=role,
                 is_active=True,
                 created_at=datetime.now(timezone.utc),
                 updated_at=datetime.now(timezone.utc)
@@ -229,6 +231,7 @@ class AuthService:
             token_data = {
                 "sub": user.key_id,  # Subject: user's key_id
                 "username": user.username,
+                "role": user.role,  # User role for authorization
                 "jti": access_jti,  # JWT ID for session tracking
             }
             

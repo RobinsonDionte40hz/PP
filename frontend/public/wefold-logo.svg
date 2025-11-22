@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1408 768">
+  <defs>
+    <style>
+      .atom-orbit { fill: none; stroke: #47597E; stroke-width: 3; }
+      .atom-orbit-beige { fill: none; stroke: #B2AB8C; stroke-width: 3; }
+      .atom-particle-blue { fill: #DBE6FD; }
+      .atom-particle-beige { fill: #B2AB8C; }
+      .text-main { fill: #47597E; font-family: 'Arial', sans-serif; font-weight: 700; }
+      .text-sub { fill: #47597E; font-family: 'Arial', sans-serif; font-weight: 400; }
+    </style>
+  </defs>
+  
+  <!-- Atom Structure -->
+  <g transform="translate(190, 384)">
+    <!-- Orbits -->
+    <ellipse class="atom-orbit" cx="0" cy="0" rx="150" ry="50" transform="rotate(-45)"/>
+    <ellipse class="atom-orbit-beige" cx="0" cy="0" rx="150" ry="50" transform="rotate(45)"/>
+    <ellipse class="atom-orbit" cx="0" cy="0" rx="120" ry="40" transform="rotate(0)"/>
+    
+    <!-- Particles on orbits -->
+    <circle class="atom-particle-blue" cx="0" cy="-50" r="12"/>
+    <circle class="atom-particle-blue" cx="106" cy="35" r="12"/>
+    <circle class="atom-particle-blue" cx="-106" cy="35" r="12"/>
+    <circle class="atom-particle-beige" cx="85" cy="-85" r="10"/>
+    <circle class="atom-particle-beige" cx="-85" cy="-85" r="10"/>
+    <circle class="atom-particle-beige" cx="120" cy="0" r="10"/>
+    <circle class="atom-particle-beige" cx="-120" cy="0" r="10"/>
+  </g>
+  
+  <!-- Text: wefold -->
+  <text class="text-main" x="430" y="450" font-size="240">wefold</text>
+  
+  <!-- Subtitle -->
+  <text class="text-sub" x="430" y="540" font-size="42">PHYSICS BASED PROTEINS SHAPE BUILDER</text>
+  
+  <!-- Decorative sparkle -->
+  <path fill="#DBE6FD" d="M 1352 710 L 1360 718 L 1368 710 L 1360 702 Z M 1360 705 L 1360 715 M 1355 710 L 1365 710" transform="rotate(15 1360 710)"/>
+</svg>

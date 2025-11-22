@@ -68,9 +68,22 @@ export default function Header({ onMenuClick }: HeaderProps) {
           <MenuIcon />
         </IconButton>
         
-        <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 0, mr: 2 }}>
-          Protein Prediction Platform
-        </Typography>
+        {/* WeFold Logo */}
+        <Box
+          component="img"
+          src="/wefold-logo.svg"
+          alt="WeFold"
+          sx={{
+            height: 32,
+            width: 'auto',
+            mr: 2,
+            cursor: 'pointer',
+            filter: (theme) => theme.palette.mode === 'dark' 
+              ? 'brightness(1.2)' 
+              : 'none',
+          }}
+          onClick={() => navigate('/')}
+        />
         
         <Chip 
           label="QCPP + UBF" 

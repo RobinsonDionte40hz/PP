@@ -1,17 +1,31 @@
 import { createTheme } from '@mui/material/styles';
 
+// Project Color Palette
+// #293B5F - Deep Navy (Primary Dark)
+// #47597E - Slate Blue (Primary)
+// #DBE6FD - Light Blue (Accent/Background)
+// #B2AB8C - Warm Beige (Secondary)
+
 export const lightTheme = createTheme({
   palette: {
     mode: 'light',
     primary: {
-      main: '#1976d2',
+      main: '#47597E',
+      dark: '#293B5F',
+      light: '#DBE6FD',
     },
     secondary: {
-      main: '#dc004e',
+      main: '#B2AB8C',
+      light: '#C9C4AD',
+      dark: '#9A9377',
     },
     background: {
-      default: '#f5f5f5',
+      default: '#DBE6FD',
       paper: '#ffffff',
+    },
+    text: {
+      primary: '#293B5F',
+      secondary: '#47597E',
     },
   },
   typography: {
@@ -23,14 +37,22 @@ export const darkTheme = createTheme({
   palette: {
     mode: 'dark',
     primary: {
-      main: '#90caf9',
+      main: '#DBE6FD',
+      dark: '#47597E',
+      light: '#E8EFFE',
     },
     secondary: {
-      main: '#f48fb1',
+      main: '#B2AB8C',
+      light: '#C9C4AD',
+      dark: '#9A9377',
     },
     background: {
-      default: '#121212',
-      paper: '#1e1e1e',
+      default: '#293B5F',
+      paper: '#47597E',
+    },
+    text: {
+      primary: '#DBE6FD',
+      secondary: '#E8EFFE',
     },
   },
   typography: {
