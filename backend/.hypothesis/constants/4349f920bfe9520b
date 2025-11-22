@@ -1,0 +1,4 @@
+# file: C:\Users\diont\OneDrive\Desktop\Projects\PP\backend\app\api\results.py
+# hypothesis_version: 6.148.2
+
+[400, 404, '/compare', '/{prediction_id}', 'Compare results', 'Export results', 'Get PDB structure', 'Get detailed metrics', 'Get detailed results', 'Get trajectory data', 'Prediction ID', 'Prediction not found', 'checkpoint_path', 'chemical/x-pdb', 'configuration', 'csv', 'current_iteration', 'format', 'id', 'json', 'message', 'metrics', 'prediction_id', 'predictions', 'r', 'result_path', 'results', 'results.json', 'sequence', 'status', 'structure.pdb', 'total_iterations', 'zip']

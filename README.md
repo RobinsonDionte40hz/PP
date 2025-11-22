@@ -32,8 +32,17 @@ docker compose up -d
 - 📈 Campaign management for multi-protein testing
 - 📚 History browser with comparison tools
 - ⚙️ Comprehensive settings and configuration
+- 🔐 **User authentication with JWT tokens** (NEW - v1.0.0)
+- 🛡️ **Security hardening: CSRF, rate limiting, session management** (NEW - v1.0.0)
 
-**Documentation**: See `docs/SETUP.md`, `docs/USER_GUIDE.md`, and `RELEASE_NOTES.md`
+**Authentication** (NEW):
+- Register/Login with secure password hashing (bcrypt, cost factor 12)
+- JWT access tokens (30min) + refresh tokens (7 days)
+- Single-session enforcement
+- Redis-based session management
+- Comprehensive error handling and user feedback
+
+**Documentation**: See `docs/SETUP.md`, `docs/USER_GUIDE.md`, `docs/API.md#authentication`, and `RELEASE_NOTES.md`
 
 ---
 

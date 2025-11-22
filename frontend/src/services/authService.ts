@@ -2,6 +2,7 @@
  * Authentication service for API calls
  */
 import api from './api';
+import { withRetry, authRetryOptions } from '../utils/retry';
 import type {
   LoginRequest,
   LoginResponse,
@@ -13,11 +14,14 @@ import type {
 } from '../types/auth';
 
 /**
- * Login user with credentials
+ * Login user with credentials (with retry logic for network errors)
  */
 export const login = async (credentials: LoginRequest): Promise<LoginResponse> => {
   try {
-    const response = await api.post<LoginResponse>('/auth/login', credentials);
+    const response = await withRetry(
+      () => api.post<LoginResponse>('/auth/login', credentials),
+      authRetryOptions
+    );
     
     // Store tokens in localStorage
     if (response.data.access_token) {
@@ -38,11 +42,14 @@ export const login = async (credentials: LoginRequest): Promise<LoginResponse> =
 };
 
 /**
- * Register new user
+ * Register new user (with retry logic for network errors)
  */
 export const register = async (userData: RegisterRequest): Promise<RegisterResponse> => {
   try {
-    const response = await api.post<RegisterResponse>('/auth/register', userData);
+    const response = await withRetry(
+      () => api.post<RegisterResponse>('/auth/register', userData),
+      authRetryOptions
+    );
     return response.data;
   } catch (error: unknown) {
     const apiError = error as { response?: { data?: { detail?: string }; status?: number } };
@@ -72,7 +79,7 @@ export const logout = async (): Promise<void> => {
 };
 
 /**
- * Refresh access token using refresh token
+ * Refresh access token using refresh token (with retry logic)
  */
 export const refreshToken = async (): Promise<RefreshTokenResponse> => {
   try {
@@ -81,9 +88,15 @@ export const refreshToken = async (): Promise<RefreshTokenResponse> => {
       throw new Error('No refresh token available');
     }
 
-    const response = await api.post<RefreshTokenResponse>('/auth/refresh', {
-      refresh_token: refreshToken,
-    });
+    const response = await withRetry(
+      () => api.post<RefreshTokenResponse>('/auth/refresh', {
+        refresh_token: refreshToken,
+      }),
+      {
+        ...authRetryOptions,
+        maxRetries: 2, // Fewer retries for token refresh
+      }
+    );
 
     // Update access token in localStorage
     if (response.data.access_token) {

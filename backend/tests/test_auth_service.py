@@ -4,6 +4,7 @@ Tests for user registration and login services
 import pytest
 import uuid
 import asyncio
+import redis
 from datetime import datetime, timezone
 from hypothesis import given, strategies as st, settings, HealthCheck
 from sqlalchemy import create_engine
@@ -21,13 +22,32 @@ engine = create_engine(TEST_DATABASE_URL, connect_args={"check_same_thread": Fal
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
-@pytest.fixture
+@pytest.fixture(scope="function", autouse=True)
+def clear_redis():
+    """Clear Redis test database before AND after each test to prevent rate limit accumulation"""
+    try:
+        redis_client = redis.Redis.from_url("redis://localhost:6379/15", decode_responses=True)
+        redis_client.flushdb()
+    except Exception as e:
+        # If Redis isn't available, tests will fail anyway, so pass
+        pass
+    yield
+    # Also clear after test to ensure clean state for next test
+    try:
+        redis_client = redis.Redis.from_url("redis://localhost:6379/15", decode_responses=True)
+        redis_client.flushdb()
+    except Exception:
+        pass
+
+
+@pytest.fixture(scope="function")
 def db():
     """Create a fresh database for each test"""
     Base.metadata.create_all(bind=engine)
     session = TestingSessionLocal()
     try:
         yield session
+        session.rollback()  # Rollback any uncommitted changes
     finally:
         session.close()
         Base.metadata.drop_all(bind=engine)
@@ -266,16 +286,23 @@ class TestUserLogin:
     @pytest.fixture
     async def session_manager(self):
         """Create a test session manager"""
+        import app.services.session_manager as sm_module
+        
         manager = SessionManager(
             redis_url="redis://localhost:6379/15",
             session_expire_minutes=30
         )
+        
+        old_manager = sm_module._session_manager
+        sm_module._session_manager = manager
+        
         try:
             manager.redis_client.flushdb()
             yield manager
         finally:
             manager.redis_client.flushdb()
             manager.close()
+            sm_module._session_manager = old_manager
     
     @pytest.mark.asyncio
     async def test_login_success(self, db, session_manager):
@@ -471,21 +498,22 @@ class TestLoginPropertyTests:
         
         Requirements: 2.2
         """
-        # Register user
-        AuthService.register_user(db, "testuser", "TestPass123!", "test@example.com")
+        # Register user (use a unique username for this property test to avoid cross-test lockouts)
+        test_username = f"testuser_prop7_{abs(hash(password)) % 10000}"
+        AuthService.register_user(db, test_username, "TestPass123!", f"{test_username}@example.com")
         
-        # Reset rate limiting for this test
+        # Reset rate limiting for this test (belt and suspenders)
         try:
             from app.utils.rate_limit import BruteForceProtection
             brute_force = BruteForceProtection(session_manager.redis_client)
-            brute_force.reset_failed_attempts("testuser")
+            brute_force.reset_failed_attempts(test_username)
         except Exception:
             pass
         
         # Try login with wrong password
         success, message, data = await AuthService.login_user(
             db=db,
-            username="testuser",
+            username=test_username,
             password=password,
             ip_address="192.168.1.1",
             user_agent="Mozilla/5.0"
@@ -610,7 +638,8 @@ class TestUserLogout:
             user_agent="Mozilla/5.0"
         )
         
-        assert success is True
+        assert success is True, f"Login failed: {message}"
+        assert data is not None, "Login data is None"
         token = data["access_token"]
         user_key_id = data["user"].key_id
         
@@ -620,7 +649,7 @@ class TestUserLogout:
             user_key_id=user_key_id
         )
         
-        assert success is True
+        assert success is True, f"Logout failed: {message}"
         assert message == "Logout successful"
     
     @pytest.mark.asyncio
@@ -668,16 +697,22 @@ class TestLogoutPropertyTests:
     @pytest.fixture
     async def session_manager(self):
         """Create a test session manager"""
+        import app.services.session_manager as sm_module
         manager = SessionManager(
             redis_url="redis://localhost:6379/15",
             session_expire_minutes=30
         )
+        # Set as global singleton for AuthService to use
+        old_manager = getattr(sm_module, '_session_manager', None)
+        sm_module._session_manager = manager
         try:
             manager.redis_client.flushdb()
             yield manager
         finally:
             manager.redis_client.flushdb()
             manager.close()
+            # Restore old manager
+            sm_module._session_manager = old_manager
     
     # Property 10: Logout terminates sessions completely (Requirement 7.1)
     @pytest.mark.asyncio
@@ -809,16 +844,23 @@ class TestTokenRefresh:
     @pytest.fixture
     async def session_manager(self):
         """Create a test session manager"""
+        import app.services.session_manager as sm_module
+        
         manager = SessionManager(
             redis_url="redis://localhost:6379/15",
             session_expire_minutes=30
         )
+        
+        old_manager = sm_module._session_manager
+        sm_module._session_manager = manager
+        
         try:
             manager.redis_client.flushdb()
             yield manager
         finally:
             manager.redis_client.flushdb()
             manager.close()
+            sm_module._session_manager = old_manager
     
     @pytest.mark.asyncio
     async def test_refresh_token_success(self, db, session_manager):
@@ -1002,16 +1044,23 @@ class TestSecurityPropertyTests:
     @pytest.fixture
     async def session_manager(self):
         """Create a test session manager"""
+        import app.services.session_manager as sm_module
+        
         manager = SessionManager(
             redis_url="redis://localhost:6379/15",
             session_expire_minutes=30
         )
+        
+        old_manager = sm_module._session_manager
+        sm_module._session_manager = manager
+        
         try:
             manager.redis_client.flushdb()
             yield manager
         finally:
             manager.redis_client.flushdb()
             manager.close()
+            sm_module._session_manager = old_manager
     
     @pytest.mark.asyncio
     async def test_property_14_jwt_tokens_cryptographically_secure(self, db, session_manager):
@@ -1047,7 +1096,7 @@ class TestSecurityPropertyTests:
             
             # Extract JTI
             from jose import jwt
-            decoded = jwt.decode(access_token, options={"verify_signature": False})
+            decoded = jwt.decode(access_token, key="", options={"verify_signature": False})
             jti = decoded.get("jti")
             jtis.append(jti)
             
@@ -1102,12 +1151,17 @@ class TestSecurityPropertyTests:
             refresh_token = data["refresh_token"]
             refresh_tokens.append(refresh_token)
             
-            # Verify refresh token is UUID4
+            # Verify refresh token is a JWT with a valid UUID4 JTI
             try:
-                uuid_obj = uuid.UUID(refresh_token, version=4)
-                assert str(uuid_obj) == refresh_token
-            except ValueError:
-                pytest.fail(f"Refresh token {refresh_token} is not valid UUID4")
+                from jose import jwt
+                decoded = jwt.decode(refresh_token, key="", options={"verify_signature": False})
+                jti = decoded.get("jti")
+                assert jti, "Refresh token must have JTI claim"
+                # Verify JTI is UUID4
+                uuid_obj = uuid.UUID(jti, version=4)
+                assert str(uuid_obj) == jti, "JTI must be valid UUID4"
+            except ValueError as e:
+                pytest.fail(f"Refresh token JTI is not valid UUID4: {e}")
         
         # All refresh tokens must be unique
         assert len(set(refresh_tokens)) == 5, "All refresh tokens must be unique"

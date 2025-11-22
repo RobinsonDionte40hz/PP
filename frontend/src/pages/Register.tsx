@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
   Box,
@@ -18,6 +18,8 @@ import {
   PersonAdd as RegisterIcon 
 } from '@mui/icons-material';
 import { useAuth } from '../hooks/useAuth';
+import { useNotification } from '../hooks/useNotification';
+import { getAuthErrorMessage } from '../utils/authErrors';
 import type { RegisterRequest } from '../types/auth';
 
 interface RegisterFormData extends RegisterRequest {
@@ -27,6 +29,7 @@ interface RegisterFormData extends RegisterRequest {
 const Register: React.FC = () => {
   const navigate = useNavigate();
   const { register, login, isLoading } = useAuth();
+  const { showSuccess, showError, showInfo, showWarning } = useNotification();
   
   // Form state
   const [formData, setFormData] = useState<RegisterFormData>({
@@ -41,8 +44,24 @@ const Register: React.FC = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const error = localError;
+  
+  // Clear error/success messages after a delay
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => setLocalError(null), 8000);
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
+  
+  useEffect(() => {
+    if (success) {
+      const timer = setTimeout(() => setSuccess(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [success]);
   
   // Validation state
   const [touched, setTouched] = useState({
@@ -183,11 +202,13 @@ const Register: React.FC = () => {
 
     // Validate form
     if (!isFormValid) {
+      showError('Please check your input and try again.', 'Invalid Input');
       return;
     }
 
     setLocalError(null);
     setSuccess(null);
+    setIsSubmitting(true);
 
     try {
       // Register user
@@ -200,22 +221,32 @@ const Register: React.FC = () => {
       await register(registerData);
       
       console.log('Registration successful');
-      setSuccess('Registration successful! Logging you in...');
+      const successMsg = 'Registration successful! Logging you in...';
+      setSuccess(successMsg);
+      showSuccess(successMsg, 'Welcome!');
       
       // Auto-login after successful registration
       setTimeout(async () => {
         try {
+          showInfo('Logging you in...', 'Please wait');
           await login({
             username: formData.username,
             password: formData.password,
           });
           
+          showSuccess(`Welcome, ${formData.username}!`, 'Login Successful');
+          
           // Redirect to dashboard
-          navigate('/');
+          setTimeout(() => {
+            navigate('/');
+          }, 500);
         } catch (loginErr) {
           // If auto-login fails, redirect to login page
           console.error('Auto-login failed:', loginErr);
+          const errorMessage = getAuthErrorMessage(loginErr, 'login');
           setSuccess('Registration successful! Please login.');
+          showWarning('Please login with your new credentials.', 'Registration Complete');
+          
           setTimeout(() => {
             navigate('/login');
           }, 2000);
@@ -223,8 +254,12 @@ const Register: React.FC = () => {
       }, 1000);
       
     } catch (err) {
-      setLocalError('Registration failed. Please try again.');
       console.error('Registration error:', err);
+      const errorMessage = getAuthErrorMessage(err, 'register');
+      setLocalError(errorMessage.message);
+      showError(errorMessage.message, errorMessage.title);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -372,12 +407,12 @@ const Register: React.FC = () => {
                 variant="contained"
                 size="large"
                 fullWidth
-                disabled={isLoading || !isFormValid}
+                disabled={isLoading || isSubmitting || !isFormValid}
                 sx={{ mt: 1 }}
               >
-                {isLoading ? (
+                {isLoading || isSubmitting ? (
                   <>
-                    <CircularProgress size={24} sx={{ mr: 1 }} />
+                    <CircularProgress size={24} sx={{ mr: 1 }} color="inherit" />
                     Creating Account...
                   </>
                 ) : (

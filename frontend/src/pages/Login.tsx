@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import {
   Box,
@@ -14,12 +14,15 @@ import {
 } from '@mui/material';
 import { Visibility, VisibilityOff, Login as LoginIcon } from '@mui/icons-material';
 import { useAuth } from '../hooks/useAuth';
+import { useNotification } from '../hooks/useNotification';
+import { getAuthErrorMessage } from '../utils/authErrors';
 import type { LoginRequest } from '../types/auth';
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { login, isLoading, error: authError } = useAuth();
+  const { showSuccess, showError } = useNotification();
   
   // Get the location user was trying to access before being redirected
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/';
@@ -33,9 +36,18 @@ const Login: React.FC = () => {
   // UI state
   const [showPassword, setShowPassword] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Use auth error or local error
   const error = authError || localError;
+  
+  // Show toast notification when auth error changes
+  useEffect(() => {
+    if (authError) {
+      const errorMessage = getAuthErrorMessage({ response: { data: { detail: authError } } }, 'login');
+      showError(errorMessage.message, errorMessage.title);
+    }
+  }, [authError, showError]);
   
   // Validation state
   const [touched, setTouched] = useState({
@@ -117,20 +129,31 @@ const Login: React.FC = () => {
 
     // Validate form
     if (!isFormValid) {
+      showError('Please check your input and try again.', 'Invalid Input');
       return;
     }
 
     setLocalError(null);
+    setIsSubmitting(true);
 
     try {
       await login(formData);
       
-      // Success - redirect to the page user was trying to access or dashboard
+      // Success - show notification and redirect
+      showSuccess(`Welcome back, ${formData.username}!`, 'Login Successful');
       console.log('Login successful, redirecting to:', from);
-      navigate(from, { replace: true });
+      
+      // Small delay to show success message
+      setTimeout(() => {
+        navigate(from, { replace: true });
+      }, 500);
     } catch (err) {
       console.error('Login error:', err);
-      // Error is handled by AuthContext
+      const errorMessage = getAuthErrorMessage(err, 'login');
+      setLocalError(errorMessage.message);
+      // Toast notification is shown by useEffect
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -226,12 +249,12 @@ const Login: React.FC = () => {
                 variant="contained"
                 size="large"
                 fullWidth
-                disabled={isLoading || !isFormValid}
+                disabled={isLoading || isSubmitting || !isFormValid}
                 sx={{ mt: 1 }}
               >
-                {isLoading ? (
+                {isLoading || isSubmitting ? (
                   <>
-                    <CircularProgress size={24} sx={{ mr: 1 }} />
+                    <CircularProgress size={24} sx={{ mr: 1 }} color="inherit" />
                     Signing In...
                   </>
                 ) : (

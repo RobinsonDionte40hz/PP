@@ -1,0 +1,4 @@
+# file: C:\Users\diont\OneDrive\Desktop\Projects\PP\backend\app\main.py
+# hypothesis_version: 6.148.2
+
+[8000, '*', '/', '/api', '/api/campaigns', '/api/predictions', '/api/results', '/health', '0.0.0.0', '1.0.0', 'DELETE', 'GET', 'OPTIONS', 'PATCH', 'POST', 'PUT', 'X-CSRF-Token', 'X-Process-Time', '__main__', 'campaigns', 'environment', 'healthy', 'info', 'message', 'predictions', 'results', 'status', 'version']

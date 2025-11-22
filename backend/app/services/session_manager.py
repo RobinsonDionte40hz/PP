@@ -107,7 +107,7 @@ class SessionManager:
 
             logger.info(
                 f"Session created: user={username}, jti={token_jti[:8]}..., "
-                f"expires_at={expires_at.isoformat()}"
+                f"ip={ip_address}, expires_at={expires_at.isoformat()}"
             )
 
             return session_data
@@ -188,7 +188,8 @@ class SessionManager:
             user_session_key = self._get_user_session_key(user_key_id)
             active_jti = self.redis_client.get(user_session_key)
             
-            if active_jti == token_jti:
+            # Redis returns bytes, need to decode for comparison
+            if active_jti and (active_jti.decode('utf-8') if isinstance(active_jti, bytes) else active_jti) == token_jti:
                 self.redis_client.delete(user_session_key)
                 logger.info(f"Terminated session: user={username}, jti={token_jti[:8]}...")
             else:
@@ -218,7 +219,10 @@ class SessionManager:
         try:
             user_session_key = self._get_user_session_key(user_key_id)
             active_jti = self.redis_client.get(user_session_key)
-            return active_jti
+            # Redis returns bytes, decode to string
+            if active_jti:
+                return active_jti.decode('utf-8') if isinstance(active_jti, bytes) else active_jti
+            return None
 
         except redis.RedisError as e:
             logger.error(f"Failed to get active session for user {user_key_id}: {e}")

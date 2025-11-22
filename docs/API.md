@@ -22,7 +22,397 @@ All API endpoints are prefixed with `/api/v1` unless otherwise specified.
 
 ## Authentication
 
-Currently, the API does not require authentication. For production deployments, implement JWT or session-based authentication.
+**Status**: ✅ Fully Implemented (v1.0.0)
+
+The API uses JWT (JSON Web Tokens) for authentication with session management via Redis. All protected endpoints require a valid access token in the Authorization header.
+
+### Authentication Flow
+
+```
+Registration → Login → Access Protected Resources → Token Refresh (Optional) → Logout
+```
+
+### Token Types
+
+- **Access Token**: Short-lived (30 minutes), used for API requests
+- **Refresh Token**: Long-lived (7 days), used to obtain new access tokens
+
+### Using Authentication
+
+Include the access token in the Authorization header for protected endpoints:
+
+```http
+Authorization: Bearer <access_token>
+```
+
+### Security Features
+
+- ✅ Bcrypt password hashing (cost factor 12)
+- ✅ JWT tokens with HMAC SHA-256 signing
+- ✅ Single-session enforcement (new login terminates old session)
+- ✅ Session storage in Redis with automatic expiration
+- ✅ Rate limiting on auth endpoints
+- ✅ CSRF protection
+- ✅ Secure logging (no passwords/tokens in logs)
+
+---
+
+### Register User
+
+Create a new user account.
+
+**Endpoint**: `POST /api/auth/register`
+
+**Rate Limit**: 5 requests per hour per IP
+
+**Request Body**:
+```json
+{
+  "username": "john_doe",
+  "email": "john@example.com",
+  "password": "SecurePass123!"
+}
+```
+
+**Parameters**:
+- `username` (string, required): 3-50 characters, alphanumeric with underscores and hyphens
+- `email` (string, optional): Valid email address
+- `password` (string, required): 8-72 characters, must contain uppercase, lowercase, digit, and special character
+
+**Success Response** (201 Created):
+```json
+{
+  "message": "User registered successfully",
+  "user": {
+    "key_id": "550e8400-e29b-41d4-a716-446655440000",
+    "username": "john_doe",
+    "email": "john@example.com",
+    "created_at": "2025-11-22T10:30:00"
+  }
+}
+```
+
+**Error Responses**:
+- `400 Bad Request`: Invalid input (see [Error Codes](#authentication-error-codes))
+- `409 Conflict`: Username or email already exists
+- `429 Too Many Requests`: Rate limit exceeded
+- `500 Internal Server Error`: Server error
+
+**Example**:
+```bash
+curl -X POST http://localhost:8000/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "john_doe",
+    "email": "john@example.com",
+    "password": "SecurePass123!"
+  }'
+```
+
+---
+
+### Login
+
+Authenticate user and receive JWT tokens.
+
+**Endpoint**: `POST /api/auth/login`
+
+**Rate Limit**: 10 requests per 15 minutes per IP
+
+**Request Body**:
+```json
+{
+  "username": "john_doe",
+  "password": "SecurePass123!"
+}
+```
+
+**Parameters**:
+- `username` (string, required): Username
+- `password` (string, required): Password
+
+**Success Response** (200 OK):
+```json
+{
+  "message": "Login successful",
+  "user": {
+    "key_id": "550e8400-e29b-41d4-a716-446655440000",
+    "username": "john_doe",
+    "email": "john@example.com",
+    "created_at": "2025-11-22T10:30:00"
+  },
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "bearer",
+  "expires_in": 1800
+}
+```
+
+**Response Fields**:
+- `access_token`: JWT for API requests (expires in 30 minutes)
+- `refresh_token`: JWT for refreshing access token (expires in 7 days)
+- `expires_in`: Access token expiration in seconds (1800 = 30 minutes)
+
+**Error Responses**:
+- `400 Bad Request`: Missing credentials
+- `401 Unauthorized`: Invalid username or password
+- `429 Too Many Requests`: Rate limit exceeded
+- `500 Internal Server Error`: Server error
+
+**Example**:
+```bash
+curl -X POST http://localhost:8000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "john_doe",
+    "password": "SecurePass123!"
+  }'
+```
+
+**Notes**:
+- If user has an active session elsewhere, the old session will be terminated
+- Creates a new session in Redis with 30-minute TTL
+- Session automatically extends on activity
+
+---
+
+### Logout
+
+Terminate the current session and invalidate tokens.
+
+**Endpoint**: `POST /api/auth/logout`
+
+**Authentication**: Required (Bearer token)
+
+**Request Headers**:
+```http
+Authorization: Bearer <access_token>
+```
+
+**Success Response** (200 OK):
+```json
+{
+  "message": "Logout successful"
+}
+```
+
+**Error Responses**:
+- `401 Unauthorized`: Invalid or missing token
+- `500 Internal Server Error`: Server error
+
+**Example**:
+```bash
+curl -X POST http://localhost:8000/api/auth/logout \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+```
+
+**Notes**:
+- Deletes session from Redis
+- Removes user's active session mapping
+- Client should discard tokens after logout
+
+---
+
+### Refresh Token
+
+Obtain a new access token using a refresh token.
+
+**Endpoint**: `POST /api/auth/refresh`
+
+**Authentication**: Required (Refresh token)
+
+**Request Body**:
+```json
+{
+  "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+**Success Response** (200 OK):
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "bearer",
+  "expires_in": 1800
+}
+```
+
+**Error Responses**:
+- `401 Unauthorized`: Invalid or expired refresh token
+- `500 Internal Server Error`: Server error
+
+**Example**:
+```bash
+curl -X POST http://localhost:8000/api/auth/refresh \
+  -H "Content-Type: application/json" \
+  -d '{
+    "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  }'
+```
+
+**Notes**:
+- Use this endpoint to obtain a new access token before the current one expires
+- Refresh tokens are valid for 7 days
+- Updates session expiration in Redis
+
+---
+
+### Get Current User
+
+Retrieve the authenticated user's profile.
+
+**Endpoint**: `GET /api/auth/me`
+
+**Authentication**: Required (Bearer token)
+
+**Request Headers**:
+```http
+Authorization: Bearer <access_token>
+```
+
+**Success Response** (200 OK):
+```json
+{
+  "key_id": "550e8400-e29b-41d4-a716-446655440000",
+  "username": "john_doe",
+  "email": "john@example.com",
+  "created_at": "2025-11-22T10:30:00"
+}
+```
+
+**Error Responses**:
+- `401 Unauthorized`: Invalid or missing token
+- `500 Internal Server Error`: Server error
+
+**Example**:
+```bash
+curl -X GET http://localhost:8000/api/auth/me \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+```
+
+---
+
+### Authentication Error Codes
+
+Common error response format:
+```json
+{
+  "detail": "Error message description"
+}
+```
+
+#### Registration Errors
+
+| Status Code | Detail Message | Reason |
+|-------------|----------------|--------|
+| 400 | Username must be 3-50 characters | Username too short or long |
+| 400 | Username can only contain letters, numbers, underscores, and hyphens | Invalid characters in username |
+| 400 | Password must be at least 8 characters | Password too short |
+| 400 | Password must contain uppercase, lowercase, digit, and special character | Password doesn't meet complexity requirements |
+| 400 | Invalid email format | Email format validation failed |
+| 409 | Username already exists | Username is taken |
+| 409 | Email already registered | Email is already in use |
+| 429 | Too many registration attempts. Try again in X seconds | Rate limit exceeded (5/hour) |
+| 500 | Internal server error | Server-side error |
+
+#### Login Errors
+
+| Status Code | Detail Message | Reason |
+|-------------|----------------|--------|
+| 400 | Username and password are required | Missing credentials |
+| 401 | Invalid username or password | Authentication failed |
+| 401 | Account locked due to too many failed attempts | Brute force protection triggered |
+| 429 | Too many login attempts. Try again in X seconds | Rate limit exceeded (10/15min) |
+| 500 | Internal server error | Server-side error |
+
+#### Token Errors
+
+| Status Code | Detail Message | Reason |
+|-------------|----------------|--------|
+| 401 | Invalid token | Token signature invalid or malformed |
+| 401 | Token has expired | Access/refresh token expired |
+| 401 | Session not found | Session was terminated or expired |
+| 401 | Invalid token type | Wrong token type used (access vs refresh) |
+| 500 | Internal server error | Server-side error |
+
+#### Session Errors
+
+| Status Code | Detail Message | Reason |
+|-------------|----------------|--------|
+| 401 | Session expired | Session TTL exceeded (30 minutes) |
+| 401 | Session terminated | User logged out or session replaced |
+| 401 | Invalid session | Session data corrupted or missing |
+
+---
+
+### Authentication Best Practices
+
+#### Frontend Implementation
+
+1. **Store Tokens Securely**:
+   ```javascript
+   // Store in memory or secure storage (not localStorage in production)
+   localStorage.setItem('access_token', response.access_token);
+   localStorage.setItem('refresh_token', response.refresh_token);
+   ```
+
+2. **Add Token to Requests**:
+   ```javascript
+   const config = {
+     headers: {
+       'Authorization': `Bearer ${access_token}`
+     }
+   };
+   axios.get('/api/predictions', config);
+   ```
+
+3. **Handle Token Refresh**:
+   ```javascript
+   // Intercept 401 responses
+   axios.interceptors.response.use(
+     response => response,
+     async error => {
+       if (error.response?.status === 401) {
+         const newToken = await refreshAccessToken();
+         error.config.headers['Authorization'] = `Bearer ${newToken}`;
+         return axios(error.config);
+       }
+       return Promise.reject(error);
+     }
+   );
+   ```
+
+4. **Auto-Refresh Before Expiration**:
+   ```javascript
+   // Refresh token 5 minutes before expiration
+   const refreshTime = (expires_in - 300) * 1000;
+   setTimeout(() => refreshAccessToken(), refreshTime);
+   ```
+
+#### Backend Integration
+
+1. **Protect Routes**:
+   ```python
+   from app.middleware.auth import get_current_user
+   
+   @router.get("/protected")
+   async def protected_route(current_user: User = Depends(get_current_user)):
+       return {"user": current_user.username}
+   ```
+
+2. **Handle Errors**:
+   ```python
+   try:
+       user = await auth_service.login(credentials)
+   except HTTPException as e:
+       # Handle specific errors
+       if e.status_code == 401:
+           return {"error": "Invalid credentials"}
+       elif e.status_code == 429:
+           return {"error": "Rate limited"}
+   ```
+
+---
 
 ## Interactive Documentation
 

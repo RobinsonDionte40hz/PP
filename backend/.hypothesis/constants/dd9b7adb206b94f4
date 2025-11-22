@@ -1,0 +1,4 @@
+# file: C:\Users\diont\OneDrive\Desktop\Projects\PP\backend\app\routes\auth.py
+# hypothesis_version: 6.148.2
+
+[200, 201, 400, 401, 403, 409, 429, 500, 900, 3600, '/api/auth', '/health', '/login', '/logout', '/refresh', '/register', 'Account inactive', 'Authentication', 'Authorization', 'Bearer', 'Bearer ', 'Health check', 'Invalid credentials', 'Invalid token', 'Login successful', 'Logout successful', 'Refresh access token', 'Register a new user', 'Retry-After', 'User login', 'User logout', 'Validation error', 'WWW-Authenticate', 'access_token', 'already exists', 'authentication', 'authorization', 'bearer', 'bearer ', 'cannot be empty', 'description', 'expired', 'expires_in', 'healthy', 'inactive', 'model', 'must be at least', 'must contain', 'not found', 'refresh_token', 'security.auth', 'service', 'status', 'sub', 'unknown', 'user', 'user-agent', 'verify_exp']

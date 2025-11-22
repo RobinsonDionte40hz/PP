@@ -217,13 +217,210 @@ Production files will be in `frontend/dist/`.
 |----------|-------------|---------|----------|
 | `DATABASE_URL` | PostgreSQL connection string | - | No |
 | `REDIS_URL` | Redis connection string | `redis://localhost:6379/0` | Yes |
-| `SECRET_KEY` | Secret key for sessions/JWT | - | Yes |
+| `SECRET_KEY` | Secret key for sessions/JWT | - | **Yes** |
 | `APP_ENV` | Environment (development/production) | `development` | No |
 | `PP_RESULTS_DIR` | Directory for PP results | `./results` | No |
 | `PP_CHECKPOINTS_DIR` | Directory for checkpoints | `./checkpoints` | No |
 | `PP_PDB_CACHE_DIR` | Directory for PDB cache | `./pdb_cache` | No |
 | `LOG_LEVEL` | Logging level | `INFO` | No |
 | `CORS_ORIGINS` | Allowed CORS origins | `["http://localhost:3000"]` | No |
+
+### Authentication Configuration (NEW - v1.0.0)
+
+The platform includes JWT-based authentication with Redis session management. Authentication is **required** for all protected endpoints.
+
+#### Authentication Environment Variables
+
+| Variable | Description | Default | Required |
+|----------|-------------|---------|----------|
+| `SECRET_KEY` | JWT signing key (HMAC SHA-256) | - | **Yes** |
+| `JWT_ACCESS_TOKEN_EXPIRE_MINUTES` | Access token lifetime | `30` | No |
+| `JWT_REFRESH_TOKEN_EXPIRE_DAYS` | Refresh token lifetime | `7` | No |
+| `JWT_ALGORITHM` | JWT signing algorithm | `HS256` | No |
+| `SESSION_TTL_SECONDS` | Redis session TTL | `1800` (30min) | No |
+| `ENABLE_CSRF` | Enable CSRF protection | `true` | No |
+| `ENABLE_HSTS` | Enable HSTS headers | `false` (dev) | No |
+
+#### Generating a Secure Secret Key
+
+**CRITICAL**: Never use default secret keys in production!
+
+**Generate a secure key**:
+
+Python method:
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+```
+
+OpenSSL method:
+```bash
+openssl rand -base64 32
+```
+
+**Add to `.env`**:
+```bash
+SECRET_KEY=your-secure-random-key-here
+```
+
+#### Redis Configuration for Authentication
+
+Redis is **required** for session management:
+
+**Docker (recommended)**:
+```bash
+# Already included in docker-compose.yml
+docker-compose up redis
+```
+
+**Windows**:
+```bash
+# Using Docker
+docker run -d -p 6379:6379 --name redis-auth redis:7-alpine
+```
+
+**macOS**:
+```bash
+brew install redis
+brew services start redis
+```
+
+**Linux**:
+```bash
+sudo apt-get install redis-server
+sudo systemctl start redis-server
+sudo systemctl enable redis-server
+```
+
+**Test Redis connection**:
+```bash
+redis-cli ping
+# Should respond: PONG
+```
+
+#### Database Migration for Users Table
+
+Run the authentication database migration to create the users table:
+
+```bash
+cd backend
+python -m app.migrations.create_users_table
+```
+
+This creates:
+- `users` table with username, email, password_hash
+- UUID-based key_id for each user
+- Indexes on username and email for performance
+- Timestamps for created_at and last_login
+
+**Verify table creation**:
+```bash
+# If using SQLite (default)
+sqlite3 backend/app/pp_database.db ".schema users"
+
+# If using PostgreSQL
+psql -d pp_db -c "\d users"
+```
+
+#### First User Registration
+
+After setup, register your first user:
+
+**Via API**:
+```bash
+curl -X POST http://localhost:8000/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "admin",
+    "email": "admin@example.com",
+    "password": "SecurePass123!"
+  }'
+```
+
+**Via Frontend**:
+1. Navigate to http://localhost:3000/register
+2. Fill in the registration form
+3. Submit to create your account
+4. Automatically redirected to login
+
+#### Security Best Practices
+
+**For Development**:
+```bash
+SECRET_KEY=dev-secret-key-change-in-production
+APP_ENV=development
+ENABLE_CSRF=true
+ENABLE_HSTS=false
+CORS_ORIGINS=["http://localhost:3000"]
+```
+
+**For Production**:
+```bash
+SECRET_KEY=<secure-random-32-byte-key>
+APP_ENV=production
+ENABLE_CSRF=true
+ENABLE_HSTS=true
+CORS_ORIGINS=["https://yourdomain.com"]
+JWT_ACCESS_TOKEN_EXPIRE_MINUTES=15  # Shorter tokens in production
+SESSION_TTL_SECONDS=900  # 15 minutes idle timeout
+```
+
+**Additional Security Recommendations**:
+- ✅ Use HTTPS in production (required for HSTS)
+- ✅ Set strong password requirements (enforced by default)
+- ✅ Monitor rate limiting logs for abuse
+- ✅ Rotate secret keys periodically
+- ✅ Use separate Redis database for sessions (REDIS_URL with `/1` or `/2`)
+- ✅ Enable Redis persistence for session durability
+- ✅ Set up Redis password authentication in production
+
+#### Authentication Testing
+
+**Test authentication flow**:
+```bash
+# 1. Register user
+curl -X POST http://localhost:8000/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"username":"testuser","password":"TestPass123!"}'
+
+# 2. Login
+TOKEN=$(curl -X POST http://localhost:8000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"testuser","password":"TestPass123!"}' \
+  | jq -r '.access_token')
+
+# 3. Access protected endpoint
+curl -H "Authorization: Bearer $TOKEN" \
+  http://localhost:8000/api/auth/me
+
+# 4. Logout
+curl -X POST http://localhost:8000/api/auth/logout \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Verify session in Redis**:
+```bash
+redis-cli
+> KEYS session:*
+> GET session:<jti-from-token>
+```
+
+#### Troubleshooting Authentication
+
+| Issue | Cause | Solution |
+|-------|-------|----------|
+| 500 error on login | Redis not running | Start Redis service |
+| Invalid signature | Wrong SECRET_KEY | Check .env file matches |
+| Session not found | Redis restarted | Login again to create new session |
+| CSRF token mismatch | Missing CSRF header | Include X-CSRF-Token header |
+| Rate limited | Too many attempts | Wait for retry-after period |
+
+#### Authentication Documentation
+
+For detailed API documentation, see:
+- **API Reference**: `docs/API.md#authentication`
+- **Authentication Flows**: `docs/AUTHENTICATION_FLOWS.md`
+- **Error Handling**: `docs/ERROR_HANDLING.md`
+- **Security Guide**: `backend/SECURITY.md`
 
 ### Frontend Environment Variables
 

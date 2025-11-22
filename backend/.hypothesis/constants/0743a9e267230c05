@@ -1,0 +1,4 @@
+# file: C:\Users\diont\OneDrive\Desktop\Projects\PP\backend\app\middleware\security.py
+# hypothesis_version: 6.148.2
+
+[100, 401, 429, ', ', '/', '/api/auth/health', '/api/auth/login', '/api/auth/register', '/docs', '/health', '/openapi.json', '/redoc', '1; mode=block', '60', '; ', 'Authorization', 'Bearer', 'Bearer ', 'DENY', 'GET', 'HEAD', 'OPTIONS', 'Permissions-Policy', 'Referrer-Policy', 'Retry-After', 'TRACE', 'Unauthorized', 'WWW-Authenticate', 'X-CSRF-Token', 'X-Frame-Options', 'X-Process-Time', 'X-XSS-Protection', 'accelerometer=()', 'access', 'authorization', "base-uri 'self'", 'bearer ', 'camera=()', 'created_at', "default-src 'self'", 'detail', 'error', 'expires_at', "form-action 'self'", 'geolocation=()', 'gyroscope=()', 'http', 'ip_address', 'jti', 'key_id', 'magnetometer=()', 'microphone=()', 'nosniff', 'payment=()', 'security.audit', 'session', 'state', 'sub', 'success', 'type', 'unknown', 'usb=()', 'user', 'username']

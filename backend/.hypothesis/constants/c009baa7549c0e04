@@ -1,0 +1,4 @@
+# file: C:\Users\diont\OneDrive\Desktop\Projects\PP\backend\app\api\campaigns.py
+# hypothesis_version: 6.148.2
+
+[100, 201, 204, 400, 404, 500, '/{campaign_id}', 'Campaign ID', 'Campaign not found', 'Create campaign', 'Delete campaign', 'Filter by status', 'Get campaign details', 'Get phase details', 'Items per page', 'List campaigns', 'Page number', 'Phase not found', 'Phase number (1-4)', 'Resume campaign']

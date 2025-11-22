@@ -1,0 +1,4 @@
+# file: C:\Users\diont\OneDrive\Desktop\Projects\PP\backend\app\schemas\auth.py
+# hypothesis_version: 6.148.2
+
+[1800, '2025-11-22T10:30:00', 'Created user data', 'Email address', 'Error message', 'Invalid email format', 'JWT access token', 'JWT refresh token', 'Login successful', 'Logout successful', 'New JWT access token', 'Password', 'SecurePass123!', 'Success message', 'Token type', 'User profile data', 'Username', '^[a-zA-Z0-9_-]+$', 'access_token', 'bearer', 'created_at', 'detail', 'email', 'examples', 'expires_in', 'john@example.com', 'john_doe', 'json_schema_extra', 'key_id', 'message', 'password', 'refresh_token', 'token_type', 'tokens', 'user', 'username']

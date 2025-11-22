@@ -7,6 +7,9 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 from typing import Callable
 import time
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -207,9 +210,9 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
             raise
 
 
-class AuthenticationMiddleware(BaseHTTPMiddleware):
+class AuthenticationMiddleware:
     """
-    Middleware to validate authentication for protected routes.
+    Pure ASGI3 middleware to validate authentication for protected routes.
     
     This middleware:
     - Extracts JWT token from Authorization header
@@ -247,18 +250,54 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             protected_paths: List of path prefixes that require authentication
                            If None, all paths except PUBLIC_PATHS require auth
         """
-        super().__init__(app)
+        self.app = app
         self.protected_paths = protected_paths or []
+    
+    async def __call__(self, scope, receive, send):
+        """ASGI3 interface"""
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+        
+        # Create Request object to access helpers
+        request = Request(scope, receive, send)
+        
+        # Check if authentication is required
+        if not self._is_protected_path(request.url.path):
+            await self.app(scope, receive, send)
+            return
+        
+        logger.info(f"Path {request.url.path} is protected, checking auth")
+        
+        # Perform authentication
+        auth_result = await self._authenticate(request)
+        
+        if not auth_result["success"]:
+            # Send 401 response
+            from fastapi.responses import JSONResponse
+            response = JSONResponse(
+                status_code=401,
+                content={"detail": auth_result.get("error", "Unauthorized")},
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+            await response(scope, receive, send)
+            return
+        
+        # Attach user info to scope
+        scope["state"] = {"user": auth_result["user"]}
+        
+        await self.app(scope, receive, send)
     
     def _is_protected_path(self, path: str) -> bool:
         """Check if path requires authentication"""
-        # Check if path is in public paths
+        # Check if path is in public paths (exact match)
         if path in self.PUBLIC_PATHS:
             return False
         
-        # Check if path starts with any public path
+        # Check if path starts with any public path (but not for single "/")
         for public_path in self.PUBLIC_PATHS:
-            if path.startswith(public_path):
+            # Skip single "/" to avoid matching everything
+            if public_path != "/" and path.startswith(public_path):
                 return False
         
         # If protected_paths is empty, only PUBLIC_PATHS are public
@@ -272,40 +311,29 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         
         return False
     
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+    async def _authenticate(self, request: Request) -> dict:
         """
-        Process request and validate authentication if needed.
+        Validate authentication for a request.
+        
+        Returns:
+            dict with 'success' (bool), 'user' (dict) if success, 'error' (str) if failure
         
         Requirements:
         - 4.2: Validate session before granting access to protected resources
         - 4.5: Verify active valid session exists
         - 5.5: Deny access after logout
         """
-        # Skip authentication for public paths
-        if not self._is_protected_path(request.url.path):
-            return await call_next(request)
-        
         # Extract Authorization header
         auth_header = request.headers.get("authorization") or request.headers.get("Authorization")
         
         if not auth_header:
-            from fastapi.responses import JSONResponse
-            return JSONResponse(
-                status_code=401,
-                content={"detail": "Authentication required"},
-                headers={"WWW-Authenticate": "Bearer"},
-            )
+            return {"success": False, "error": "Unauthorized"}
         
         # Extract token (remove "Bearer " prefix)
         token = auth_header.replace("Bearer ", "").replace("bearer ", "")
         
         if not token:
-            from fastapi.responses import JSONResponse
-            return JSONResponse(
-                status_code=401,
-                content={"detail": "Invalid authentication credentials"},
-                headers={"WWW-Authenticate": "Bearer"},
-            )
+            return {"success": False, "error": "Unauthorized"}
         
         try:
             # Decode and validate token
@@ -314,22 +342,12 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             
             # Verify token type is 'access'
             if not verify_token_type(payload, "access"):
-                from fastapi.responses import JSONResponse
-                return JSONResponse(
-                    status_code=401,
-                    content={"detail": "Invalid token type"},
-                    headers={"WWW-Authenticate": "Bearer"},
-                )
+                return {"success": False, "error": "Unauthorized"}
             
             # Extract JTI for session validation
             jti = payload.get("jti")
             if not jti:
-                from fastapi.responses import JSONResponse
-                return JSONResponse(
-                    status_code=401,
-                    content={"detail": "Token missing session identifier"},
-                    headers={"WWW-Authenticate": "Bearer"},
-                )
+                return {"success": False, "error": "Unauthorized"}
             
             # Validate session in Redis (Requirement 4.2, 4.5)
             try:
@@ -339,15 +357,10 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
                 
                 if not session_data:
                     # Session not found or expired (Requirement 5.5)
-                    from fastapi.responses import JSONResponse
-                    return JSONResponse(
-                        status_code=401,
-                        content={"detail": "Session not found or expired"},
-                        headers={"WWW-Authenticate": "Bearer"},
-                    )
+                    return {"success": False, "error": "Unauthorized"}
                 
-                # Attach user info to request state
-                request.state.user = {
+                # Build user info
+                user_info = {
                     "key_id": payload.get("sub"),
                     "username": payload.get("username"),
                     "jti": jti,
@@ -358,26 +371,14 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
                     }
                 }
                 
-                # Continue to route handler
-                return await call_next(request)
+                return {"success": True, "user": user_info}
                 
-            except RuntimeError:
+            except RuntimeError as e:
                 # Redis connection failed
-                from fastapi.responses import JSONResponse
-                return JSONResponse(
-                    status_code=503,
-                    content={"detail": "Session service unavailable"},
-                )
+                logger.error(f"Session service unavailable: {str(e)}")
+                return {"success": False, "error": "Session service unavailable"}
             
         except Exception as e:
             # Token validation failed
-            from fastapi.responses import JSONResponse
-            import logging
-            logger = logging.getLogger("security.auth")
             logger.warning(f"Authentication failed: {str(e)}")
-            
-            return JSONResponse(
-                status_code=401,
-                content={"detail": "Could not validate credentials"},
-                headers={"WWW-Authenticate": "Bearer"},
-            )
+            return {"success": False, "error": "Unauthorized"}

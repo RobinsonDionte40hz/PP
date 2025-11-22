@@ -6,6 +6,7 @@ Tests Property 13 from design.md:
 """
 import pytest
 import asyncio
+import redis
 from datetime import datetime, timezone
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -25,13 +26,32 @@ engine = create_engine(TEST_DATABASE_URL, connect_args={"check_same_thread": Fal
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
-@pytest.fixture
+@pytest.fixture(scope="function", autouse=True)
+def clear_redis():
+    """Clear Redis test database before AND after each test to prevent rate limit accumulation"""
+    try:
+        redis_client = redis.Redis.from_url("redis://localhost:6379/15", decode_responses=True)
+        redis_client.flushdb()
+    except Exception as e:
+        # If Redis isn't available, tests will fail anyway, so pass
+        pass
+    yield
+    # Also clear after test to ensure clean state for next test
+    try:
+        redis_client = redis.Redis.from_url("redis://localhost:6379/15", decode_responses=True)
+        redis_client.flushdb()
+    except Exception:
+        pass
+
+
+@pytest.fixture(scope="function")
 def db():
     """Create a fresh database for each test"""
     Base.metadata.create_all(bind=engine)
     session = TestingSessionLocal()
     try:
         yield session
+        session.rollback()  # Rollback any uncommitted changes
     finally:
         session.close()
         Base.metadata.drop_all(bind=engine)
@@ -40,16 +60,23 @@ def db():
 @pytest.fixture
 async def session_manager():
     """Create a test session manager"""
+    import app.services.session_manager as sm_module
+    
     manager = SessionManager(
         redis_url="redis://localhost:6379/15",
         session_expire_minutes=30
     )
+    
+    old_manager = sm_module._session_manager
+    sm_module._session_manager = manager
+    
     try:
         manager.redis_client.flushdb()
         yield manager
     finally:
         manager.redis_client.flushdb()
         manager.close()
+        sm_module._session_manager = old_manager
 
 
 @pytest.fixture
@@ -114,7 +141,7 @@ class TestAuthenticationMiddleware:
         # Protected endpoint should require auth
         response = client.get("/api/protected/resource")
         assert response.status_code == 401
-        assert "Authentication required" in response.json()["detail"]
+        assert response.json()["detail"] == "Unauthorized"
     
     @pytest.mark.asyncio
     async def test_protected_path_with_invalid_token(self, test_app):
@@ -127,7 +154,7 @@ class TestAuthenticationMiddleware:
             headers={"Authorization": "Bearer invalid_token"}
         )
         assert response.status_code == 401
-        assert "Could not validate credentials" in response.json()["detail"]
+        assert response.json()["detail"] == "Unauthorized"
     
     @pytest.mark.asyncio
     async def test_protected_path_with_missing_bearer(self, test_app):
@@ -213,7 +240,8 @@ class TestAuthenticationPropertyTests:
         
         # Should fail with 401
         assert response.status_code == 401
-        assert "Session not found or expired" in response.json()["detail"]
+        # Generic error message for security (prevents information leakage)
+        assert "Unauthorized" in response.json()["detail"]
     
     @pytest.mark.asyncio
     async def test_property_13_access_control_unauthenticated(self, test_app):
@@ -230,7 +258,7 @@ class TestAuthenticationPropertyTests:
         
         # Should fail with 401
         assert response.status_code == 401
-        assert "Authentication required" in response.json()["detail"]
+        assert response.json()["detail"] == "Unauthorized"
     
     @pytest.mark.asyncio
     async def test_property_13_session_validation_on_each_request(self, db, session_manager, test_app):
@@ -272,7 +300,8 @@ class TestAuthenticationPropertyTests:
             headers={"Authorization": f"Bearer {token}"}
         )
         assert response2.status_code == 401
-        assert "Session not found or expired" in response2.json()["detail"]
+        # Generic error message for security (prevents information leakage)
+        assert "Unauthorized" in response2.json()["detail"]
     
     @pytest.mark.asyncio
     async def test_property_13_single_session_enforcement_in_middleware(self, db, session_manager, test_app):

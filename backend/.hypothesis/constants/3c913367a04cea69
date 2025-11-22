@@ -1,0 +1,4 @@
+# file: C:\Users\diont\OneDrive\Desktop\Projects\PP\backend\app\routes\websocket_routes.py
+# hypothesis_version: 6.148.2
+
+[500, '/emit/completion', '/emit/log', '/emit/metrics', '/emit/progress', '/ws', 'prediction_id', 'status', 'subscribers', 'success', 'websocket']

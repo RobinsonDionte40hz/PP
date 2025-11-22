@@ -22,7 +22,10 @@ services:
       - redis
       - postgres
     environment:
+      # Celery uses Redis DB 0
       - REDIS_URL=redis://redis:6379/0
+      # Auth sessions use Redis DB 1 (separate database)
+      - REDIS_SESSION_URL=redis://redis:6379/1
       - DATABASE_URL=postgresql://user:password@postgres:5432/pp_db
     volumes:
       - ./backend:/app
