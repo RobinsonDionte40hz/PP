@@ -12,13 +12,18 @@ START_ALL.bat  # Windows
 docker compose up -d
 
 # Access at:
-# Frontend: http://localhost:3000
+# Frontend: http://localhost:5173 (development) or :3000 (production)
 # Backend API: http://localhost:8000/docs
 ```
 
+**Login with Master Accounts**:
+- **Admin**: `admin` / `Admin@2025!`
+- **Developer**: `developer` / `Dev@2025!`
+- **Setup**: Run `cd backend && setup_master.bat` (first time only)
+
 **Best for**: Interactive predictions, real-time monitoring, 3D visualization, batch campaigns
 
-**Documentation**: `docs/SETUP.md`, `docs/USER_GUIDE.md`
+**Documentation**: `docs/SETUP.md`, `docs/USER_GUIDE.md`, `backend/MASTER_ACCOUNTS.md`
 
 ---
 

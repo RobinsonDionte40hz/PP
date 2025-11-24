@@ -5,6 +5,8 @@ Welcome to the Protein Prediction Platform user guide! This document will walk y
 ## Table of Contents
 
 - [Getting Started](#getting-started)
+  - [Account Access](#account-access)
+  - [First Time Setup](#first-time-setup)
 - [Dashboard](#dashboard)
 - [Creating Predictions](#creating-predictions)
 - [Monitoring Predictions](#monitoring-predictions)
@@ -16,11 +18,46 @@ Welcome to the Protein Prediction Platform user guide! This document will walk y
 
 ## Getting Started
 
+### Account Access
+
+The platform requires authentication for all features.
+
+#### Login
+
+1. **Navigate to**: http://localhost:3000
+2. **Enter credentials**: Username and password
+3. **Click Login**: You'll be redirected to the dashboard
+
+#### Master Test Accounts (Development)
+
+For testing and development, use these pre-configured accounts:
+
+- **Admin**: username=`admin`, password=`Admin@2025!`
+  - Full system access
+  - User management capabilities
+  - All prediction features
+
+- **Developer**: username=`developer`, password=`Dev@2025!`
+  - Enhanced debugging access
+  - All prediction features
+  - Performance monitoring tools
+
+#### New User Registration
+
+1. Click "Register here" on the login page
+2. Fill in:
+   - Username (3-50 characters)
+   - Email address (valid format)
+   - Password (min 8 characters, includes uppercase, lowercase, number, special character)
+3. Click "Register"
+4. Automatically logged in and redirected to dashboard
+
 ### First Time Setup
 
 1. **Access the application**: Open your browser and navigate to http://localhost:3000
-2. **Explore the dashboard**: You'll see the main dashboard with quick actions and system status
-3. **Try a quick prediction**: Click "New Prediction" to submit your first prediction
+2. **Log in**: Use your credentials or master test account
+3. **Explore the dashboard**: You'll see the main dashboard with quick actions and system status
+4. **Try a quick prediction**: Click "New Prediction" to submit your first prediction
 
 ### Interface Overview
 

@@ -32,15 +32,23 @@ docker compose up -d
 - 📈 Campaign management for multi-protein testing
 - 📚 History browser with comparison tools
 - ⚙️ Comprehensive settings and configuration
-- 🔐 **User authentication with JWT tokens** (NEW - v1.0.0)
-- 🛡️ **Security hardening: CSRF, rate limiting, session management** (NEW - v1.0.0)
+- 🔐 **User authentication with JWT tokens** (v1.0.0)
+- 🛡️ **Security hardening: CSRF, rate limiting, session management** (v1.0.0)
+- 🎨 **Custom WeFold branding with theme colors** (v1.0.0)
+- 👥 **Role-based access control (user/developer/admin)** (v1.0.0)
 
-**Authentication** (NEW):
+**Authentication**:
 - Register/Login with secure password hashing (bcrypt, cost factor 12)
 - JWT access tokens (30min) + refresh tokens (7 days)
 - Single-session enforcement
 - Redis-based session management
-- Comprehensive error handling and user feedback
+- Role-based permissions (user, developer, admin)
+- Master test accounts available (see `backend/MASTER_ACCOUNTS.md`)
+
+**Master Test Accounts**:
+- **Admin**: `admin` / `Admin@2025!` (full system access)
+- **Developer**: `developer` / `Dev@2025!` (testing & debugging)
+- Setup: `cd backend && setup_master.bat`
 
 **Documentation**: See `docs/SETUP.md`, `docs/USER_GUIDE.md`, `docs/API.md#authentication`, and `RELEASE_NOTES.md`
 
@@ -92,9 +100,10 @@ python systematic_protein_testing.py --resume
 - Docker deployment ready
 
 **Stack**:
-- Frontend: React 19, TypeScript, MUI, Vite, Socket.IO
-- Backend: FastAPI, Celery, Redis, PostgreSQL, Python-SocketIO
+- Frontend: React 19, TypeScript, Material-UI 7, Vite 7, Socket.IO, Zustand, NGL Viewer
+- Backend: FastAPI, Celery, Redis, PostgreSQL/SQLite, Python-SocketIO, JWT auth
 - Infrastructure: Docker Compose, Nginx (production)
+- Design: Custom WeFold branding (#293B5F, #47597E, #DBE6FD, #B2AB8C palette)
 
 **Testing**: 141/152 tests passing (93%), 64% backend coverage
 
@@ -445,7 +454,9 @@ This is a research project. For questions or contributions, please refer to the 
 
 ---
 
-**Last Updated**: November 12, 2025
+**Last Updated**: November 24, 2025
 **Primary Testing Modules**: test_protein.py, systematic_protein_testing.py
-**Key Fix**: RMSD calculator CA-only extraction, UTF-8 encoding for reports
+**Key Features**: Quantum Refinement Engine, Real RMSD calculations, Web Interface v1.0.0
+**Web Platform**: Full-stack React/FastAPI app with authentication, real-time monitoring, 3D visualization
+**Master Accounts**: Admin and developer test accounts available (see `MASTER_CREDENTIALS.txt`)
 **Scale Verified**: 45+ unique proteins tested, 3+ million computations performed

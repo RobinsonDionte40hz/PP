@@ -342,6 +342,28 @@ curl -X POST http://localhost:8000/api/auth/register \
 3. Submit to create your account
 4. Automatically redirected to login
 
+#### Master Test Accounts (Development)
+
+For testing purposes, you can create pre-configured master accounts with elevated privileges:
+
+```bash
+cd backend
+setup_master.bat  # Windows
+# or
+python migrate_add_role.py && python setup_master_accounts.py  # Cross-platform
+```
+
+This creates two accounts:
+- **Admin Account**: username=`admin`, password=`Admin@2025!`, role=`admin`
+- **Developer Account**: username=`developer`, password=`Dev@2025!`, role=`developer`
+
+**Role Permissions**:
+- `user` - Standard user access (default for all registrations)
+- `developer` - Enhanced access for testing and debugging
+- `admin` - Full system access including user management
+
+**Security Note**: Change these passwords immediately in production environments. See `backend/MASTER_ACCOUNTS.md` for more details.
+
 #### Security Best Practices
 
 **For Development**:
