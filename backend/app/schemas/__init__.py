@@ -14,6 +14,15 @@ from app.schemas.campaign import (
     CampaignStatisticsSchema,
     PhaseResponseSchema,
 )
+from app.schemas.work_session import (
+    WorkSessionCreateSchema,
+    WorkSessionUpdateSchema,
+    WorkSessionResponseSchema,
+    WorkSessionListResponseSchema,
+    ShareLinkCreateSchema,
+    ShareLinkResponseSchema,
+    SharedSessionResponseSchema,
+)
 
 __all__ = [
     "PredictionCreateSchema",
@@ -27,4 +36,11 @@ __all__ = [
     "CampaignListResponseSchema",
     "CampaignStatisticsSchema",
     "PhaseResponseSchema",
+    "WorkSessionCreateSchema",
+    "WorkSessionUpdateSchema",
+    "WorkSessionResponseSchema",
+    "WorkSessionListResponseSchema",
+    "ShareLinkCreateSchema",
+    "ShareLinkResponseSchema",
+    "SharedSessionResponseSchema",
 ]

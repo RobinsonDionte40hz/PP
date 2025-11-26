@@ -1,6 +1,7 @@
 {
     "include": [
-        "ubf_protein"
+        "ubf_protein",
+        "backend"
     ],
     "exclude": [
         "**/__pycache__",
@@ -16,7 +17,8 @@
             "root": ".",
             "python": "./.venv/Scripts/python",
             "extraPaths": [
-                "."
+                ".",
+                "./backend"
             ]
         }
     ],
