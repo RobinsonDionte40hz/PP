@@ -3,7 +3,7 @@ Property tests for WorkSession model
 
 Tests requirement 1.1: Session creation generates unique identifiers
 """
-import pytest
+import pytest  # type: ignore[import-not-found]
 from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from app.models import User, WorkSession
@@ -76,14 +76,14 @@ class TestWorkSessionModel:
         
         # Verify all sessions are associated with the user
         user_sessions = db_session.query(WorkSession).filter(
-            WorkSession.user_id == test_user.key_id
+            WorkSession.user_id == test_user.key_id  # type: ignore[arg-type]
         ).all()
         
         assert len(user_sessions) == 10, "Not all sessions were created"
         
         for session in user_sessions:
             assert session.id in session_ids, "Session ID mismatch"
-            assert session.user_id == test_user.key_id, "User ID mismatch"
+            assert session.user_id == test_user.key_id, "User ID mismatch"  # type: ignore[comparison-overlap]
     
     def test_session_name_is_persisted(self, db_session: Session, test_user: User):
         """
@@ -106,11 +106,11 @@ class TestWorkSessionModel:
         
         # Retrieve and verify
         retrieved = db_session.query(WorkSession).filter(
-            WorkSession.id == session_id
+            WorkSession.id == session_id  # type: ignore[arg-type]
         ).first()
         
         assert retrieved is not None, "Session not found"
-        assert retrieved.name == session_name, "Session name mismatch"
+        assert retrieved.name == session_name, "Session name mismatch"  # type: ignore[comparison-overlap]
     
     def test_timestamps_are_set_on_creation(self, db_session: Session, test_user: User):
         """
@@ -181,3 +181,43 @@ class TestWorkSessionModel:
         assert "created_at" in session_dict
         assert "updated_at" in session_dict
         assert "last_active_at" in session_dict
+    
+    def test_shared_export_is_expired(self, db_session: Session, test_user: User):
+        """
+        Tests that the SharedExport is_expired method works correctly
+        """
+        from app.models import SharedExport
+        from datetime import timedelta
+        
+        # Create a work session first
+        work_session = WorkSession(
+            id=str(uuid.uuid4()),
+            user_id=test_user.key_id,
+            name="Test Session"
+        )
+        db_session.add(work_session)
+        db_session.commit()
+        
+        # Test expired share
+        expired_share = SharedExport(
+            share_id=str(uuid.uuid4()),
+            session_id=work_session.id,
+            expires_at=datetime.now(timezone.utc) - timedelta(hours=1)
+        )
+        db_session.add(expired_share)
+        db_session.commit()
+        db_session.refresh(expired_share)
+        
+        assert expired_share.is_expired() is True, "Share should be expired"
+        
+        # Test valid share
+        valid_share = SharedExport(
+            share_id=str(uuid.uuid4()),
+            session_id=work_session.id,
+            expires_at=datetime.now(timezone.utc) + timedelta(hours=1)
+        )
+        db_session.add(valid_share)
+        db_session.commit()
+        db_session.refresh(valid_share)
+        
+        assert valid_share.is_expired() is False, "Share should not be expired"

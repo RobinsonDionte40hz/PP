@@ -63,9 +63,9 @@ class WorkSession(Base):
             "id": self.id,
             "user_id": self.user_id,
             "name": self.name,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
-            "last_active_at": self.last_active_at.isoformat() if self.last_active_at else None,
+            "created_at": self.created_at.isoformat() if self.created_at is not None else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at is not None else None,
+            "last_active_at": self.last_active_at.isoformat() if self.last_active_at is not None else None,
         }
         
         if include_predictions:

@@ -44,15 +44,26 @@ class SharedExport(Base):
         return {
             "share_id": self.share_id,
             "session_id": self.session_id,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "expires_at": self.expires_at.isoformat() if self.expires_at else None,
+            "created_at": self.created_at.isoformat() if self.created_at is not None else None,
+            "expires_at": self.expires_at.isoformat() if self.expires_at is not None else None,
             "access_count": self.access_count,
-            "last_accessed_at": self.last_accessed_at.isoformat() if self.last_accessed_at else None,
+            "last_accessed_at": self.last_accessed_at.isoformat() if self.last_accessed_at is not None else None,
         }
 
     def is_expired(self) -> bool:
         """Check if this share link has expired"""
-        return datetime.now(timezone.utc) > self.expires_at
+        if self.expires_at is None:
+            return True
+        
+        # Get current time (naive for SQLite compatibility)
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
+        
+        # Ensure expires_at is also naive
+        expires = self.expires_at
+        if expires.tzinfo is not None:
+            expires = expires.replace(tzinfo=None)
+        
+        return bool(now > expires)
 
     def __repr__(self) -> str:
         return f"<SharedExport(share_id={self.share_id}, session_id={self.session_id}, expires_at={self.expires_at})>"
