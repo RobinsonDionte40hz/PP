@@ -1,0 +1,4 @@
+# file: C:\Users\diont\OneDrive\Desktop\Projects\PP\backend\app\models\shared_export.py
+# hypothesis_version: 6.148.2
+
+['CASCADE', 'WorkSession', 'access_count', 'created_at', 'expires_at', 'idx_expires', 'idx_session_expires', 'last_accessed_at', 'session_id', 'share_id', 'shared_exports', 'work_sessions.id']

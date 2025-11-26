@@ -1,0 +1,4 @@
+# file: C:\Users\diont\OneDrive\Desktop\Projects\PP\backend\app\models\work_session.py
+# hypothesis_version: 6.148.2
+
+[255, 'CASCADE', 'Prediction', 'SharedExport', 'User', 'all, delete-orphan', 'created_at', 'id', 'idx_user_created', 'idx_user_last_active', 'last_active_at', 'name', 'prediction_count', 'predictions', 'updated_at', 'user_id', 'users.key_id', 'work_session', 'work_sessions']
