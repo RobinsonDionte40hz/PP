@@ -4,6 +4,7 @@ User database model
 from datetime import datetime, timezone
 from typing import Optional
 from sqlalchemy import Column, String, DateTime, Boolean, Index
+from sqlalchemy.orm import relationship
 from app.database import Base
 
 
@@ -31,6 +32,14 @@ class User(Base):
     created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     last_login = Column(DateTime, nullable=True)
+
+    # Relationships
+    work_sessions = relationship(
+        "WorkSession",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        passive_deletes=True
+    )
 
     # Additional indexes for performance
     __table_args__ = (

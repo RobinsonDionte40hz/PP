@@ -4,7 +4,8 @@ Prediction database model
 from datetime import datetime, timezone
 from typing import Optional
 from enum import Enum
-from sqlalchemy import Column, String, DateTime, Integer, Float, Text, JSON
+from sqlalchemy import Column, String, DateTime, Integer, Float, Text, JSON, ForeignKey, Index
+from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 
 from app.database import Base
@@ -28,6 +29,10 @@ class Prediction(Base):
     __tablename__ = "predictions"
 
     id = Column(String, primary_key=True, index=True)
+    
+    # Foreign key to WorkSession model (nullable for backward compatibility)
+    session_id = Column(String(36), ForeignKey("work_sessions.id", ondelete="CASCADE"), nullable=True, index=True)
+    
     sequence = Column(Text, nullable=False)
     status = Column(String, nullable=False, default=PredictionStatus.PENDING.value)
     configuration = Column(JSON, nullable=False, default=dict)
@@ -43,11 +48,21 @@ class Prediction(Base):
     total_iterations = Column(Integer, nullable=False, default=0)
     progress_percentage = Column(Float, nullable=False, default=0.0)
     metrics = Column(JSON, nullable=False, default=dict)
+    
+    # Relationships
+    work_session = relationship("WorkSession", back_populates="predictions")
+    
+    # Additional indexes for performance
+    __table_args__ = (
+        Index('idx_session_created', 'session_id', 'created_at'),
+        Index('idx_session_status', 'session_id', 'status'),
+    )
 
     def to_dict(self) -> dict:
         """Convert to dictionary"""
         return {
             "id": self.id,
+            "session_id": self.session_id,
             "sequence": self.sequence,
             "status": self.status,
             "configuration": self.configuration,
