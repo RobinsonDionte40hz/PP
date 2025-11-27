@@ -69,6 +69,12 @@ class Settings(BaseSettings):
     CELERY_TASK_TIME_LIMIT: int = 3600
     CELERY_TASK_SOFT_TIME_LIMIT: int = 3300
     
+    # Session Storage and Cleanup
+    USER_DATA_DIR: str = "./user_data"
+    SESSION_RETENTION_DAYS: int = 90  # Sessions inactive for 90+ days are deleted
+    SHARE_LINK_MAX_HOURS: int = 168  # Share links expire after 7 days (168 hours)
+    CLEANUP_SCHEDULE_CRON: str = "0 2 * * *"  # Run daily at 2 AM
+    
     # Development Settings
     SQL_ECHO: bool = False
     SHOW_ERROR_DETAILS: bool = True

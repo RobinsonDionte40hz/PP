@@ -101,6 +101,28 @@ class WorkSessionService:
             if close_db:
                 db.close()
     
+    def get_session_by_id(self, session_id: str) -> Optional[WorkSession]:
+        """
+        Get session by ID without ownership validation (for internal use)
+        
+        Args:
+            session_id: Work session ID
+            
+        Returns:
+            WorkSession if found, None otherwise
+        """
+        db = self._get_db()
+        close_db = not self._db
+        try:
+            session = db.query(WorkSession).filter(
+                WorkSession.id == session_id
+            ).first()
+            
+            return session
+        finally:
+            if close_db:
+                db.close()
+    
     def get_session(self, session_id: str, user_id: str) -> Optional[WorkSession]:
         """
         Get session by ID with ownership validation
@@ -366,23 +388,30 @@ class WorkSessionService:
             if not self._db:
                 db.close()
     
-    def update_session_activity(self, session_id: str, user_id: str) -> bool:
+    def update_session_activity(self, session_id: str, user_id: Optional[str] = None) -> bool:
         """
         Update session's last_active_at timestamp
         
         Args:
             session_id: Work session ID
-            user_id: User's key_id for ownership validation
+            user_id: User's key_id for ownership validation (optional, for internal use)
             
         Returns:
             True if updated, False if not found or not owned
         """
         db = self._get_db()
         try:
-            session = db.query(WorkSession).filter(
-                WorkSession.id == session_id,
-                WorkSession.user_id == user_id
-            ).first()
+            if user_id:
+                # With ownership validation
+                session = db.query(WorkSession).filter(
+                    WorkSession.id == session_id,
+                    WorkSession.user_id == user_id
+                ).first()
+            else:
+                # Without ownership validation (internal use)
+                session = db.query(WorkSession).filter(
+                    WorkSession.id == session_id
+                ).first()
             
             if not session:
                 return False

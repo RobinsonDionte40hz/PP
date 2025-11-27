@@ -12,6 +12,8 @@ if backend_root not in sys.path:
 
 from celery_app import celery_app
 from app.services.prediction_service import prediction_service
+from app.services.file_storage_service import FileStorageService
+from app.services.work_session_service import work_session_service
 from app.models.prediction import PredictionStatus
 from app.schemas.prediction import PredictionUpdateSchema
 from app.websocket import socket_manager, create_progress_event, create_metrics_event, create_completion_event, create_error_event
@@ -20,6 +22,7 @@ import sys
 import os
 import json
 from pathlib import Path
+from datetime import datetime, timezone
 
 # Add project root to path for ubf_protein imports
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
@@ -106,13 +109,43 @@ def run_prediction(self, prediction_id: str):
         
         logger.info(f"Running prediction: seq_len={len(sequence)}, iter={iterations}, agents={agents}, diversity={diversity}")
         
-        # Set up directories
-        results_dir = Path("./prediction_results")
-        results_dir.mkdir(exist_ok=True)
-        prediction_dir = results_dir / prediction_id
-        prediction_dir.mkdir(exist_ok=True)
-        checkpoint_dir = prediction_dir / "checkpoints"
-        checkpoint_dir.mkdir(exist_ok=True)
+        # Set up directories based on whether prediction is in a session
+        file_storage = FileStorageService()
+        
+        if prediction.session_id:
+            # Session-based storage: user_data/{user_id}/sessions/{session_id}/{prediction_id}/
+            logger.info(f"Using session-based storage for prediction {prediction_id} in session {prediction.session_id}")
+            
+            # Get session to determine user_id
+            session = work_session_service.get_session_by_id(prediction.session_id)
+            if not session:
+                raise ValueError(f"Session {prediction.session_id} not found for prediction {prediction_id}")
+            
+            user_id = session.user_id
+            session_id = prediction.session_id
+            
+            # Get prediction directory from file storage service
+            prediction_dir = file_storage.get_prediction_directory(user_id, session_id, prediction_id)
+            prediction_dir.mkdir(parents=True, exist_ok=True)
+            
+            checkpoint_dir = prediction_dir / "checkpoints"
+            checkpoint_dir.mkdir(exist_ok=True)
+            
+            logger.info(f"Session-based path: {prediction_dir}")
+        else:
+            # Legacy storage for backward compatibility: ./prediction_results/{prediction_id}/
+            logger.info(f"Using legacy storage for prediction {prediction_id} (no session)")
+            results_dir = Path("./prediction_results")
+            results_dir.mkdir(exist_ok=True)
+            prediction_dir = results_dir / prediction_id
+            prediction_dir.mkdir(exist_ok=True)
+            checkpoint_dir = prediction_dir / "checkpoints"
+            checkpoint_dir.mkdir(exist_ok=True)
+            
+            user_id = None  # No user association for legacy predictions
+            session_id = None
+            
+            logger.info(f"Legacy path: {prediction_dir}")
         
         # Get adaptive config based on sequence length
         adaptive_config = create_config_for_sequence(sequence)
@@ -502,6 +535,14 @@ def run_prediction(self, prediction_id: str):
             )
         except Exception as e:
             logger.warning(f"Failed to emit completion WebSocket event: {e}")
+        
+        # Update session last_active_at if this prediction is part of a session
+        if prediction.session_id:
+            try:
+                work_session_service.update_session_activity(prediction.session_id)
+                logger.info(f"Updated last_active_at for session {prediction.session_id}")
+            except Exception as e:
+                logger.warning(f"Failed to update session activity: {e}")
         
         logger.info(f"Prediction {prediction_id} completed successfully")
         
