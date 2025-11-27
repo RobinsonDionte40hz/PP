@@ -698,3 +698,7 @@ class WorkSessionService:
         finally:
             if not self._db:
                 db.close()
+
+
+# Global service instance
+work_session_service = WorkSessionService()
