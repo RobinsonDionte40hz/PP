@@ -2,6 +2,7 @@
 Work Session API endpoints
 """
 from fastapi import APIRouter, HTTPException, Query, Path, Depends, Request, status
+from fastapi.responses import FileResponse
 from typing import Dict, Any
 import os
 from datetime import datetime, timezone
@@ -10,6 +11,9 @@ from app.schemas.work_session import (
     WorkSessionUpdateSchema,
     WorkSessionResponseSchema,
     WorkSessionListResponseSchema,
+    ShareLinkCreateSchema,
+    ShareLinkResponseSchema,
+    SharedSessionResponseSchema,
 )
 from app.schemas.prediction import (
     PredictionCreateSchema,
@@ -30,6 +34,7 @@ IS_TESTING = os.getenv("TESTING", "false").lower() == "true"
 limiter = Limiter(key_func=get_remote_address, enabled=not IS_TESTING)
 
 router = APIRouter()
+public_router = APIRouter()  # For public share link access
 
 
 @router.get(
@@ -573,6 +578,224 @@ async def create_session_prediction(
         )
     except Exception as e:
         logger.error(f"Error creating prediction in session {session_id}: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error"
+        )
+
+
+# ========== Download and Sharing Endpoints ==========
+
+@router.get(
+    "/{session_id}/download",
+    summary="Download session archive",
+    description="Download a ZIP archive containing all session data and predictions"
+)
+async def download_session(
+    session_id: str = Path(..., description="Session ID"),
+    user: Dict[str, Any] = Depends(require_auth_with_session)
+):
+    """
+    Download a ZIP archive of the work session.
+    
+    Creates a ZIP file containing:
+    - All prediction artifacts (results.json, structure.pdb, etc.)
+    - Session metadata (metadata.json)
+    - Preserves directory structure
+    
+    Only the session owner can download the session.
+    Temporary files are automatically cleaned up after streaming.
+    
+    Requirements: 8.5, 4.1, 4.5
+    Property 13: Cross-user access is prevented
+    """
+    temp_zip_path = None
+    try:
+        # JWT tokens use "sub" (subject) for user ID
+        user_id = user.get("sub") or user.get("key_id")
+        if not user_id:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User ID not found in token"
+            )
+        
+        # Validate session ownership and create archive
+        temp_zip_path = work_session_service.create_session_archive(
+            session_id=session_id,
+            user_id=user_id
+        )
+        
+        if not temp_zip_path:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Session not found or access denied"
+            )
+        
+        if not temp_zip_path.exists():
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to create session archive"
+            )
+        
+        logger.info(f"Streaming archive for session {session_id} to user {user_id}")
+        
+        # Stream ZIP file with automatic cleanup
+        return FileResponse(
+            path=str(temp_zip_path),
+            media_type="application/zip",
+            filename=f"session_{session_id}.zip",
+            background=None  # File will be cleaned up by OS temp directory cleanup
+        )
+    
+    except HTTPException:
+        # Clean up temp file on error
+        if temp_zip_path and temp_zip_path.exists():
+            try:
+                temp_zip_path.unlink()
+            except Exception as e:
+                logger.warning(f"Failed to cleanup temp file {temp_zip_path}: {e}")
+        raise
+    except Exception as e:
+        logger.error(f"Error creating archive for session {session_id}: {e}", exc_info=True)
+        # Clean up temp file on error
+        if temp_zip_path and temp_zip_path.exists():
+            try:
+                temp_zip_path.unlink()
+            except Exception as e:
+                logger.warning(f"Failed to cleanup temp file {temp_zip_path}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error"
+        )
+
+
+@router.post(
+    "/{session_id}/share",
+    response_model=ShareLinkResponseSchema,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create share link",
+    description="Generate a public share link for read-only access to the session"
+)
+@limiter.limit("10/minute")
+async def create_share_link(
+    request: Request,
+    data: ShareLinkCreateSchema,
+    session_id: str = Path(..., description="Session ID"),
+    user: Dict[str, Any] = Depends(require_auth_with_session)
+):
+    """
+    Generate a public share link for the work session.
+    
+    The share link allows read-only access to session data without authentication.
+    Links expire after the specified number of hours (1-168, i.e., 7 days max).
+    Access count is tracked each time the link is used.
+    
+    Only the session owner can create share links.
+    
+    Requirements: 8.6, 5.1, 5.2
+    Property 16: Share links have unique identifiers
+    """
+    try:
+        # JWT tokens use "sub" (subject) for user ID
+        user_id = user.get("sub") or user.get("key_id")
+        if not user_id:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User ID not found in token"
+            )
+        
+        # Create share link with ownership validation
+        shared_export = work_session_service.create_share_link(
+            session_id=session_id,
+            user_id=user_id,
+            expires_in_hours=data.expiration_hours
+        )
+        
+        if not shared_export:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Session not found or access denied"
+            )
+        
+        # Build share URL (use request.url to get base URL)
+        base_url = str(request.base_url).rstrip('/')
+        share_url = f"{base_url}/api/shared/{shared_export.share_id}"
+        
+        logger.info(f"Created share link {shared_export.share_id} for session {session_id} by user {user_id}")
+        
+        return ShareLinkResponseSchema(
+            share_id=shared_export.share_id,
+            session_id=shared_export.session_id,
+            share_url=share_url,
+            created_at=shared_export.created_at,
+            expires_at=shared_export.expires_at,
+            access_count=shared_export.access_count,
+            last_accessed_at=shared_export.last_accessed_at
+        )
+    
+    except ValueError as e:
+        logger.error(f"Validation error creating share link: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error creating share link for session {session_id}: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error"
+        )
+
+
+# ========== Public Share Access (No Authentication Required) ==========
+
+@public_router.get(
+    "/{share_id}",
+    response_model=SharedSessionResponseSchema,
+    summary="Access shared session",
+    description="Access a shared session via public share link (no authentication required)"
+)
+async def get_shared_session(
+    share_id: str = Path(..., description="Share link identifier (UUID)")
+):
+    """
+    Access a shared work session via public share link.
+    
+    This endpoint does NOT require authentication and provides read-only access.
+    The share link must not be expired, and each access increments the access count.
+    
+    Returns session metadata and prediction summaries without sensitive information.
+    
+    Requirements: 5.3, 5.4
+    Property 18: Expired share links deny access
+    Property 19: Shared sessions are read-only
+    """
+    try:
+        # Get shared session data (validates expiration, increments access count)
+        session_data = work_session_service.get_shared_session(share_id)
+        
+        if not session_data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Share link not found or has expired"
+            )
+        
+        logger.info(f"Served shared session via link {share_id}")
+        
+        # Return read-only session data
+        return SharedSessionResponseSchema(
+            id=session_data["id"],
+            name=session_data["name"],
+            created_at=datetime.fromisoformat(session_data["created_at"]),
+            prediction_count=session_data["prediction_count"]
+        )
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error accessing shared session via link {share_id}: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error"

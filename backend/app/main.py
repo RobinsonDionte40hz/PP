@@ -77,6 +77,7 @@ app.include_router(auth.router)  # Authentication routes (/api/auth)
 app.include_router(predictions.router, prefix="/api/predictions", tags=["predictions"])
 app.include_router(campaigns.router, prefix="/api/campaigns", tags=["campaigns"])
 app.include_router(sessions.router, prefix="/api/sessions", tags=["sessions"])
+app.include_router(sessions.public_router, prefix="/api/shared", tags=["shared"])  # Public share links
 app.include_router(websocket_routes.router, prefix="/api")  # WebSocket emission endpoints
 app.include_router(results.router, prefix="/api/results", tags=["results"])
 
