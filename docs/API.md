@@ -9,6 +9,7 @@ This document describes the REST API endpoints for the Protein Prediction Platfo
 - [Prediction Endpoints](#prediction-endpoints)
 - [Campaign Endpoints](#campaign-endpoints)
 - [Results Endpoints](#results-endpoints)
+- [Work Session Endpoints](#work-session-endpoints)
 - [WebSocket Events](#websocket-events)
 - [Error Handling](#error-handling)
 - [Rate Limiting](#rate-limiting)
@@ -916,6 +917,586 @@ Compare multiple predictions.
     "best_overall": "pred_abc123"
   }
 }
+```
+
+---
+
+## Work Session Endpoints
+
+**Status**: ✅ Fully Implemented
+
+Work sessions organize predictions into logical groups with isolated file storage, making it easy to manage and share related predictions.
+
+### Key Features
+
+- 📁 **Isolated Storage**: Each session has its own directory structure
+- 🔐 **User Isolation**: Sessions are scoped to authenticated users
+- 📦 **Easy Export**: Download entire session as ZIP archive
+- 🔗 **Sharing**: Generate time-limited public share links
+- 🧹 **Automatic Cleanup**: Expired sessions are automatically removed
+- 🔄 **Activity Tracking**: Automatic timestamp updates on session access
+
+### Configuration
+
+Sessions are configured via environment variables (see `.env` or `backend/app/config.py`):
+
+```bash
+USER_DATA_DIR=./user_data                # Base directory for user data
+SESSION_RETENTION_DAYS=90                # Inactive sessions deleted after 90 days
+SHARE_LINK_MAX_HOURS=168                 # Share links expire after 7 days (168 hours)
+CLEANUP_SCHEDULE_CRON="0 2 * * *"        # Daily cleanup at 2 AM
+```
+
+---
+
+### List Work Sessions
+
+Get paginated list of work sessions for authenticated user.
+
+**Endpoint**: `GET /api/sessions`
+
+**Authentication**: Required (JWT Bearer token)
+
+**Rate Limit**: 30 requests/minute per user
+
+**Query Parameters**:
+- `page` (integer): Page number, 1-indexed (default: 1)
+- `page_size` (integer): Items per page, max 100 (default: 20)
+
+**Response** (200 OK):
+```json
+{
+  "sessions": [
+    {
+      "id": "sess_abc123",
+      "user_id": "550e8400-e29b-41d4-a716-446655440000",
+      "name": "Ubiquitin Study",
+      "created_at": "2025-11-20T10:30:00Z",
+      "last_active_at": "2025-11-25T15:45:00Z",
+      "prediction_count": 5,
+      "total_size_bytes": 15728640
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "page_size": 20,
+    "total": 42,
+    "total_pages": 3
+  }
+}
+```
+
+**Response Fields**:
+- `sessions`: Array of session objects
+  - `id`: Unique session identifier
+  - `user_id`: Owner's user ID
+  - `name`: User-defined session name
+  - `created_at`: Session creation timestamp
+  - `last_active_at`: Last activity timestamp (auto-updated)
+  - `prediction_count`: Number of predictions in session
+  - `total_size_bytes`: Total storage size in bytes
+- `pagination`: Pagination metadata
+
+**Example**:
+```bash
+curl -X GET "http://localhost:8000/api/sessions?page=1&page_size=20" \
+  -H "Authorization: Bearer <access_token>"
+```
+
+---
+
+### Create Work Session
+
+Create a new work session.
+
+**Endpoint**: `POST /api/sessions`
+
+**Authentication**: Required (JWT Bearer token)
+
+**Rate Limit**: 30 requests/minute per user
+
+**Request Body**:
+```json
+{
+  "name": "Ubiquitin Study"
+}
+```
+
+**Parameters**:
+- `name` (string, required): Session name (1-200 characters)
+
+**Response** (201 Created):
+```json
+{
+  "id": "sess_abc123",
+  "user_id": "550e8400-e29b-41d4-a716-446655440000",
+  "name": "Ubiquitin Study",
+  "created_at": "2025-11-26T10:30:00Z",
+  "last_active_at": "2025-11-26T10:30:00Z",
+  "prediction_count": 0,
+  "total_size_bytes": 0
+}
+```
+
+**Error Responses**:
+- `400 Bad Request`: Invalid session name
+- `401 Unauthorized`: Missing or invalid authentication token
+- `429 Too Many Requests`: Rate limit exceeded
+
+**Example**:
+```bash
+curl -X POST http://localhost:8000/api/sessions \
+  -H "Authorization: Bearer <access_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Ubiquitin Study"}'
+```
+
+---
+
+### Get Work Session
+
+Retrieve details of a specific work session.
+
+**Endpoint**: `GET /api/sessions/{session_id}`
+
+**Authentication**: Required (JWT Bearer token)
+
+**Rate Limit**: 30 requests/minute per user
+
+**Response** (200 OK):
+```json
+{
+  "id": "sess_abc123",
+  "user_id": "550e8400-e29b-41d4-a716-446655440000",
+  "name": "Ubiquitin Study",
+  "created_at": "2025-11-20T10:30:00Z",
+  "last_active_at": "2025-11-26T15:45:00Z",
+  "prediction_count": 5,
+  "total_size_bytes": 15728640
+}
+```
+
+**Error Responses**:
+- `401 Unauthorized`: Missing or invalid authentication token
+- `403 Forbidden`: Session belongs to another user
+- `404 Not Found`: Session does not exist
+
+**Example**:
+```bash
+curl -X GET http://localhost:8000/api/sessions/sess_abc123 \
+  -H "Authorization: Bearer <access_token>"
+```
+
+---
+
+### Update Work Session
+
+Update session name.
+
+**Endpoint**: `PUT /api/sessions/{session_id}`
+
+**Authentication**: Required (JWT Bearer token)
+
+**Rate Limit**: 30 requests/minute per user
+
+**Request Body**:
+```json
+{
+  "name": "Updated Study Name"
+}
+```
+
+**Parameters**:
+- `name` (string, required): New session name (1-200 characters)
+
+**Response** (200 OK):
+```json
+{
+  "id": "sess_abc123",
+  "user_id": "550e8400-e29b-41d4-a716-446655440000",
+  "name": "Updated Study Name",
+  "created_at": "2025-11-20T10:30:00Z",
+  "last_active_at": "2025-11-26T16:00:00Z",
+  "prediction_count": 5,
+  "total_size_bytes": 15728640
+}
+```
+
+**Error Responses**:
+- `400 Bad Request`: Invalid session name
+- `401 Unauthorized`: Missing or invalid authentication token
+- `403 Forbidden`: Session belongs to another user
+- `404 Not Found`: Session does not exist
+
+---
+
+### Delete Work Session
+
+Delete a work session including all predictions and files.
+
+**Endpoint**: `DELETE /api/sessions/{session_id}`
+
+**Authentication**: Required (JWT Bearer token)
+
+**Rate Limit**: 30 requests/minute per user
+
+**Response** (204 No Content):
+- Empty response body on success
+
+**Error Responses**:
+- `401 Unauthorized`: Missing or invalid authentication token
+- `403 Forbidden`: Session belongs to another user
+- `404 Not Found`: Session does not exist
+
+**Example**:
+```bash
+curl -X DELETE http://localhost:8000/api/sessions/sess_abc123 \
+  -H "Authorization: Bearer <access_token>"
+```
+
+**Note**: This operation:
+- Deletes the session database record
+- Deletes all predictions in the session
+- Removes the session directory and all files
+- Cannot be undone
+
+---
+
+### List Session Predictions
+
+Get paginated list of predictions in a work session.
+
+**Endpoint**: `GET /api/sessions/{session_id}/predictions`
+
+**Authentication**: Required (JWT Bearer token)
+
+**Rate Limit**: 30 requests/minute per user
+
+**Query Parameters**:
+- `page` (integer): Page number, 1-indexed (default: 1)
+- `page_size` (integer): Items per page, max 100 (default: 20)
+
+**Response** (200 OK):
+```json
+{
+  "predictions": [
+    {
+      "id": "pred_abc123",
+      "session_id": "sess_abc123",
+      "sequence": "MQIFVKT...",
+      "status": "completed",
+      "config": {
+        "iterations": 1000,
+        "agents": 10
+      },
+      "created_at": "2025-11-26T10:35:00Z",
+      "completed_at": "2025-11-26T10:50:00Z"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "page_size": 20,
+    "total": 5,
+    "total_pages": 1
+  }
+}
+```
+
+**Error Responses**:
+- `401 Unauthorized`: Missing or invalid authentication token
+- `403 Forbidden`: Session belongs to another user
+- `404 Not Found`: Session does not exist
+
+---
+
+### Create Prediction in Session
+
+Create a new prediction within a work session.
+
+**Endpoint**: `POST /api/sessions/{session_id}/predictions`
+
+**Authentication**: Required (JWT Bearer token)
+
+**Rate Limit**: 10 requests/minute per user
+
+**Request Body**:
+```json
+{
+  "sequence": "MQIFVKTLTGKTITLEVEPSDTIENVKAKIQDKEGIPPDQQRLIFAGKQLEDGRTLSDYNIQKESTLHLVLRLRGG",
+  "iterations": 1000,
+  "agents": 10,
+  "enable_qcpp": true,
+  "enable_mediators": true,
+  "enable_geometric_targeting": true,
+  "enable_refinement": true
+}
+```
+
+**Parameters**: Same as [Create Prediction](#create-prediction), but automatically linked to the session.
+
+**Response** (201 Created):
+```json
+{
+  "id": "pred_abc123",
+  "session_id": "sess_abc123",
+  "status": "queued",
+  "sequence": "MQIFVKT...",
+  "config": {
+    "iterations": 1000,
+    "agents": 10
+  },
+  "created_at": "2025-11-26T16:30:00Z"
+}
+```
+
+**Error Responses**:
+- `400 Bad Request`: Invalid sequence or parameters
+- `401 Unauthorized`: Missing or invalid authentication token
+- `403 Forbidden`: Session belongs to another user
+- `404 Not Found`: Session does not exist
+- `429 Too Many Requests`: Rate limit exceeded
+
+**Example**:
+```bash
+curl -X POST http://localhost:8000/api/sessions/sess_abc123/predictions \
+  -H "Authorization: Bearer <access_token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sequence": "MQIFVKTLTGKTIT...",
+    "iterations": 1000,
+    "agents": 10
+  }'
+```
+
+**Note**: This automatically:
+- Links the prediction to the session via `session_id`
+- Updates the session's `last_active_at` timestamp
+- Stores prediction files in `user_data/{user_id}/sessions/{session_id}/{prediction_id}/`
+
+---
+
+### Download Session
+
+Download entire work session as ZIP archive.
+
+**Endpoint**: `GET /api/sessions/{session_id}/download`
+
+**Authentication**: Required (JWT Bearer token)
+
+**Rate Limit**: 10 requests/minute per user
+
+**Response** (200 OK):
+- `Content-Type: application/zip`
+- `Content-Disposition: attachment; filename="session_{session_id}.zip"`
+- Binary ZIP file containing:
+  - `metadata.json`: Session metadata
+  - `{prediction_id}/`: Directory for each prediction
+    - `results.json`: Prediction results
+    - `trajectory.json`: Conformational trajectory
+    - `structure.pdb`: Final protein structure
+    - `visualization.png`: Structure visualization
+
+**Error Responses**:
+- `401 Unauthorized`: Missing or invalid authentication token
+- `403 Forbidden`: Session belongs to another user
+- `404 Not Found`: Session does not exist
+- `500 Internal Server Error`: ZIP creation failed
+
+**Example**:
+```bash
+curl -X GET http://localhost:8000/api/sessions/sess_abc123/download \
+  -H "Authorization: Bearer <access_token>" \
+  -o session.zip
+```
+
+**ZIP Structure**:
+```
+session_sess_abc123.zip
+├── metadata.json
+├── pred_abc123/
+│   ├── results.json
+│   ├── trajectory.json
+│   ├── structure.pdb
+│   └── visualization.png
+└── pred_def456/
+    ├── results.json
+    ├── trajectory.json
+    ├── structure.pdb
+    └── visualization.png
+```
+
+---
+
+### Create Share Link
+
+Generate a time-limited public share link for a session.
+
+**Endpoint**: `POST /api/sessions/{session_id}/share`
+
+**Authentication**: Required (JWT Bearer token)
+
+**Rate Limit**: 30 requests/minute per user
+
+**Request Body**:
+```json
+{
+  "expires_in_hours": 168
+}
+```
+
+**Parameters**:
+- `expires_in_hours` (integer, optional): Hours until expiration (default: 168, max: 168)
+
+**Response** (201 Created):
+```json
+{
+  "share_id": "sh_xyz789",
+  "session_id": "sess_abc123",
+  "share_url": "http://localhost:8000/api/shared/sh_xyz789",
+  "created_at": "2025-11-26T16:30:00Z",
+  "expires_at": "2025-12-03T16:30:00Z",
+  "access_count": 0
+}
+```
+
+**Response Fields**:
+- `share_id`: Unique share identifier
+- `session_id`: Associated session ID
+- `share_url`: Full URL for accessing shared session
+- `created_at`: Share link creation timestamp
+- `expires_at`: Share link expiration timestamp
+- `access_count`: Number of times link has been accessed
+
+**Error Responses**:
+- `400 Bad Request`: Invalid expiration time
+- `401 Unauthorized`: Missing or invalid authentication token
+- `403 Forbidden`: Session belongs to another user
+- `404 Not Found`: Session does not exist
+
+**Example**:
+```bash
+curl -X POST http://localhost:8000/api/sessions/sess_abc123/share \
+  -H "Authorization: Bearer <access_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"expires_in_hours": 168}'
+```
+
+---
+
+### Access Shared Session
+
+Access a shared session via public share link (no authentication required).
+
+**Endpoint**: `GET /api/shared/{share_id}`
+
+**Authentication**: Not required (public endpoint)
+
+**Rate Limit**: 30 requests/minute per IP
+
+**Response** (200 OK):
+```json
+{
+  "session": {
+    "id": "sess_abc123",
+    "name": "Ubiquitin Study",
+    "created_at": "2025-11-20T10:30:00Z",
+    "prediction_count": 5
+  },
+  "predictions": [
+    {
+      "id": "pred_abc123",
+      "sequence": "MQIFVKT...",
+      "status": "completed",
+      "created_at": "2025-11-26T10:35:00Z",
+      "results_summary": {
+        "final_energy": -189.2,
+        "final_rmsd": 7.2
+      }
+    }
+  ],
+  "share_info": {
+    "expires_at": "2025-12-03T16:30:00Z",
+    "access_count": 15
+  }
+}
+```
+
+**Response Fields**:
+- `session`: Read-only session information (excludes user_id)
+- `predictions`: Array of predictions in the session (summary only)
+- `share_info`: Share link metadata
+
+**Error Responses**:
+- `404 Not Found`: Share link does not exist or has expired
+- `429 Too Many Requests`: Rate limit exceeded
+
+**Example**:
+```bash
+curl -X GET http://localhost:8000/api/shared/sh_xyz789
+```
+
+**Note**: 
+- This is a **read-only** endpoint
+- No authentication required
+- Increments `access_count` on each access
+- Returns 404 if share link has expired
+
+---
+
+### File Storage Structure
+
+Work sessions organize files with user and session isolation:
+
+```
+user_data/
+└── {user_id}/
+    └── sessions/
+        └── {session_id}/
+            ├── {prediction_id}/
+            │   ├── results.json
+            │   ├── trajectory.json
+            │   ├── structure.pdb
+            │   └── visualization.png
+            └── {prediction_id}/
+                ├── results.json
+                ├── trajectory.json
+                ├── structure.pdb
+                └── visualization.png
+```
+
+**Isolation Guarantees**:
+- Each user has isolated directory: `user_data/{user_id}/`
+- Each session has isolated subdirectory: `sessions/{session_id}/`
+- Each prediction has isolated subdirectory: `{prediction_id}/`
+- All file operations validate ownership
+
+---
+
+### Automatic Cleanup
+
+The system automatically maintains storage by removing expired sessions.
+
+**Cleanup Process**:
+1. Runs daily at 2 AM (configurable via `CLEANUP_SCHEDULE_CRON`)
+2. Identifies sessions with `last_active_at` older than `SESSION_RETENTION_DAYS` (default: 90 days)
+3. Deletes database records (WorkSession, SharedExport, Prediction)
+4. Removes file system directories
+5. Logs all cleanup operations
+
+**Configuration**:
+```bash
+SESSION_RETENTION_DAYS=90                # Retention period
+CLEANUP_SCHEDULE_CRON="0 2 * * *"        # Cleanup schedule (cron format)
+```
+
+**Manual Cleanup**:
+Cleanup can be triggered manually via the cleanup service:
+```python
+from app.services.session_cleanup_service import get_cleanup_service
+
+cleanup_service = get_cleanup_service()
+stats = cleanup_service.delete_expired_sessions(retention_days=90)
+print(f"Deleted {stats['sessions_deleted']} sessions")
 ```
 
 ---
