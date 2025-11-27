@@ -1,0 +1,4 @@
+# file: C:\Users\diont\OneDrive\Desktop\Projects\PP\backend\app\services\work_session_service.py
+# hypothesis_version: 6.148.2
+
+[168, 255, 'access_count', 'completed_at', 'created_at', 'desc', 'expires_at', 'id', 'last_active_at', 'name', 'prediction_count', 'predictions', 'sequence', 'share_id', 'shared_link', 'status', 'total_size_bytes', 'updated_at', 'user_id']

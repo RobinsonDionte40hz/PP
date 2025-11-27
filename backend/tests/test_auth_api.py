@@ -10,6 +10,9 @@ from app.main import app
 from app.database import Base, get_db
 from app.models.user import User  # Import to register model with Base
 
+# Mark this module to use its own database, not the global conftest one
+pytestmark = pytest.mark.usefixtures("setup_database")
+
 # Create test database (file-based to share between connections)
 TEST_DATABASE_URL = "sqlite:///./test_auth.db"
 engine = create_engine(TEST_DATABASE_URL, connect_args={"check_same_thread": False})
@@ -25,8 +28,9 @@ def override_get_db():
         db.close()
 
 
-# Ensure User model is registered with Base before creating tables
-_ = User
+# Import ALL models to register them with Base before creating tables
+from app.models import prediction, campaign, user, work_session, shared_export
+_ = User  # Keep for backwards compatibility
 
 # Create tables before anything else
 Base.metadata.create_all(bind=engine)
@@ -39,8 +43,11 @@ client = TestClient(app)
 
 @pytest.fixture(autouse=True)
 def setup_database():
-    """Clear database for each test"""
-    # Tables are already created, just need to clear them
+    """Ensure tables exist and clear them for each test"""
+    # Recreate tables if they don't exist (in case another test dropped them)
+    Base.metadata.create_all(bind=engine)
+    
+    # Clear all data
     with TestingSessionLocal() as session:
         for table in reversed(Base.metadata.sorted_tables):
             session.execute(table.delete())
@@ -51,12 +58,22 @@ def setup_database():
 
 @pytest.fixture(scope="module", autouse=True)
 def cleanup_test_db():
-    """Remove test database file after all tests"""
-    yield
-    # Dispose of all connections before removing file
-    engine.dispose()
+    """Setup and cleanup test database file"""
     import os
     import time
+    
+    # Clean up before tests if file exists from previous run
+    if os.path.exists("./test_auth.db"):
+        time.sleep(0.1)
+        try:
+            os.remove("./test_auth.db")
+        except PermissionError:
+            pass
+    
+    yield
+    
+    # Dispose of all connections before removing file
+    engine.dispose()
     if os.path.exists("./test_auth.db"):
         time.sleep(0.1)  # Brief delay to ensure file handles released
         try:

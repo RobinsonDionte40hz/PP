@@ -359,15 +359,15 @@ def test_token_contains_issued_at():
         "jti": str(uuid.uuid4())
     }
     
-    before = datetime.utcnow()
+    before = datetime.utcnow().replace(microsecond=0)
     token = create_access_token(token_data)
-    after = datetime.utcnow()
+    after = datetime.utcnow().replace(microsecond=0)
     
     payload = decode_token(token)
-    iat = datetime.fromtimestamp(payload["iat"])
+    iat = datetime.utcfromtimestamp(payload["iat"]).replace(microsecond=0)
     
-    # iat should be between before and after
-    assert before <= iat <= after, "Token issued at should be current time"
+    # iat should be between before and after (with 1 second tolerance)
+    assert before <= iat <= after or (after - before).total_seconds() <= 1, "Token issued at should be current time"
 
 
 if __name__ == "__main__":

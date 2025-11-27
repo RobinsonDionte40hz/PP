@@ -1,0 +1,4 @@
+# file: C:\Users\diont\OneDrive\Desktop\Projects\PP\backend\app\api\sessions.py
+# hypothesis_version: 6.148.2
+
+[100, '/', '/{session_id}', '/{session_id}/share', '/{share_id}', '10/minute', '20/minute', '30/minute', 'Create share link', 'Delete work session', 'List work sessions', 'Session ID', 'TESTING', 'Update work session', 'application/zip', 'created_at', 'false', 'id', 'key_id', 'name', 'prediction_count', 'sub', 'true']
