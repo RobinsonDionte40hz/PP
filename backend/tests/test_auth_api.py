@@ -92,10 +92,14 @@ class TestRegistrationEndpoint:
         
     def test_register_without_email(self):
         """Test registration without email"""
+        import uuid
+        unique_id = str(uuid.uuid4())[:8]
+        username = f"testuser_{unique_id}"
+        
         response = client.post(
             "/api/auth/register",
             json={
-                "username": "testuser",
+                "username": username,
                 "password": "TestPass123!"
             }
         )

@@ -1,0 +1,4 @@
+# file: C:\Users\diont\OneDrive\Desktop\Projects\PP\backend\app\api\predictions.py
+# hypothesis_version: 6.148.2
+
+[100, 201, 204, 400, 404, 500, '/{prediction_id}', '10/minute', '30/minute', 'Delete prediction', 'Download checkpoint', 'Filter by status', 'Items per page', 'List predictions', 'Page number', 'Pause prediction', 'Prediction ID', 'Prediction not found', 'Resume prediction', 'Stop prediction', 'TESTING', 'application/json', 'checkpoint_*.json', 'false', 'true']

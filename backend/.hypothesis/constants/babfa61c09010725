@@ -1,0 +1,4 @@
+# file: C:\Users\diont\OneDrive\Desktop\Projects\PP\backend\app\api\sessions.py
+# hypothesis_version: 6.148.2
+
+[100, '/{session_id}', '10/minute', '20/minute', '30/minute', 'Delete work session', 'List work sessions', 'Session ID', 'TESTING', 'Update work session', 'false', 'key_id', 'sub', 'true']

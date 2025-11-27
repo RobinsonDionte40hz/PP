@@ -295,11 +295,19 @@ class WorkSessionService:
                 logger.warning(f"Session {session_id} not found or not owned by user {user_id}")
                 return False
             
+            # Get the prediction in this session's context (it may be from another session)
+            db_prediction = db.query(Prediction).filter(Prediction.id == prediction.id).first()
+            if not db_prediction:
+                logger.warning(f"Prediction {prediction.id} not found in database")
+                return False
+            
             # Link prediction to session
-            prediction.session_id = session_id
+            db_prediction.session_id = session_id
+            db_prediction.updated_at = datetime.now(timezone.utc)
             
             # Update session activity
             session.last_active_at = datetime.now(timezone.utc)
+            session.updated_at = datetime.now(timezone.utc)
             
             db.commit()
             

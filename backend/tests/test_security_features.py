@@ -2,9 +2,13 @@
 Test security features implementation
 """
 import pytest
+import os
 from fastapi.testclient import TestClient
 from datetime import timedelta
 import time
+
+# Disable rate limiting for tests
+os.environ["TESTING"] = "true"
 
 
 def test_jwt_token_creation():

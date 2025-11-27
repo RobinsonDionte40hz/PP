@@ -4,7 +4,12 @@ Test security features (rate limiting and input validation)
 Run with: pytest backend/tests/test_security.py -v
 """
 import pytest
+import os
 from fastapi.testclient import TestClient
+
+# Disable rate limiting for tests
+os.environ["TESTING"] = "true"
+
 from app.main import app
 from app.security import validate_sequence_security, sanitize_filename
 

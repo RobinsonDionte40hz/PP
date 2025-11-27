@@ -13,11 +13,13 @@ from app.services.prediction_service import prediction_service
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
-# Initialize rate limiter
-limiter = Limiter(key_func=get_remote_address)
+# Initialize rate limiter (disabled in testing)
+IS_TESTING = os.getenv("TESTING", "false").lower() == "true"
+limiter = Limiter(key_func=get_remote_address, enabled=not IS_TESTING)
 
 router = APIRouter()
 

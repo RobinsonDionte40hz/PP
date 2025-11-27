@@ -1,0 +1,4 @@
+# file: C:\Users\diont\OneDrive\Desktop\Projects\PP\backend\app\integrations\file_manager.py
+# hypothesis_version: 6.148.2
+
+[1024, '*', 'checkpoints', 'file_count', 'pdb_cache', 'results', 'size_bytes', 'size_mb', 'wb']

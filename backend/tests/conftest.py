@@ -1,13 +1,29 @@
 """
 Pytest configuration and shared fixtures
 """
+import os
+
+# CRITICAL: Set TESTING environment variable BEFORE any app imports
+# This must be the first thing to disable rate limiting globally
+os.environ["TESTING"] = "true"
+
 import pytest
 import sys
-import os
 from unittest.mock import Mock, patch
 
 # Add project root to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+
+@pytest.fixture(scope="session", autouse=True)
+def setup_test_database():
+    """Create all database tables before any tests run"""
+    from app.database import Base, engine
+    # Create all tables
+    Base.metadata.create_all(bind=engine)
+    yield
+    # Drop all tables after tests complete
+    Base.metadata.drop_all(bind=engine)
 
 
 @pytest.fixture(scope="function", autouse=True)

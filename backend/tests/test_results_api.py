@@ -2,9 +2,14 @@
 Tests for results API endpoints
 """
 import pytest
+import os
 from fastapi.testclient import TestClient
+
+# Disable rate limiting for tests
+os.environ["TESTING"] = "true"
+
 from app.main import app
-from app.models.prediction import PredictionStatus
+from app.models.prediction import PredictionStatus, Prediction
 import json
 import tempfile
 from pathlib import Path

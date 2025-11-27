@@ -1,0 +1,4 @@
+# file: C:\Users\diont\OneDrive\Desktop\Projects\PP\backend\app\integrations\pp_wrapper.py
+# hypothesis_version: 6.148.2
+
+[500, 1000, 3600, 7200, '--agents', '--iterations', '--native', '--output', '--proteins', '--sequence', '.json', 'Campaign timed out', 'Prediction timed out', 'error', 'python', 'stderr', 'stdout', 'success', 'test_protein.py', 'w']

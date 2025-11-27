@@ -1,0 +1,4 @@
+# file: C:\Users\diont\OneDrive\Desktop\Projects\PP\backend\app\integrations\result_parser.py
+# hypothesis_version: 6.148.2
+
+['energy', 'final_energy', 'final_rmsd', 'gdt_ts', 'iterations', 'r', 'rmsd', 'tm_score']

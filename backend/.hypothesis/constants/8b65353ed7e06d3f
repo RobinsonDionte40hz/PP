@@ -1,0 +1,4 @@
+# file: C:\Users\diont\OneDrive\Desktop\Projects\PP\backend\app\schemas\work_session.py
+# hypothesis_version: 6.148.2
+
+[168, 255, 52428800, '2025-11-20T10:00:00Z', '2025-11-25T15:30:00Z', '2025-11-26T09:15:00Z', '2025-11-26T10:00:00Z', '2025-11-27T10:00:00Z', 'Public share URL', 'Session ID', 'Session name', 'Updated Project Name', 'access_count', 'created_at', 'examples', 'expiration_hours', 'expires_at', 'from_attributes', 'id', 'json_schema_extra', 'last_accessed_at', 'last_active_at', 'name', 'page', 'page_size', 'prediction_count', 'session_id', 'sessions', 'share_id', 'share_url', 'total', 'total_size', 'updated_at', 'user_id']

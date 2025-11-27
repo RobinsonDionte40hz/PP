@@ -2,11 +2,16 @@
 Tests for service layer
 """
 import pytest
+import os
+
+# Disable rate limiting for tests
+os.environ["TESTING"] = "true"
+
 from app.services.prediction_service import PredictionService
 from app.services.campaign_service import CampaignService
 from app.schemas.prediction import PredictionCreateSchema, PredictionUpdateSchema
 from app.schemas.campaign import CampaignCreateSchema
-from app.models.prediction import PredictionStatus
+from app.models.prediction import PredictionStatus, Prediction
 from app.models.campaign import CampaignStatus
 
 

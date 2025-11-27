@@ -1,0 +1,4 @@
+# file: C:\Users\diont\OneDrive\Desktop\Projects\PP\backend\app\integrations\config_mapper.py
+# hypothesis_version: 6.148.2
+
+[0.2, 1.0, 3.0, 15.0, 100, 500, 1000, 2000, 5000, 10000, 'accurate', 'agents', 'aggressiveness', 'balanced', 'checkpoint_interval', 'consistency', 'diversity', 'enable_qcpp', 'exploration_params', 'fast', 'high_performance', 'iterations', 'preset', 'qcpp_frequency']

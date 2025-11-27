@@ -2,9 +2,15 @@
 Tests for campaign API endpoints
 """
 import pytest
+import os
 from fastapi.testclient import TestClient
+
+# Disable rate limiting for tests
+os.environ["TESTING"] = "true"
+
 from app.main import app
 from app.models.campaign import CampaignStatus
+from app.models.prediction import Prediction
 
 client = TestClient(app)
 

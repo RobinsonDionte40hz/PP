@@ -6,7 +6,7 @@ Tests Property 14 from design.md:
 """
 import pytest
 from datetime import datetime, timedelta
-from hypothesis import given, strategies as st, settings, assume
+from hypothesis import given, strategies as st, settings as hypothesis_settings, assume
 import uuid
 import jwt
 from jose import JWTError
@@ -19,7 +19,7 @@ from app.security import (
     extract_jti_from_token,
     get_secret_key,
 )
-from app.config import settings
+from app.config import settings as app_settings
 
 
 # Custom strategies for generating test data
@@ -51,7 +51,7 @@ def token_data_strategy(draw):
 # Feature: user-authentication, Property 14: Session tokens are cryptographically secure
 
 @pytest.mark.asyncio
-@settings(max_examples=100, deadline=2000)
+@hypothesis_settings(max_examples=100, deadline=2000)
 @given(token_data=token_data_strategy())
 def test_property_14_tokens_have_sufficient_entropy(token_data: dict):
     """
@@ -85,7 +85,7 @@ def test_property_14_tokens_have_sufficient_entropy(token_data: dict):
 
 
 @pytest.mark.asyncio
-@settings(max_examples=100, deadline=2000)
+@hypothesis_settings(max_examples=100, deadline=2000)
 @given(token_data=token_data_strategy())
 def test_property_14_tokens_are_unpredictable(token_data: dict):
     """
@@ -114,7 +114,7 @@ def test_property_14_tokens_are_unpredictable(token_data: dict):
 
 
 @pytest.mark.asyncio
-@settings(max_examples=100, deadline=2000)
+@hypothesis_settings(max_examples=100, deadline=2000)
 @given(token_data=token_data_strategy())
 def test_property_14_tokens_contain_required_claims(token_data: dict):
     """
@@ -151,7 +151,7 @@ def test_property_14_tokens_contain_required_claims(token_data: dict):
 
 
 @pytest.mark.asyncio
-@settings(max_examples=100, deadline=2000)
+@hypothesis_settings(max_examples=100, deadline=2000)
 @given(token_data=token_data_strategy())
 def test_property_14_refresh_tokens_have_different_expiry(token_data: dict):
     """
@@ -180,7 +180,7 @@ def test_property_14_refresh_tokens_have_different_expiry(token_data: dict):
 
 
 @pytest.mark.asyncio
-@settings(max_examples=50, deadline=2000)
+@hypothesis_settings(max_examples=50, deadline=2000)
 @given(token_data=token_data_strategy())
 def test_property_14_tokens_cannot_be_forged(token_data: dict):
     """
@@ -202,7 +202,7 @@ def test_property_14_tokens_cannot_be_forged(token_data: dict):
         "type": "access",
         "jti": str(uuid.uuid4())
     })
-    forged_token = jwt.encode(to_encode, wrong_secret, algorithm=settings.JWT_ALGORITHM)
+    forged_token = jwt.encode(to_encode, wrong_secret, algorithm=app_settings.JWT_ALGORITHM)
     
     # Property: Forged token should be rejected
     with pytest.raises(Exception) as exc_info:
@@ -212,7 +212,7 @@ def test_property_14_tokens_cannot_be_forged(token_data: dict):
 
 
 @pytest.mark.asyncio
-@settings(max_examples=50, deadline=2000)
+@hypothesis_settings(max_examples=50, deadline=2000)
 @given(token_data=token_data_strategy())
 def test_property_14_expired_tokens_are_rejected(token_data: dict):
     """
@@ -324,7 +324,7 @@ def test_access_token_expiration_time():
     iat = datetime.fromtimestamp(payload["iat"])
     
     duration = (exp - iat).total_seconds()
-    expected = settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES * 60
+    expected = app_settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES * 60
     
     # Allow 2 second tolerance for test execution time
     assert abs(duration - expected) < 2, f"Access token should expire in {expected} seconds"
@@ -345,7 +345,7 @@ def test_refresh_token_expiration_time():
     iat = datetime.fromtimestamp(payload["iat"])
     
     duration = (exp - iat).total_seconds()
-    expected = settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS * 86400
+    expected = app_settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS * 86400
     
     # Allow 2 second tolerance for test execution time
     assert abs(duration - expected) < 2, f"Refresh token should expire in {expected} seconds"
