@@ -36,6 +36,9 @@ docker compose up -d
 - 🛡️ **Security hardening: CSRF, rate limiting, session management** (v1.0.0)
 - 🎨 **Custom WeFold branding with theme colors** (v1.0.0)
 - 👥 **Role-based access control (user/developer/admin)** (v1.0.0)
+- 📁 **Work sessions for organizing predictions** (v1.0.0)
+- 🔗 **Share links for collaborative access** (v1.0.0)
+- 📦 **ZIP export of entire sessions** (v1.0.0)
 
 **Authentication**:
 - Register/Login with secure password hashing (bcrypt, cost factor 12)
@@ -50,7 +53,23 @@ docker compose up -d
 - **Developer**: `developer` / `Dev@2025!` (testing & debugging)
 - Setup: `cd backend && setup_master.bat`
 
-**Documentation**: See `docs/SETUP.md`, `docs/USER_GUIDE.md`, `docs/API.md#authentication`, and `RELEASE_NOTES.md`
+**Work Sessions**:
+- 📁 Organize predictions into logical groups with isolated file storage
+- 🔗 Generate time-limited share links (up to 7 days)
+- 📦 Download entire sessions as ZIP archives
+- 🔐 User-isolated directories (`user_data/{user_id}/sessions/{session_id}/`)
+- 🧹 Automatic cleanup of expired sessions (90+ days inactive)
+- 🔄 Migration script for existing predictions (`backend/scripts/migrate_predictions_to_sessions.py`)
+
+**Configuration**:
+```bash
+USER_DATA_DIR=./user_data           # Session storage directory
+SESSION_RETENTION_DAYS=90           # Auto-delete after 90 days inactive
+SHARE_LINK_MAX_HOURS=168            # Share links expire after 7 days
+CLEANUP_SCHEDULE_CRON="0 2 * * *"   # Daily cleanup at 2 AM
+```
+
+**Documentation**: See `docs/SETUP.md`, `docs/USER_GUIDE.md`, `docs/API.md#authentication`, `docs/API.md#work-session-endpoints`, `docs/SESSION_MIGRATION_GUIDE.md`, and `RELEASE_NOTES.md`
 
 ---
 
@@ -95,7 +114,8 @@ python systematic_protein_testing.py --resume
 - Real-time WebSocket updates
 - 3D visualization with NGL Viewer
 - Campaign management for batch predictions
-- Comprehensive API with 25+ endpoints
+- Work session management with share links
+- Comprehensive API with 35+ endpoints
 - JWT authentication and security hardening
 - Docker deployment ready
 
@@ -107,7 +127,7 @@ python systematic_protein_testing.py --resume
 
 **Testing**: 141/152 tests passing (93%), 64% backend coverage
 
-**Documentation**: `docs/SETUP.md`, `docs/API.md`, `docs/USER_GUIDE.md`, `RELEASE_NOTES.md`
+**Documentation**: `docs/SETUP.md`, `docs/API.md`, `docs/USER_GUIDE.md`, `docs/SESSION_MIGRATION_GUIDE.md`, `RELEASE_NOTES.md`ATION_GUIDE.md`, `RELEASE_NOTES.md`
 
 ### 1. **UBF Protein System** - `ubf_protein/` Directory ✅
 **Consciousness-inspired multi-agent optimization for protein conformational exploration**
@@ -234,13 +254,14 @@ PP/
 │   └── dist/                          # Production build
 ├── backend/                           # FastAPI backend (v1.0.0)
 │   ├── app/
-│   │   ├── api/                       # REST API endpoints (predictions, campaigns, results)
-│   │   ├── services/                  # Business logic services
-│   │   ├── models/                    # SQLAlchemy database models
+│   │   ├── api/                       # REST API endpoints (predictions, campaigns, results, sessions)
+│   │   ├── services/                  # Business logic services (incl. work sessions, file storage)
+│   │   ├── models/                    # SQLAlchemy database models (incl. WorkSession, SharedExport)
 │   │   ├── tasks/                     # Celery background tasks
 │   │   ├── websocket/                 # Socket.IO real-time events
 │   │   ├── middleware/                # Security middleware
 │   │   └── integrations/              # UBF/QCPP integration wrappers
+│   ├── scripts/                       # Utility scripts (migration, cleanup)
 │   ├── tests/                         # 123 backend tests (92% passing)
 │   └── celery_app.py                  # Celery worker configuration
 ├── docker/                            # Docker configuration
@@ -250,8 +271,9 @@ PP/
 │   └── nginx/                         # Production Nginx config
 ├── docs/                              # Comprehensive documentation
 │   ├── SETUP.md                       # Complete setup guide
-│   ├── API.md                         # REST API and WebSocket reference
+│   ├── API.md                         # REST API and WebSocket reference (incl. Work Sessions)
 │   ├── USER_GUIDE.md                  # Feature documentation
+│   ├── SESSION_MIGRATION_GUIDE.md     # Session migration guide and script
 │   ├── DEVELOPER_GUIDE.md             # Development patterns
 │   ├── TROUBLESHOOTING.md             # Common issues
 │   └── ENVIRONMENT_VARIABLES.md       # Configuration reference
@@ -344,7 +366,8 @@ pip install -r ubf_protein/requirements.txt
 ### Web Interface Documentation (v1.0.0)
 - **Setup Guide**: `docs/SETUP.md` - Complete installation and configuration
 - **User Guide**: `docs/USER_GUIDE.md` - Feature walkthroughs with examples
-- **API Reference**: `docs/API.md` - REST API and WebSocket documentation
+- **API Reference**: `docs/API.md` - REST API and WebSocket documentation (incl. Work Sessions)
+- **Session Migration Guide**: `docs/SESSION_MIGRATION_GUIDE.md` - Migrating predictions to sessions
 - **Developer Guide**: `docs/DEVELOPER_GUIDE.md` - Architecture and patterns
 - **Troubleshooting**: `docs/TROUBLESHOOTING.md` - Common issues and solutions
 - **Environment Variables**: `docs/ENVIRONMENT_VARIABLES.md` - Configuration reference
@@ -454,9 +477,9 @@ This is a research project. For questions or contributions, please refer to the 
 
 ---
 
-**Last Updated**: November 24, 2025
+**Last Updated**: November 26, 2025
 **Primary Testing Modules**: test_protein.py, systematic_protein_testing.py
-**Key Features**: Quantum Refinement Engine, Real RMSD calculations, Web Interface v1.0.0
-**Web Platform**: Full-stack React/FastAPI app with authentication, real-time monitoring, 3D visualization
+**Key Features**: Quantum Refinement Engine, Real RMSD calculations, Web Interface v1.0.0, Work Sessions
+**Web Platform**: Full-stack React/FastAPI app with authentication, work sessions, real-time monitoring, 3D visualization
 **Master Accounts**: Admin and developer test accounts available (see `MASTER_CREDENTIALS.txt`)
 **Scale Verified**: 45+ unique proteins tested, 3+ million computations performed
