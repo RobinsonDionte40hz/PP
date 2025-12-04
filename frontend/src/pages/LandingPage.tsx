@@ -35,6 +35,7 @@ import {
   LooksTwo as TwoIcon,
   Looks3 as ThreeIcon,
   Looks4 as FourIcon,
+  AutoAwesome as AutoAwesomeIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { keyframes } from '@mui/system';
@@ -52,8 +53,19 @@ const fadeInUp = keyframes`
 `;
 
 const float = keyframes`
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-20px) rotate(5deg); }
+`;
+
+const gradientShift = keyframes`
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+`;
+
+const pulse = keyframes`
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.05); }
 `;
 
 const LandingPage: React.FC = () => {
@@ -156,7 +168,92 @@ const LandingPage: React.FC = () => {
   ];
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+    <Box
+      sx={{
+        minHeight: '100vh',
+        position: 'relative',
+        overflow: 'hidden',
+        background: (theme) => theme.palette.mode === 'dark' 
+          ? 'linear-gradient(-45deg, #293B5F 0%, #47597E 25%, #293B5F 50%, #47597E 75%, #293B5F 100%)'
+          : 'linear-gradient(-45deg, #47597E 0%, #DBE6FD 25%, #B2AB8C 50%, #DBE6FD 75%, #47597E 100%)',
+        backgroundSize: '400% 400%',
+        animation: `${gradientShift} 15s ease infinite`,
+      }}
+    >
+      {/* Floating Particles */}
+      <Box
+        sx={{
+          position: 'fixed',
+          top: '10%',
+          left: '5%',
+          animation: `${float} 6s ease-in-out infinite`,
+          zIndex: 0,
+          pointerEvents: 'none',
+        }}
+      >
+        <ScienceIcon sx={{ fontSize: 60, color: 'rgba(255, 255, 255, 0.15)' }} />
+      </Box>
+      <Box
+        sx={{
+          position: 'fixed',
+          top: '15%',
+          right: '10%',
+          animation: `${float} 8s ease-in-out infinite 1s`,
+          zIndex: 0,
+          pointerEvents: 'none',
+        }}
+      >
+        <BiotechIcon sx={{ fontSize: 80, color: 'rgba(255, 255, 255, 0.1)' }} />
+      </Box>
+      <Box
+        sx={{
+          position: 'fixed',
+          bottom: '20%',
+          left: '8%',
+          animation: `${float} 7s ease-in-out infinite 2s`,
+          zIndex: 0,
+          pointerEvents: 'none',
+        }}
+      >
+        <AutoAwesomeIcon sx={{ fontSize: 50, color: 'rgba(255, 255, 255, 0.12)' }} />
+      </Box>
+      <Box
+        sx={{
+          position: 'fixed',
+          bottom: '30%',
+          right: '5%',
+          animation: `${float} 9s ease-in-out infinite 0.5s`,
+          zIndex: 0,
+          pointerEvents: 'none',
+        }}
+      >
+        <ScienceIcon sx={{ fontSize: 70, color: 'rgba(255, 255, 255, 0.08)' }} />
+      </Box>
+      <Box
+        sx={{
+          position: 'fixed',
+          top: '40%',
+          left: '15%',
+          animation: `${float} 10s ease-in-out infinite 3s`,
+          zIndex: 0,
+          pointerEvents: 'none',
+        }}
+      >
+        <PsychologyIcon sx={{ fontSize: 55, color: 'rgba(255, 255, 255, 0.1)' }} />
+      </Box>
+      <Box
+        sx={{
+          position: 'fixed',
+          top: '60%',
+          right: '15%',
+          animation: `${float} 8s ease-in-out infinite 4s`,
+          zIndex: 0,
+          pointerEvents: 'none',
+        }}
+      >
+        <BiotechIcon sx={{ fontSize: 45, color: 'rgba(255, 255, 255, 0.08)' }} />
+      </Box>
+
       {/* Navigation Bar */}
       <Box
         sx={{
@@ -209,7 +306,8 @@ const LandingPage: React.FC = () => {
           minHeight: '100vh',
           display: 'flex',
           alignItems: 'center',
-          background: `linear-gradient(135deg, ${alpha('#293B5F', 0.05)} 0%, ${alpha('#47597E', 0.1)} 50%, ${alpha('#B2AB8C', 0.05)} 100%)`,
+          position: 'relative',
+          zIndex: 1,
           pt: 8,
         }}
       >
@@ -230,7 +328,9 @@ const LandingPage: React.FC = () => {
                     fontWeight: 800,
                     lineHeight: 1.1,
                     mb: 3,
-                    background: `linear-gradient(135deg, #293B5F 0%, #47597E 50%, #293B5F 100%)`,
+                    background: (theme) => theme.palette.mode === 'dark'
+                      ? 'linear-gradient(135deg, #DBE6FD 0%, #B2AB8C 50%, #DBE6FD 100%)'
+                      : 'linear-gradient(135deg, #293B5F 0%, #47597E 50%, #293B5F 100%)',
                     backgroundClip: 'text',
                     WebkitBackgroundClip: 'text',
                     WebkitTextFillColor: 'transparent',
@@ -289,7 +389,7 @@ const LandingPage: React.FC = () => {
             <Grid size={{ xs: 12, md: 6 }}>
               <Box
                 sx={{
-                  animation: `${float} 4s ease-in-out infinite`,
+                  animation: `${float} 4s ease-in-out infinite, ${pulse} 3s ease-in-out infinite`,
                   textAlign: 'center',
                 }}
               >

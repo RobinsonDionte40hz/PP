@@ -69,8 +69,22 @@ api.interceptors.response.use(
       console.error('[API Error]', error.response?.status, error.message);
     }
     
+    // Check if user is on a public page (don't redirect from these)
+    const publicPaths = ['/', '/login', '/register'];
+    const currentPath = window.location.pathname;
+    const isOnPublicPage = publicPaths.includes(currentPath);
+    
+    // Check if user had a valid auth token (was logged in)
+    const hadAuthToken = localStorage.getItem('auth_token') !== null;
+    
     // Handle 401 Unauthorized - Try to refresh token
     if (error.response?.status === 401 && !originalRequest._retry) {
+      // If user was never logged in or is on a public page, don't redirect
+      // Just reject the error and let the component handle it
+      if (!hadAuthToken || isOnPublicPage) {
+        return Promise.reject(error);
+      }
+      
       if (isRefreshing) {
         // If already refreshing, queue this request
         return new Promise((resolve, reject) => {
@@ -90,7 +104,7 @@ api.interceptors.response.use(
       const refreshToken = localStorage.getItem('refresh_token');
       
       if (!refreshToken) {
-        // No refresh token, redirect to login
+        // No refresh token but had auth token - session expired, redirect to login
         localStorage.removeItem('auth_token');
         localStorage.removeItem('refresh_token');
         localStorage.removeItem('user');
