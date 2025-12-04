@@ -440,8 +440,25 @@ const LandingPage: React.FC = () => {
                 sx={{
                   animation: `${float} 4s ease-in-out infinite, ${pulse} 3s ease-in-out infinite`,
                   textAlign: 'center',
+                  position: 'relative',
                 }}
               >
+                {/* White light glow behind logo */}
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    width: '60%',
+                    height: '60%',
+                    borderRadius: '50%',
+                    background: 'radial-gradient(circle, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.15) 40%, rgba(255, 255, 255, 0) 70%)',
+                    filter: 'blur(30px)',
+                    zIndex: 0,
+                    animation: `${pulse} 4s ease-in-out infinite`,
+                  }}
+                />
                 <img
                   src="/emergentfoldslogo.png"
                   alt="EmergentFolds Protein Structure"
@@ -450,6 +467,8 @@ const LandingPage: React.FC = () => {
                     height: 'auto',
                     maxHeight: '500px',
                     filter: 'drop-shadow(0 20px 40px rgba(41, 59, 95, 0.3))',
+                    position: 'relative',
+                    zIndex: 1,
                   }}
                 />
               </Box>
