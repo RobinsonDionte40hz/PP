@@ -27,7 +27,8 @@ const withSuspense = (Component: React.LazyExoticComponent<React.ComponentType<a
 );
 
 // Protected route wrapper with suspense
-const withProtectedSuspense = (Component: React.LazyExoticComponent<React.ComponentType<any>>) => (
+// @ts-ignore - Reserved for future use
+const _withProtectedSuspense = (Component: React.LazyExoticComponent<React.ComponentType<any>>) => (
   <ProtectedRoute>
     {withSuspense(Component)}
   </ProtectedRoute>

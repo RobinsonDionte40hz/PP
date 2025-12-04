@@ -18,7 +18,6 @@ import {
 import { 
   Visibility, 
   VisibilityOff, 
-  Login as LoginIcon,
   Science,
   Biotech,
   AutoAwesome,

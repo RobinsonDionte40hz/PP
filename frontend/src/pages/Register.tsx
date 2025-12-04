@@ -18,7 +18,6 @@ import {
 import { 
   Visibility, 
   VisibilityOff, 
-  PersonAdd as RegisterIcon,
   Science,
   Biotech,
   AutoAwesome,
@@ -284,7 +283,7 @@ const Register: React.FC = () => {
           console.error('Auto-login failed:', loginErr);
           const errorMessage = getAuthErrorMessage(loginErr, 'login');
           setSuccess('Registration successful! Please login.');
-          showWarning('Please login with your new credentials.', 'Registration Complete');
+          showWarning(errorMessage.message || 'Please login with your new credentials.', 'Registration Complete');
           
           setTimeout(() => {
             navigate('/login');

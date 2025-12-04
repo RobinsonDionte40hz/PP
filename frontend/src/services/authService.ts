@@ -52,6 +52,7 @@ export const login = async (credentials: LoginRequest): Promise<LoginResponse> =
       user,
       access_token: accessToken,
       refresh_token: refreshToken,
+      token_type: 'bearer',
       expires_in: expiresIn || 1800,
     };
   } catch (error: unknown) {
