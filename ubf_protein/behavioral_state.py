@@ -1,5 +1,20 @@
 """
-Search strategy implementation (derived from exploration parameters).
+Search Strategy Implementation (Derived from Exploration Parameters)
+
+Copyright (c) 2025 Dionte Robinson. All Rights Reserved.
+
+PROPRIETARY ALGORITHM - Patent Pending
+This module contains proprietary 2D→5D behavioral transformation formulas
+that convert exploration parameters into multi-dimensional search strategies.
+
+Key innovations include:
+- Novel 5D search strategy space derivation
+- Geometric mean combinations for hydrophobic drive
+- Adaptive risk tolerance calculations
+
+For commercial licensing, contact: dionterobinson.biorxiv@gmail.com
+
+---
 
 ⚠️ IMPORTANT DISCLAIMER:
 "Behavioral state" is derived from exploration parameters (metaphorically

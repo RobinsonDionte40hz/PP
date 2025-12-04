@@ -1,5 +1,21 @@
 """
-Physics integration module for UBF protein system.
+Physics Integration Module for UBF Protein System
+
+Copyright (c) 2025 Dionte Robinson. All Rights Reserved.
+
+PROPRIETARY ALGORITHM - Patent Pending
+This module contains proprietary quantum physics integration algorithms
+including QAAP calculations, 40 Hz resonance coupling, and water shielding.
+
+Key innovations include:
+- QAAP (Quantum Annealing Acceleration Potential) factor calculations
+- 40 Hz neural resonance coupling for protein dynamics
+- 408 fs water shielding timescale modeling
+- 0.28 nm water shell thickness integration
+
+For commercial licensing, contact: dionterobinson.biorxiv@gmail.com
+
+---
 
 This module provides physics calculator adapters that wrap existing
 physics modules to implement the standardized interfaces.

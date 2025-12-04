@@ -1,6 +1,23 @@
 """
 QCPP Integration Layer for UBF System
 
+Copyright (c) 2025 Dionte Robinson. All Rights Reserved.
+
+PROPRIETARY ALGORITHM - Patent Pending
+This module contains proprietary integration algorithms connecting the
+Quantum Coherence Protein Predictor (QCPP) with the Universal Behavioral
+Framework (UBF) for real-time quantum-guided conformational exploration.
+
+Key innovations include:
+- Real-time QCPP feedback integration
+- Conformation-to-QCP caching with hash-based lookup
+- Dynamic quantum factor calculation for move evaluation
+- Performance-optimized analysis with configurable frequency
+
+For commercial licensing, contact: dionterobinson.biorxiv@gmail.com
+
+---
+
 This module provides the integration layer between the Quantum Coherence Protein
 Predictor (QCPP) and the Universal Behavioral Framework (UBF). It wraps QCPP
 functionality for use in real-time conformational exploration.

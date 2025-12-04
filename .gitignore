@@ -30,6 +30,12 @@ MASTER_CREDENTIALS.txt
 secrets.json
 credentials.json
 
+# Proprietary/Trade Secret Documentation
+PROPRIETARY_ALGORITHMS.md
+TRADE_SECRETS.md
+PATENT_CLAIMS.md
+IP_DOCUMENTATION.md
+
 # SSL Certificates
 docker/nginx/ssl/*.pem
 docker/nginx/ssl/*.crt

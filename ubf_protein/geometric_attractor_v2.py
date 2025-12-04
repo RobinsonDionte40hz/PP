@@ -1,6 +1,22 @@
 """
 Geometric Attractor Module V2 - Percentage-Based Relationship Scoring
 
+Copyright (c) 2025 Dionte Robinson. All Rights Reserved.
+
+PROPRIETARY ALGORITHM - Patent Pending
+This module contains proprietary geometric pattern detection algorithms for
+analyzing protein conformations using golden ratio and Platonic solid relationships.
+
+Key innovations include:
+- Percentage-based φ-pattern scoring system
+- Platonic solid similarity algorithms (icosahedron, dodecahedron, octahedron)
+- Golden angle detection (137.5°, 222.5°)
+- Fibonacci sequence correlation in protein geometry
+
+For commercial licensing, contact: dionterobinson.biorxiv@gmail.com
+
+---
+
 This module provides advanced geometric pattern detection with percentage scores
 representing the strength of spatial relationships in protein conformations.
 
@@ -14,7 +30,6 @@ Key Features:
 - Pure Python (PyPy-optimized)
 
 Version: 2.0
-Author: UBF Protein System
 Date: November 9, 2025
 """
 

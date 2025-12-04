@@ -1,5 +1,21 @@
 """
-Mapless move system implementation for UBF protein system.
+Mapless Move System for UBF Protein System
+
+Copyright (c) 2025 Dionte Robinson. All Rights Reserved.
+
+PROPRIETARY ALGORITHM - Patent Pending
+This module contains proprietary O(1) mapless conformational exploration
+algorithms that enable efficient move generation without spatial pathfinding.
+
+Key innovations include:
+- O(1) capability-based move filtering
+- 10 distinct move types (backbone, sidechain, domain, collective)
+- 5-factor composite evaluation (physical, quantum, behavioral, historical, goal)
+- Physics-integrated move scoring
+
+For commercial licensing, contact: dionterobinson.biorxiv@gmail.com
+
+---
 
 This module implements the mapless conformational exploration system,
 including move generation, evaluation, and physics integration.

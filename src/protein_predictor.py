@@ -1,3 +1,18 @@
+"""
+Quantum Coherence Protein Predictor (QCPP)
+
+Copyright (c) 2025 Dionte Robinson. All Rights Reserved.
+
+This module contains proprietary algorithms for protein stability prediction
+using quantum coherence principles and golden ratio mathematics.
+
+PATENT PENDING: The QCP formula and related algorithms may be subject to
+patent protection. Unauthorized commercial use is prohibited.
+
+Licensed under MIT License for non-commercial research use.
+For commercial licensing, contact: dionterobinson.biorxiv@gmail.com
+"""
+
 import numpy as np
 import matplotlib.pyplot as plt
 from Bio.PDB import PDBParser, Selection
@@ -12,6 +27,9 @@ class QuantumCoherenceProteinPredictor:
     """
     A protein structure predictor based on quantum coherence principles,
     golden ratio patterns, and resonance dynamics.
+    
+    PROPRIETARY ALGORITHM - Patent Pending
+    Copyright (c) 2025 Dionte Robinson
     """
     
     def __init__(self):

@@ -1,6 +1,15 @@
 """
 Exploration parameter system implementation (consciousness-inspired metaphor).
 
+Copyright (c) 2025 Dionte Robinson. All Rights Reserved.
+
+PROPRIETARY ALGORITHM - Patent Pending
+This module contains proprietary multi-agent optimization algorithms.
+The consciousness-inspired coordinate system and behavioral state derivations
+are subject to intellectual property protection.
+
+For commercial licensing, contact: dionterobinson.biorxiv@gmail.com
+
 ⚠️ IMPORTANT DISCLAIMER:
 This module uses "consciousness" as a METAPHORICAL FRAMEWORK for organizing
 exploration parameters. This is NOT a claim about consciousness in proteins.

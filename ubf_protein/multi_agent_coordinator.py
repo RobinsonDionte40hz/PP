@@ -1,5 +1,23 @@
 """
-Multi-agent coordination implementation for UBF protein system.
+Multi-Agent Coordination System for UBF Protein System
+
+Copyright (c) 2025 Dionte Robinson. All Rights Reserved.
+
+PROPRIETARY ALGORITHM - Patent Pending
+This module contains proprietary multi-agent coordination algorithms for
+parallel protein conformational exploration using consciousness-inspired
+parameter spaces.
+
+Key innovations include:
+- Diverse agent population management (33% cautious, 34% balanced, 33% aggressive)
+- Shared memory pool with significance-based filtering
+- Parallel exploration with thread-safe coordination
+- Adaptive configuration based on protein size
+- QCPP integration for quantum-guided optimization
+
+For commercial licensing, contact: dionterobinson.biorxiv@gmail.com
+
+---
 
 This module implements the MultiAgentCoordinator that manages multiple
 protein agents working together to explore conformational space.

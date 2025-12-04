@@ -1,6 +1,21 @@
 """
 Quantum Refinement Engine for UBF Protein System
 
+Copyright (c) 2025 Dionte Robinson. All Rights Reserved.
+
+PROPRIETARY ALGORITHM - Patent Pending
+This module contains proprietary quantum refinement algorithms for improving
+protein structure predictions from coarse-grained (7-14Å) to near-native (<5Å).
+
+Key innovations include:
+- Quantum core identification and THz resonance cascades
+- Golden ratio geometric pattern optimization
+- Two-stage refinement architecture
+
+For commercial licensing, contact: dionterobinson.biorxiv@gmail.com
+
+---
+
 This module implements the Quantum Refinement Engine, a two-stage optimization
 system that bridges the gap between coarse 7-14Å protein structure predictions
 and near-native sub-5Å accuracy.
