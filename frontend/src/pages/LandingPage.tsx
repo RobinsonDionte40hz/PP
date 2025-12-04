@@ -175,7 +175,7 @@ const LandingPage: React.FC = () => {
         overflow: 'hidden',
         background: (theme) => theme.palette.mode === 'dark' 
           ? 'linear-gradient(-45deg, #293B5F 0%, #47597E 25%, #293B5F 50%, #47597E 75%, #293B5F 100%)'
-          : 'linear-gradient(-45deg, #47597E 0%, #DBE6FD 25%, #B2AB8C 50%, #DBE6FD 75%, #47597E 100%)',
+          : 'linear-gradient(-45deg, #47597E 0%, #1C1C1C 25%, #B2AB8C 50%, #1C1C1C 75%, #47597E 100%)',
         backgroundSize: '400% 400%',
         animation: `${gradientShift} 15s ease infinite`,
       }}
