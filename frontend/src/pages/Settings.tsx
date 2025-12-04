@@ -158,23 +158,32 @@ const Settings: React.FC = () => {
   };
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+    <Container maxWidth="lg" sx={{ mt: { xs: 2, sm: 4 }, mb: 4, px: { xs: 1, sm: 3 } }}>
       {/* Header */}
-      <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <Box sx={{ 
+        mb: { xs: 2, sm: 4 }, 
+        display: 'flex', 
+        flexDirection: { xs: 'column', sm: 'row' },
+        justifyContent: 'space-between', 
+        alignItems: { xs: 'stretch', sm: 'center' },
+        gap: { xs: 2, sm: 0 }
+      }}>
         <Box>
-          <Typography variant="h4" component="h1" gutterBottom>
+          <Typography variant="h4" component="h1" gutterBottom sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
             Settings
           </Typography>
           <Typography variant="body2" color="text.secondary">
             Configure application preferences and behavior
           </Typography>
         </Box>
-        <Stack direction="row" spacing={2}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
           <Button
             variant="outlined"
             startIcon={<ResetIcon />}
             onClick={handleReset}
             disabled={!hasChanges}
+            fullWidth
+            sx={{ width: { xs: '100%', sm: 'auto' } }}
           >
             Reset to Defaults
           </Button>
@@ -183,6 +192,8 @@ const Settings: React.FC = () => {
             startIcon={<SaveIcon />}
             onClick={handleSave}
             disabled={!hasChanges}
+            fullWidth
+            sx={{ width: { xs: '100%', sm: 'auto' } }}
           >
             Save Changes
           </Button>
@@ -196,11 +207,14 @@ const Settings: React.FC = () => {
           onChange={handleTabChange}
           aria-label="settings tabs"
           sx={{ borderBottom: 1, borderColor: 'divider' }}
+          variant="scrollable"
+          scrollButtons="auto"
+          allowScrollButtonsMobile
         >
-          <Tab label="System Configuration" id="settings-tab-0" />
-          <Tab label="Visualization" id="settings-tab-1" />
-          <Tab label="Notifications" id="settings-tab-2" />
-          <Tab label="Advanced" id="settings-tab-3" />
+          <Tab label="System Configuration" id="settings-tab-0" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }} />
+          <Tab label="Visualization" id="settings-tab-1" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }} />
+          <Tab label="Notifications" id="settings-tab-2" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }} />
+          <Tab label="Advanced" id="settings-tab-3" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }} />
         </Tabs>
 
         {/* System Configuration Tab */}

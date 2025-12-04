@@ -320,13 +320,14 @@ const Register: React.FC = () => {
         margin: 0,
       }}
     >
-      {/* Floating Particles */}
+      {/* Floating Particles - Hidden on mobile for better UX */}
       <Box
         sx={{
           position: 'absolute',
           top: '10%',
           left: '10%',
           animation: `${float} 6s ease-in-out infinite`,
+          display: { xs: 'none', md: 'block' },
         }}
       >
         <Science sx={{ fontSize: 60, color: 'rgba(255, 255, 255, 0.15)' }} />
@@ -337,6 +338,7 @@ const Register: React.FC = () => {
           top: '20%',
           right: '15%',
           animation: `${float} 8s ease-in-out infinite 1s`,
+          display: { xs: 'none', md: 'block' },
         }}
       >
         <Biotech sx={{ fontSize: 80, color: 'rgba(255, 255, 255, 0.1)' }} />
@@ -347,6 +349,7 @@ const Register: React.FC = () => {
           bottom: '15%',
           left: '15%',
           animation: `${float} 7s ease-in-out infinite 2s`,
+          display: { xs: 'none', md: 'block' },
         }}
       >
         <AutoAwesome sx={{ fontSize: 50, color: 'rgba(255, 255, 255, 0.12)' }} />
@@ -357,6 +360,7 @@ const Register: React.FC = () => {
           bottom: '25%',
           right: '10%',
           animation: `${float} 9s ease-in-out infinite 0.5s`,
+          display: { xs: 'none', md: 'block' },
         }}
       >
         <Science sx={{ fontSize: 70, color: 'rgba(255, 255, 255, 0.08)' }} />
@@ -376,9 +380,9 @@ const Register: React.FC = () => {
           <Paper
             elevation={24}
             sx={{
-              p: 4,
+              p: { xs: 3, sm: 4 },
               width: '100%',
-              borderRadius: 4,
+              borderRadius: { xs: 2, sm: 4 },
               background: (theme) => theme.palette.mode === 'dark'
                 ? 'rgba(30, 30, 30, 0.9)'
                 : 'rgba(255, 255, 255, 0.95)',
@@ -389,7 +393,7 @@ const Register: React.FC = () => {
               boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
               transition: 'transform 0.3s ease',
               '&:hover': {
-                transform: 'translateY(-5px)',
+                transform: { xs: 'none', sm: 'translateY(-5px)' },
               },
             }}
           >
@@ -401,7 +405,7 @@ const Register: React.FC = () => {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  mb: 3,
+                  mb: { xs: 2, sm: 3 },
                   animation: `${pulse} 3s ease-in-out infinite`,
                 }}
               >
@@ -409,8 +413,9 @@ const Register: React.FC = () => {
                   src="/emergentfoldslogo.png"
                   alt="EmergentFolds"
                   style={{
-                    height: '180px',
-                    width: 'auto',
+                    maxHeight: '150px',
+                    width: '100%',
+                    maxWidth: '180px',
                     objectFit: 'contain',
                   }}
                 />
@@ -421,6 +426,7 @@ const Register: React.FC = () => {
                 gutterBottom
                 sx={{
                   fontWeight: 700,
+                  fontSize: { xs: '1.5rem', sm: '2.125rem' },
                   background: (theme) => theme.palette.mode === 'dark'
                     ? 'linear-gradient(135deg, #1C1C1C 0%, #B2AB8C 100%)'
                     : 'linear-gradient(135deg, #B2AB8C 0%, #47597E 100%)',

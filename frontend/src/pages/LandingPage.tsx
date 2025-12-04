@@ -36,6 +36,8 @@ import {
   Looks3 as ThreeIcon,
   Looks4 as FourIcon,
   AutoAwesome as AutoAwesomeIcon,
+  Menu as MenuIcon,
+  Close as CloseIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { keyframes } from '@mui/system';
@@ -71,6 +73,7 @@ const pulse = keyframes`
 const LandingPage: React.FC = () => {
   const theme = useTheme();
   const navigate = useNavigate();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [contactForm, setContactForm] = useState({
     name: '',
     email: '',
@@ -277,7 +280,8 @@ const LandingPage: React.FC = () => {
                 style={{ height: '40px', width: 'auto' }}
               />
             </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            {/* Desktop Navigation */}
+            <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 2 }}>
               <Link href="#workflow" color="inherit" underline="hover" sx={{ fontWeight: 500 }}>
                 How It Works
               </Link>
@@ -297,7 +301,48 @@ const LandingPage: React.FC = () => {
                 Get Started
               </Button>
             </Box>
+            {/* Mobile Menu Button */}
+            <IconButton
+              sx={{ display: { xs: 'flex', md: 'none' } }}
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            >
+              {mobileMenuOpen ? <CloseIcon /> : <MenuIcon />}
+            </IconButton>
           </Box>
+          {/* Mobile Navigation Menu */}
+          {mobileMenuOpen && (
+            <Box
+              sx={{
+                display: { xs: 'flex', md: 'none' },
+                flexDirection: 'column',
+                gap: 2,
+                pb: 2,
+                borderTop: `1px solid ${theme.palette.divider}`,
+                pt: 2,
+              }}
+            >
+              <Link href="#workflow" color="inherit" underline="hover" sx={{ fontWeight: 500 }} onClick={() => setMobileMenuOpen(false)}>
+                How It Works
+              </Link>
+              <Link href="#features" color="inherit" underline="hover" sx={{ fontWeight: 500 }} onClick={() => setMobileMenuOpen(false)}>
+                Features
+              </Link>
+              <Link href="#docs" color="inherit" underline="hover" sx={{ fontWeight: 500 }} onClick={() => setMobileMenuOpen(false)}>
+                Documentation
+              </Link>
+              <Link href="#contact" color="inherit" underline="hover" sx={{ fontWeight: 500 }} onClick={() => setMobileMenuOpen(false)}>
+                Contact
+              </Link>
+              <Stack direction="row" spacing={2} sx={{ mt: 1 }}>
+                <Button variant="outlined" onClick={() => { navigate('/login'); setMobileMenuOpen(false); }} fullWidth>
+                  Login
+                </Button>
+                <Button variant="contained" onClick={() => { navigate('/register'); setMobileMenuOpen(false); }} fullWidth>
+                  Get Started
+                </Button>
+              </Stack>
+            </Box>
+          )}
         </Container>
       </Box>
 
@@ -309,7 +354,8 @@ const LandingPage: React.FC = () => {
           alignItems: 'center',
           position: 'relative',
           zIndex: 1,
-          pt: 8,
+          pt: { xs: 12, md: 8 },
+          px: { xs: 2, sm: 0 },
         }}
       >
         <Container maxWidth="lg">
@@ -336,11 +382,11 @@ const LandingPage: React.FC = () => {
                 </Typography>
                 <Typography
                   variant="h5"
-                  sx={{ mb: 4, lineHeight: 1.6, maxWidth: 500, color: 'rgba(255, 255, 255, 0.85)' }}
+                  sx={{ mb: 4, lineHeight: 1.6, maxWidth: 500, color: 'rgba(255, 255, 255, 0.85)', fontSize: { xs: '1.1rem', sm: '1.25rem', md: '1.5rem' } }}
                 >
                   Explore protein conformational space with consciousness-inspired multi-agent optimization and quantum coherence refinement.
                 </Typography>
-                <Stack direction="row" spacing={2} sx={{ mb: 4 }}>
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 4 }}>
                   <Button
                     variant="contained"
                     size="large"
@@ -349,7 +395,7 @@ const LandingPage: React.FC = () => {
                     sx={{
                       py: 1.5,
                       px: 4,
-                      fontSize: '1.1rem',
+                      fontSize: { xs: '1rem', sm: '1.1rem' },
                       fontWeight: 600,
                     }}
                   >
@@ -365,7 +411,7 @@ const LandingPage: React.FC = () => {
                     See How It Works
                   </Button>
                 </Stack>
-                <Stack direction="row" spacing={3} sx={{ color: 'rgba(255, 255, 255, 0.85)' }}>
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={{ xs: 1, sm: 3 }} sx={{ color: 'rgba(255, 255, 255, 0.85)' }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                     <CheckIcon color="success" fontSize="small" />
                     <Typography variant="body2">QCPP + UBF Systems</Typography>
@@ -738,19 +784,19 @@ const LandingPage: React.FC = () => {
         <Container maxWidth="lg">
           <Grid container spacing={4} alignItems="center">
             <Grid size={{ xs: 12, md: 4 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: { xs: 'center', md: 'flex-start' }, gap: 2, mb: 2 }}>
                 <img
                   src="/emergentfoldslogo.png"
                   alt="EmergentFolds"
                   style={{ height: '40px', width: 'auto', filter: 'brightness(2)' }}
                 />
               </Box>
-              <Typography variant="body2" sx={{ opacity: 0.8 }}>
+              <Typography variant="body2" sx={{ opacity: 0.8, textAlign: { xs: 'center', md: 'left' } }}>
                 Quantum-Enhanced Protein Structure Prediction
               </Typography>
             </Grid>
             <Grid size={{ xs: 12, md: 4 }}>
-              <Stack direction="row" spacing={3} justifyContent={{ xs: 'flex-start', md: 'center' }}>
+              <Stack direction="row" spacing={{ xs: 2, sm: 3 }} flexWrap="wrap" justifyContent={{ xs: 'center', md: 'center' }} sx={{ gap: { xs: 1, sm: 0 } }}>
                 <Link href="#workflow" color="inherit" underline="hover" sx={{ opacity: 0.8 }}>
                   How It Works
                 </Link>
@@ -766,7 +812,7 @@ const LandingPage: React.FC = () => {
               </Stack>
             </Grid>
             <Grid size={{ xs: 12, md: 4 }}>
-              <Typography variant="body2" sx={{ opacity: 0.6, textAlign: { xs: 'left', md: 'right' } }}>
+              <Typography variant="body2" sx={{ opacity: 0.6, textAlign: { xs: 'center', md: 'right' } }}>
                 © {new Date().getFullYear()} EmergentFolds. All rights reserved.
               </Typography>
             </Grid>

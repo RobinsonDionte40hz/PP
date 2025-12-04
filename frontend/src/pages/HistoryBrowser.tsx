@@ -167,37 +167,53 @@ const HistoryBrowser: React.FC = () => {
   }
 
   return (
-    <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
+    <Container maxWidth="xl" sx={{ mt: { xs: 2, sm: 4 }, mb: 4, px: { xs: 1, sm: 3 } }}>
       {/* Header */}
-      <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <Box sx={{ 
+        mb: { xs: 2, sm: 4 }, 
+        display: 'flex', 
+        flexDirection: { xs: 'column', sm: 'row' },
+        justifyContent: 'space-between', 
+        alignItems: { xs: 'flex-start', sm: 'center' },
+        gap: { xs: 2, sm: 0 }
+      }}>
         <Box>
-          <Typography variant="h4" component="h1" gutterBottom>
+          <Typography variant="h4" component="h1" gutterBottom sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
             Prediction History
           </Typography>
           <Typography variant="body2" color="text.secondary">
             Browse and compare past structure predictions
           </Typography>
         </Box>
-        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+        <Box sx={{ 
+          display: 'flex', 
+          gap: { xs: 1, sm: 2 }, 
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          width: { xs: '100%', sm: 'auto' },
+          justifyContent: { xs: 'space-between', sm: 'flex-end' }
+        }}>
           {selectedPredictions.length > 0 && (
             <>
               <Chip
                 label={`${selectedPredictions.length} selected`}
                 onDelete={handleClearSelection}
                 color="primary"
+                size="small"
               />
               <Button
                 variant="contained"
                 startIcon={<CompareIcon />}
                 onClick={handleCompare}
                 disabled={selectedPredictions.length < 2}
+                size="small"
               >
                 Compare
               </Button>
             </>
           )}
           <Tooltip title="Refresh">
-            <IconButton onClick={handleRefresh} color="primary">
+            <IconButton onClick={handleRefresh} color="primary" size="small">
               <RefreshIcon />
             </IconButton>
           </Tooltip>
@@ -210,7 +226,7 @@ const HistoryBrowser: React.FC = () => {
             <ToggleButton value="card">
               <CardViewIcon />
             </ToggleButton>
-            <ToggleButton value="table">
+            <ToggleButton value="table" sx={{ display: { xs: 'none', sm: 'inline-flex' } }}>
               <TableViewIcon />
             </ToggleButton>
           </ToggleButtonGroup>
@@ -227,7 +243,7 @@ const HistoryBrowser: React.FC = () => {
       )}
 
       {/* Filters */}
-      <Paper sx={{ p: 3, mb: 3 }}>
+      <Paper sx={{ p: { xs: 2, sm: 3 }, mb: 3 }}>
         <HistoryFilters filters={filters} onFilterChange={handleFilterChange} />
       </Paper>
 

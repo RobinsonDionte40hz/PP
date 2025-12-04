@@ -135,10 +135,10 @@ const PredictionForm: React.FC = () => {
   };
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box sx={{ p: { xs: 2, sm: 3 } }}>
       {/* Header */}
-      <Box mb={4}>
-        <Typography variant="h4" fontWeight="bold" gutterBottom>
+      <Box mb={{ xs: 2, sm: 4 }}>
+        <Typography variant="h4" fontWeight="bold" gutterBottom sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
           New Prediction
         </Typography>
         <Typography variant="body2" color="text.secondary">
@@ -163,37 +163,52 @@ const PredictionForm: React.FC = () => {
       <Paper
         elevation={2}
         sx={{
-          p: 4,
+          p: { xs: 2, sm: 4 },
           background: `linear-gradient(135deg, ${alpha(
             theme.palette.primary.main,
             0.02
           )} 0%, ${alpha(theme.palette.background.paper, 1)} 100%)`,
         }}
       >
-        <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
+        <Stepper activeStep={activeStep} sx={{ mb: { xs: 2, sm: 4 } }} alternativeLabel>
           {steps.map((label) => (
             <Step key={label}>
-              <StepLabel>{label}</StepLabel>
+              <StepLabel sx={{ '& .MuiStepLabel-label': { fontSize: { xs: '0.75rem', sm: '0.875rem' } } }}>{label}</StepLabel>
             </Step>
           ))}
         </Stepper>
 
         {/* Step Content */}
-        <Box sx={{ minHeight: 400 }}>{renderStepContent(activeStep)}</Box>
+        <Box sx={{ minHeight: { xs: 300, sm: 400 } }}>{renderStepContent(activeStep)}</Box>
 
         {/* Navigation Buttons */}
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4 }}>
+        <Box sx={{ 
+          display: 'flex', 
+          flexDirection: { xs: 'column', sm: 'row' },
+          justifyContent: 'space-between', 
+          mt: { xs: 2, sm: 4 },
+          gap: { xs: 2, sm: 0 }
+        }}>
           <Button
             onClick={handleBack}
             disabled={activeStep === 0}
             variant="outlined"
+            fullWidth
+            sx={{ display: { xs: activeStep === 0 ? 'none' : 'block', sm: 'block' } }}
           >
             Back
           </Button>
-          <Box sx={{ display: 'flex', gap: 2 }}>
+          <Box sx={{ 
+            display: 'flex', 
+            gap: 2, 
+            flexDirection: { xs: 'column-reverse', sm: 'row' },
+            width: { xs: '100%', sm: 'auto' }
+          }}>
             <Button
               variant="text"
               onClick={() => navigate('/dashboard')}
+              fullWidth
+              sx={{ width: { xs: '100%', sm: 'auto' } }}
             >
               Cancel
             </Button>
@@ -201,6 +216,8 @@ const PredictionForm: React.FC = () => {
               variant="contained"
               onClick={handleNext}
               disabled={!isStepValid() || createPredictionMutation.isPending}
+              fullWidth
+              sx={{ width: { xs: '100%', sm: 'auto' } }}
             >
               {activeStep === steps.length - 1
                 ? createPredictionMutation.isPending

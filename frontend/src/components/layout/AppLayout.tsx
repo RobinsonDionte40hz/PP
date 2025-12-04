@@ -36,7 +36,7 @@ export default function AppLayout() {
           component="main"
           sx={{
             flexGrow: 1,
-            p: 3,
+            p: { xs: 2, sm: 3 },
             width: { md: `calc(100% - ${sidebarOpen ? DRAWER_WIDTH : 0}px)` },
             ml: { md: sidebarOpen ? `${DRAWER_WIDTH}px` : 0 },
             transition: theme.transitions.create(['margin', 'width'], {

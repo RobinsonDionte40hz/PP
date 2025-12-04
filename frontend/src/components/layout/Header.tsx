@@ -90,7 +90,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
           size="small" 
           color="primary" 
           variant="outlined"
-          sx={{ ml: 1 }}
+          sx={{ ml: 1, display: { xs: 'none', sm: 'flex' } }}
         />
         
         <Box sx={{ flexGrow: 1 }} />
@@ -100,19 +100,19 @@ export default function Header({ onMenuClick }: HeaderProps) {
           label="System: Online" 
           size="small" 
           color="success" 
-          sx={{ mr: 2 }}
+          sx={{ mr: 2, display: { xs: 'none', md: 'flex' } }}
         />
         
-        {/* Keyboard Shortcuts Help */}
+        {/* Keyboard Shortcuts Help - Hidden on mobile */}
         <Tooltip title="Keyboard shortcuts (Ctrl+/)">
-          <IconButton color="inherit" sx={{ mr: 1 }} onClick={() => setShortcutsOpen(true)}>
+          <IconButton color="inherit" sx={{ mr: 1, display: { xs: 'none', sm: 'flex' } }} onClick={() => setShortcutsOpen(true)}>
             <HelpOutlineIcon />
           </IconButton>
         </Tooltip>
         
         {/* Notifications */}
         <Tooltip title="Notifications">
-          <IconButton color="inherit" sx={{ mr: 1 }}>
+          <IconButton color="inherit" sx={{ mr: { xs: 0, sm: 1 } }}>
             <NotificationsIcon />
           </IconButton>
         </Tooltip>
