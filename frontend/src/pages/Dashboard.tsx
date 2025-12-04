@@ -12,6 +12,7 @@ import {
   SystemStatusCard,
   RecentPredictionsCard,
   StatisticsCard,
+  FeedbackCard,
 } from '../components/dashboard';
 import { DashboardSkeleton } from '../components/common/skeletons';
 import { animationStyles } from '../utils/animations';
@@ -119,6 +120,9 @@ const Dashboard: React.FC = () => {
           onNavigate={navigate}
           onRefresh={refetch}
         />
+
+        {/* Feedback Section */}
+        <FeedbackCard />
       </Stack>
     </Box>
   );

@@ -1,4 +1,4 @@
 """API package"""
-from app.api import predictions, campaigns, results
+from app.api import predictions, campaigns, results, sessions, feedback
 
-__all__ = ["predictions", "campaigns", "results"]
+__all__ = ["predictions", "campaigns", "results", "sessions", "feedback"]

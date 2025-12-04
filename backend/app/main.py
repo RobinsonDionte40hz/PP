@@ -70,7 +70,7 @@ async def health_check():
     }
 
 # Import and include routers
-from app.api import predictions, campaigns, results, sessions
+from app.api import predictions, campaigns, results, sessions, feedback
 from app.routes import websocket_routes, auth
 
 app.include_router(auth.router)  # Authentication routes (/api/auth)
@@ -80,6 +80,7 @@ app.include_router(sessions.router, prefix="/api/sessions", tags=["sessions"])
 app.include_router(sessions.public_router, prefix="/api/shared", tags=["shared"])  # Public share links
 app.include_router(websocket_routes.router, prefix="/api")  # WebSocket emission endpoints
 app.include_router(results.router, prefix="/api/results", tags=["results"])
+app.include_router(feedback.router, prefix="/api", tags=["feedback"])  # Feedback route
 
 logger.info("✓ FastAPI app configured")
 logger.info("✓ API routers mounted")

@@ -68,11 +68,11 @@ export default function Header({ onMenuClick }: HeaderProps) {
           <MenuIcon />
         </IconButton>
         
-        {/* WeFold Logo */}
+        {/* EmergentFolds Logo */}
         <Box
           component="img"
-          src="/wefold-logo.svg"
-          alt="WeFold"
+          src="/emergentfolds-logo.svg"
+          alt="EmergentFolds"
           sx={{
             height: 32,
             width: 'auto',

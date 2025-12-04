@@ -1,11 +1,11 @@
 @echo off
-REM Setup Master Accounts for WeFold
+REM Setup Master Accounts for EmergentFolds
 REM This script will:
 REM 1. Run database migration to add role column
 REM 2. Create admin and developer test accounts
 
 echo ============================================================
-echo WeFold Master Account Setup
+echo EmergentFolds Master Account Setup
 echo ============================================================
 echo.
 

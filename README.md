@@ -34,7 +34,7 @@ docker compose up -d
 - ⚙️ Comprehensive settings and configuration
 - 🔐 **User authentication with JWT tokens** (v1.0.0)
 - 🛡️ **Security hardening: CSRF, rate limiting, session management** (v1.0.0)
-- 🎨 **Custom WeFold branding with theme colors** (v1.0.0)
+- 🎨 **Custom EmergentFolds branding with theme colors** (v1.0.0)
 - 👥 **Role-based access control (user/developer/admin)** (v1.0.0)
 - 📁 **Work sessions for organizing predictions** (v1.0.0)
 - 🔗 **Share links for collaborative access** (v1.0.0)
@@ -123,7 +123,7 @@ python systematic_protein_testing.py --resume
 - Frontend: React 19, TypeScript, Material-UI 7, Vite 7, Socket.IO, Zustand, NGL Viewer
 - Backend: FastAPI, Celery, Redis, PostgreSQL/SQLite, Python-SocketIO, JWT auth
 - Infrastructure: Docker Compose, Nginx (production)
-- Design: Custom WeFold branding (#293B5F, #47597E, #DBE6FD, #B2AB8C palette)
+- Design: Custom EmergentFolds branding (#293B5F, #47597E, #DBE6FD, #B2AB8C palette)
 
 **Testing**: 141/152 tests passing (93%), 64% backend coverage
 

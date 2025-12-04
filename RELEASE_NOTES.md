@@ -2,7 +2,7 @@
 
 **Release Date**: November 24, 2025  
 **Status**: Production Ready  
-**Project**: WeFold - Physics Based Protein Shape Builder
+**Project**: EmergentFolds - Quantum-Enhanced Protein Structure Prediction
 
 ---
 
@@ -78,7 +78,7 @@ This is the initial release of the PP Frontend Interface, a comprehensive web ap
 
 #### 🎨 Enhanced UI/UX
 - **Modern Visual Design**
-  - Custom WeFold branding with atom structure logo
+  - Custom EmergentFolds branding with protein helix logo
   - Professional color palette (Deep Navy #293B5F, Slate Blue #47597E, Light Blue #DBE6FD, Warm Beige #B2AB8C)
   - Animated gradient backgrounds
   - Glass morphism effects with backdrop blur
@@ -419,12 +419,12 @@ See `docs/SETUP.md` for detailed instructions.
 - **NEW**: User authentication with JWT tokens
 - **NEW**: Role-based access control (User/Developer/Admin)
 - **NEW**: Master test accounts (admin/Admin@2025!, developer/Dev@2025!)
-- **NEW**: WeFold branding with custom logo and color palette
+- **NEW**: EmergentFolds branding with custom logo and color palette
 - **NEW**: Enhanced UI with animations, gradients, and glass morphism
 - **NEW**: Database migration system for schema updates
 
 ---
 
-**Thank you for using WeFold!** 🎉
+**Thank you for using EmergentFolds!** 🎉
 
-We hope this physics-based protein shape builder accelerates your protein structure prediction research. Happy predicting! 🧬
+We hope this quantum-enhanced protein structure prediction platform accelerates your research. Happy predicting! 🧬

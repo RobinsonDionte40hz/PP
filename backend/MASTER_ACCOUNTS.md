@@ -1,4 +1,4 @@
-# WeFold Master Accounts Setup
+# EmergentFolds Master Accounts Setup
 
 This directory contains scripts to set up master accounts for testing and administration.
 
@@ -20,14 +20,14 @@ This will:
 - **Username:** `admin`
 - **Password:** `Admin@2025!`
 - **Role:** `admin`
-- **Email:** `admin@wefold.local`
+- **Email:** `admin@emergentfolds.local`
 - **Permissions:** Full system access, user management, system configuration
 
 ### Developer Account
 - **Username:** `developer`
 - **Password:** `Dev@2025!`
 - **Role:** `developer`
-- **Email:** `dev@wefold.local`
+- **Email:** `dev@emergentfolds.local`
 - **Permissions:** Testing features, API access, debugging tools
 
 ## Manual Setup
@@ -115,7 +115,7 @@ The frontend will automatically recognize user roles and can show/hide features 
   "user": {
     "username": "admin",
     "role": "admin",
-    "email": "admin@wefold.local",
+    "email": "admin@emergentfolds.local",
     ...
   }
 }

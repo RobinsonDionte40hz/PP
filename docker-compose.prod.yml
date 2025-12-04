@@ -61,6 +61,12 @@ services:
       - ENABLE_CSRF=${ENABLE_CSRF:-true}
       - ENABLE_HSTS=${ENABLE_HSTS:-true}
       - HSTS_MAX_AGE=${HSTS_MAX_AGE:-31536000}
+      # Email Configuration (for Feedback Feature)
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+      - FEEDBACK_EMAIL=${FEEDBACK_EMAIL:-}
     volumes:
       - ./checkpoints:/app/checkpoints
       - ./visualization_output:/app/visualization_output

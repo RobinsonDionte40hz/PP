@@ -25,7 +25,7 @@ def setup_master_accounts():
     """Create master admin and developer accounts"""
     
     print("=" * 60)
-    print("WeFold Master Account Setup")
+    print("EmergentFolds Master Account Setup")
     print("=" * 60)
     print()
     
@@ -44,14 +44,14 @@ def setup_master_accounts():
             {
                 "username": "admin",
                 "password": "Admin@2025!",
-                "email": "admin@wefold.local",
+                "email": "admin@emergentfolds.local",
                 "role": "admin",
                 "description": "Administrator Account"
             },
             {
                 "username": "developer",
                 "password": "Dev@2025!",
-                "email": "dev@wefold.local",
+                "email": "dev@emergentfolds.local",
                 "role": "developer",
                 "description": "Developer Account"
             }

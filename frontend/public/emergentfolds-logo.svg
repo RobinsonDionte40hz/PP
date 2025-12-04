@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400" width="600" height="400">
+  <defs>
+    <linearGradient id="helix-gradient-1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#293B5F"/>
+      <stop offset="100%" style="stop-color:#47597E"/>
+    </linearGradient>
+    <linearGradient id="helix-gradient-2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#47597E"/>
+      <stop offset="100%" style="stop-color:#6B7D9E"/>
+    </linearGradient>
+    <linearGradient id="ribbon-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#B2AB8C"/>
+      <stop offset="100%" style="stop-color:#D4CEB1"/>
+    </linearGradient>
+    <style>
+      .text-main { 
+        font-family: 'Segoe UI', Arial, sans-serif; 
+        fill: #293B5F;
+        font-weight: 500;
+        letter-spacing: 1px;
+      }
+    </style>
+  </defs>
+  
+  <!-- Icon section (scaled down version of emergentfolds-icon.svg) -->
+  <g transform="translate(40, 40) scale(0.85)">
+    <!-- Helical ribbon structure -->
+    <path d="M190 50 C 240 80, 270 130, 250 180 C 230 230, 160 250, 140 200 C 120 150, 150 100, 190 80 C 230 60, 280 90, 260 140" 
+          fill="none" stroke="url(#ribbon-gradient)" stroke-width="5" stroke-linecap="round"/>
+    
+    <!-- Front helix ribbons -->
+    <path d="M140 90 L 180 120 L 220 100 L 260 130" 
+          fill="none" stroke="url(#helix-gradient-1)" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M130 150 L 170 180 L 210 160 L 250 190" 
+          fill="none" stroke="url(#helix-gradient-2)" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M120 210 L 160 240 L 200 220 L 240 250" 
+          fill="none" stroke="url(#helix-gradient-1)" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M130 270 L 170 300 L 210 280 L 250 310" 
+          fill="none" stroke="url(#helix-gradient-2)" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>
+    
+    <!-- Connecting ribbon curves -->
+    <path d="M260 130 C 290 145, 295 165, 250 190" 
+          fill="none" stroke="url(#ribbon-gradient)" stroke-width="4" stroke-linecap="round"/>
+    <path d="M240 250 C 270 265, 275 285, 250 310" 
+          fill="none" stroke="url(#ribbon-gradient)" stroke-width="4" stroke-linecap="round"/>
+    
+    <!-- Left side ribbon curves -->
+    <path d="M140 90 C 100 105, 95 135, 130 150" 
+          fill="none" stroke="url(#ribbon-gradient)" stroke-width="4" stroke-linecap="round"/>
+    <path d="M120 210 C 90 225, 85 255, 130 270" 
+          fill="none" stroke="url(#ribbon-gradient)" stroke-width="4" stroke-linecap="round"/>
+    
+    <!-- Top emergence detail -->
+    <path d="M180 60 L 190 40 L 200 60" 
+          fill="none" stroke="url(#helix-gradient-1)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+    
+    <!-- Bottom emergence detail -->
+    <path d="M180 330 L 190 350 L 200 330" 
+          fill="none" stroke="url(#helix-gradient-2)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  
+  <!-- Text: EmergentFolds -->
+  <text class="text-main" x="340" y="220" font-size="54">EmergentFolds</text>
+</svg>

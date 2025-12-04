@@ -1,7 +1,7 @@
 from pydantic_settings import BaseSettings
 from pydantic import field_validator
 from functools import lru_cache
-from typing import List, Union
+from typing import List, Union, Optional
 
 class Settings(BaseSettings):
     APP_ENV: str = "development"
@@ -76,6 +76,13 @@ class Settings(BaseSettings):
     # Logging
     LOG_LEVEL: str = "INFO"
     LOG_FORMAT: str = "console"
+    
+    # Email Configuration (for feedback feature)
+    SMTP_HOST: Optional[str] = None
+    SMTP_PORT: int = 587
+    SMTP_USER: Optional[str] = None
+    SMTP_PASSWORD: Optional[str] = None
+    FEEDBACK_EMAIL: Optional[str] = None  # Email to receive feedback
     
     # JWT Settings
     JWT_SECRET_KEY: str = "jwt-secret-CHANGE-IN-PRODUCTION"

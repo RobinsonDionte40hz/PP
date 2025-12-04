@@ -99,6 +99,9 @@ class PredictionResponseSchema(BaseModel):
     total_iterations: int = 0
     progress_percentage: float = 0.0
     metrics: Dict[str, Any] = {}
+    # Top-level convenience fields (extracted from metrics for frontend)
+    best_energy: Optional[float] = None
+    best_rmsd: Optional[float] = None
 
     class Config:
         from_attributes = True

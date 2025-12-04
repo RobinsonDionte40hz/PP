@@ -87,7 +87,7 @@ const LiveCharts: React.FC<LiveChartsProps> = React.memo(({ progressData }) => {
         <Legend />
         <Line
           type="monotone"
-          dataKey="energy"
+          dataKey="current_energy"
           stroke={theme.palette.primary.main}
           strokeWidth={2}
           dot={false}
@@ -130,7 +130,7 @@ const LiveCharts: React.FC<LiveChartsProps> = React.memo(({ progressData }) => {
         <Legend />
         <Line
           type="monotone"
-          dataKey="rmsd"
+          dataKey="current_rmsd"
           stroke={theme.palette.info.main}
           strokeWidth={2}
           dot={false}

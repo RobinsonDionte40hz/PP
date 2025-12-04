@@ -60,6 +60,10 @@ class Prediction(Base):
 
     def to_dict(self) -> dict:
         """Convert to dictionary"""
+        # Extract commonly-used metrics for top-level access (frontend convenience)
+        best_energy = self.metrics.get("best_energy") if self.metrics else None
+        best_rmsd = self.metrics.get("best_rmsd") if self.metrics else None
+        
         return {
             "id": self.id,
             "session_id": self.session_id,
@@ -78,4 +82,7 @@ class Prediction(Base):
             "total_iterations": self.total_iterations,
             "progress_percentage": self.progress_percentage,
             "metrics": self.metrics,
+            # Top-level convenience fields (extracted from metrics)
+            "best_energy": best_energy,
+            "best_rmsd": best_rmsd,
         }

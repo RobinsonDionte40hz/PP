@@ -407,8 +407,8 @@ const Register: React.FC = () => {
               >
                 <Box
                   component="img"
-                  src="/wefold-logo.svg"
-                  alt="WeFold"
+                  src="/emergentfolds-logo.svg"
+                  alt="EmergentFolds"
                   sx={{
                     height: 80,
                     width: 'auto',
