@@ -1,6 +1,7 @@
 from pydantic_settings import BaseSettings
+from pydantic import field_validator
 from functools import lru_cache
-from typing import List
+from typing import List, Union
 
 class Settings(BaseSettings):
     APP_ENV: str = "development"
@@ -36,11 +37,30 @@ class Settings(BaseSettings):
     PP_DEFAULT_AGENTS: int = 10
     PP_MAX_SEQUENCE_LENGTH: int = 1000
     
-    # Security Settings
-    CORS_ORIGINS: List[str] = [
+    # Security Settings - CORS_ORIGINS can be comma-separated string or JSON array
+    CORS_ORIGINS: Union[List[str], str] = [
         "http://localhost:3000",
         "http://localhost:5173",
     ]
+    
+    @field_validator('CORS_ORIGINS', mode='before')
+    @classmethod
+    def parse_cors_origins(cls, v):
+        """Parse CORS_ORIGINS from comma-separated string or JSON array."""
+        if isinstance(v, str):
+            # Remove quotes if present
+            v = v.strip().strip("'\"")
+            # Try JSON first
+            if v.startswith('['):
+                import json
+                try:
+                    return json.loads(v)
+                except json.JSONDecodeError:
+                    pass
+            # Fall back to comma-separated
+            return [origin.strip() for origin in v.split(',') if origin.strip()]
+        return v
+    
     CORS_ALLOW_CREDENTIALS: bool = True
     ENABLE_HSTS: bool = False  # Enable in production with HTTPS
     HSTS_MAX_AGE: int = 31536000
