@@ -328,20 +328,14 @@ const LandingPage: React.FC = () => {
                     fontWeight: 800,
                     lineHeight: 1.1,
                     mb: 3,
-                    background: (theme) => theme.palette.mode === 'dark'
-                      ? 'linear-gradient(135deg, #1C1C1C 0%, #B2AB8C 50%, #1C1C1C 100%)'
-                      : 'linear-gradient(135deg, #293B5F 0%, #47597E 50%, #293B5F 100%)',
-                    backgroundClip: 'text',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
+                    color: 'white',
                   }}
                 >
                   Quantum-Enhanced Protein Structure Prediction
                 </Typography>
                 <Typography
                   variant="h5"
-                  color="text.secondary"
-                  sx={{ mb: 4, lineHeight: 1.6, maxWidth: 500 }}
+                  sx={{ mb: 4, lineHeight: 1.6, maxWidth: 500, color: 'rgba(255, 255, 255, 0.85)' }}
                 >
                   Explore protein conformational space with consciousness-inspired multi-agent optimization and quantum coherence refinement.
                 </Typography>
@@ -370,7 +364,7 @@ const LandingPage: React.FC = () => {
                     See How It Works
                   </Button>
                 </Stack>
-                <Stack direction="row" spacing={3} sx={{ color: 'text.secondary' }}>
+                <Stack direction="row" spacing={3} sx={{ color: 'rgba(255, 255, 255, 0.85)' }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                     <CheckIcon color="success" fontSize="small" />
                     <Typography variant="body2">QCPP + UBF Systems</Typography>
