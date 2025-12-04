@@ -303,16 +303,13 @@ const Login: React.FC = () => {
                   animation: `${pulse} 3s ease-in-out infinite`,
                 }}
               >
-                <Box
-                  component="img"
+                <img
                   src="/emergentfoldslogo.png"
                   alt="EmergentFolds"
-                  sx={{
-                    height: 180,
+                  style={{
+                    height: '180px',
                     width: 'auto',
-                    filter: (theme) => theme.palette.mode === 'dark' 
-                      ? 'brightness(1.2)' 
-                      : 'none',
+                    objectFit: 'contain',
                   }}
                 />
               </Box>
