@@ -308,7 +308,7 @@ const Login: React.FC = () => {
                   src="/emergentfoldslogo.png"
                   alt="EmergentFolds"
                   sx={{
-                    height: 120,
+                    height: 180,
                     width: 'auto',
                     filter: (theme) => theme.palette.mode === 'dark' 
                       ? 'brightness(1.2)' 
