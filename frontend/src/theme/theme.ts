@@ -3,7 +3,7 @@ import { createTheme } from '@mui/material/styles';
 // Project Color Palette
 // #293B5F - Deep Navy (Primary Dark)
 // #47597E - Slate Blue (Primary)
-// #DBE6FD - Light Blue (Accent/Background)
+// #1C1C1C - Smoke Black (Accent/Background)
 // #B2AB8C - Warm Beige (Secondary)
 
 export const lightTheme = createTheme({
@@ -12,7 +12,7 @@ export const lightTheme = createTheme({
     primary: {
       main: '#47597E',
       dark: '#293B5F',
-      light: '#DBE6FD',
+      light: '#1C1C1C',
     },
     secondary: {
       main: '#B2AB8C',
@@ -20,7 +20,7 @@ export const lightTheme = createTheme({
       dark: '#9A9377',
     },
     background: {
-      default: '#DBE6FD',
+      default: '#1C1C1C',
       paper: '#ffffff',
     },
     text: {
@@ -37,7 +37,7 @@ export const darkTheme = createTheme({
   palette: {
     mode: 'dark',
     primary: {
-      main: '#DBE6FD',
+      main: '#1C1C1C',
       dark: '#47597E',
       light: '#E8EFFE',
     },
@@ -51,7 +51,7 @@ export const darkTheme = createTheme({
       paper: '#47597E',
     },
     text: {
-      primary: '#DBE6FD',
+      primary: '#1C1C1C',
       secondary: '#E8EFFE',
     },
   },
