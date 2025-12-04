@@ -3,7 +3,7 @@ Authentication service for user registration and management
 """
 import uuid
 from datetime import datetime, timezone
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Dict, Any
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
