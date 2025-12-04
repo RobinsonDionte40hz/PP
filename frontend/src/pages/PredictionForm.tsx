@@ -56,7 +56,7 @@ const PredictionForm: React.FC = () => {
     mutationFn: (data: PredictionCreate) => predictionService.createPrediction(data),
     onSuccess: (response) => {
       // Navigate to monitoring page for the new prediction
-      navigate(`/monitor/${response.id}`);
+      navigate(`/dashboard/monitor/${response.id}`);
     },
   });
 
@@ -193,7 +193,7 @@ const PredictionForm: React.FC = () => {
           <Box sx={{ display: 'flex', gap: 2 }}>
             <Button
               variant="text"
-              onClick={() => navigate('/')}
+              onClick={() => navigate('/dashboard')}
             >
               Cancel
             </Button>

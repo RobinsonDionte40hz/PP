@@ -8,6 +8,7 @@ import ProtectedRoute from '../components/common/ProtectedRoute';
 import PublicRoute from '../components/common/PublicRoute';
 
 // Lazy load all page components for code splitting
+const LandingPage = lazy(() => import('../pages/LandingPage'));
 const Dashboard = lazy(() => import('../pages/Dashboard'));
 const PredictionForm = lazy(() => import('../pages/PredictionForm'));
 const LiveMonitoring = lazy(() => import('../pages/LiveMonitoring'));
@@ -45,6 +46,15 @@ export const router = createBrowserRouter([
   {
     element: <AuthWrapper />,
     children: [
+      // Public landing page at root
+      {
+        path: '/',
+        element: (
+          <ErrorBoundary>
+            {withSuspense(LandingPage)}
+          </ErrorBoundary>
+        ),
+      },
       {
         path: '/login',
         element: (
@@ -61,8 +71,9 @@ export const router = createBrowserRouter([
           </ErrorBoundary>
         ),
       },
+      // Protected app routes
       {
-        path: '/',
+        path: '/dashboard',
         element: (
           <ErrorBoundary>
             <ProtectedRoute>

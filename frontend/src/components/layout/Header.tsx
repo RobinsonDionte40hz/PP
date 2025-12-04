@@ -40,7 +40,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
 
   const handleSettings = () => {
     handleUserMenuClose();
-    navigate('/settings');
+    navigate('/dashboard/settings');
   };
 
   const getInitials = (username: string) => {
@@ -82,7 +82,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
               ? 'brightness(1.2)' 
               : 'none',
           }}
-          onClick={() => navigate('/')}
+          onClick={() => navigate('/dashboard')}
         />
         
         <Chip 

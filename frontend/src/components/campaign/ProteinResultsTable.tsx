@@ -55,7 +55,7 @@ const ProteinResultsTable: React.FC<ProteinResultsTableProps> = ({
   };
 
   const handleViewResult = (proteinId: string) => {
-    navigate(`/results/${proteinId}`);
+    navigate(`/dashboard/results/${proteinId}`);
   };
 
   const handleDownload = (proteinId: string) => {

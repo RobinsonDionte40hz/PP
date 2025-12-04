@@ -67,7 +67,7 @@ const Login: React.FC = () => {
   const { showSuccess, showError } = useNotification();
   
   // Get the location user was trying to access before being redirected
-  const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/';
+  const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/dashboard';
   
   // Form state
   const [formData, setFormData] = useState<LoginRequest>({

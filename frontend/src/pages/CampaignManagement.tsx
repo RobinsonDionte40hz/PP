@@ -62,7 +62,7 @@ const CampaignManagement: React.FC = () => {
 
   const handleCreateCampaign = () => {
     // Navigate to campaign creation form (can be implemented later)
-    navigate('/predictions/new?mode=campaign');
+    navigate('/dashboard/predictions/new?mode=campaign');
   };
 
   const handleViewCampaign = (campaignId: string) => {

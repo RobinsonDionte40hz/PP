@@ -156,7 +156,7 @@ const ResultsAnalysis: React.FC = () => {
         </Alert>
         <Button
           startIcon={<ArrowBack />}
-          onClick={() => navigate('/')}
+          onClick={() => navigate('/dashboard')}
           sx={{ mt: 2 }}
         >
           Back to Dashboard
@@ -171,7 +171,7 @@ const ResultsAnalysis: React.FC = () => {
         <Alert severity="warning">Prediction not found.</Alert>
         <Button
           startIcon={<ArrowBack />}
-          onClick={() => navigate('/')}
+          onClick={() => navigate('/dashboard')}
           sx={{ mt: 2 }}
         >
           Back to Dashboard
@@ -189,7 +189,7 @@ const ResultsAnalysis: React.FC = () => {
             <Box>
               <Button
                 startIcon={<ArrowBack />}
-                onClick={() => navigate('/')}
+                onClick={() => navigate('/dashboard')}
                 sx={{ mb: 1 }}
               >
                 Back to Dashboard

@@ -49,7 +49,7 @@ const HistoryTableView: React.FC<HistoryTableViewProps> = ({
   };
 
   const handleViewResult = (predictionId: string) => {
-    navigate(`/results/${predictionId}`);
+    navigate(`/dashboard/results/${predictionId}`);
   };
 
   const handleDownload = (predictionId: string) => {

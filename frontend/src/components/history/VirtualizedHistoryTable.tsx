@@ -57,7 +57,7 @@ const VirtualizedHistoryTable: React.FC<VirtualizedHistoryTableProps> = ({
   const navigate = useNavigate();
 
   const handleViewResult = useCallback((predictionId: string) => {
-    navigate(`/results/${predictionId}`);
+    navigate(`/dashboard/results/${predictionId}`);
   }, [navigate]);
 
   const handleDownload = useCallback((predictionId: string) => {

@@ -32,19 +32,19 @@ interface NavItem {
 }
 
 const mainNavItems: NavItem[] = [
-  { text: 'Dashboard', icon: <DashboardIcon />, path: '/' },
-  { text: 'New Prediction', icon: <AddCircleIcon />, path: '/predict' },
-  { text: 'Live Monitoring', icon: <MonitorHeartIcon />, path: '/monitor/active' },
-  { text: 'Results Analysis', icon: <AssessmentIcon />, path: '/results/latest' },
+  { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
+  { text: 'New Prediction', icon: <AddCircleIcon />, path: '/dashboard/predict' },
+  { text: 'Live Monitoring', icon: <MonitorHeartIcon />, path: '/dashboard/monitor/active' },
+  { text: 'Results Analysis', icon: <AssessmentIcon />, path: '/dashboard/results/latest' },
 ];
 
 const secondaryNavItems: NavItem[] = [
-  { text: 'Campaign Management', icon: <CampaignIcon />, path: '/campaigns' },
-  { text: 'History Browser', icon: <HistoryIcon />, path: '/history' },
+  { text: 'Campaign Management', icon: <CampaignIcon />, path: '/dashboard/campaigns' },
+  { text: 'History Browser', icon: <HistoryIcon />, path: '/dashboard/history' },
 ];
 
 const settingsNavItems: NavItem[] = [
-  { text: 'Settings', icon: <SettingsIcon />, path: '/settings' },
+  { text: 'Settings', icon: <SettingsIcon />, path: '/dashboard/settings' },
 ];
 
 export default function Sidebar({ open, onClose, drawerWidth, isMobile }: SidebarProps) {
@@ -62,7 +62,7 @@ export default function Sidebar({ open, onClose, drawerWidth, isMobile }: Sideba
     <List>
       {items.map((item) => {
         const isActive = location.pathname === item.path || 
-                        (item.path !== '/' && location.pathname.startsWith(item.path));
+                        (item.path !== '/dashboard' && location.pathname.startsWith(item.path));
         
         return (
           <ListItem key={item.text} disablePadding>

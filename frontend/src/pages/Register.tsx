@@ -276,7 +276,7 @@ const Register: React.FC = () => {
           
           // Redirect to dashboard
           setTimeout(() => {
-            navigate('/');
+            navigate('/dashboard');
           }, 500);
         } catch (loginErr) {
           // If auto-login fails, redirect to login page

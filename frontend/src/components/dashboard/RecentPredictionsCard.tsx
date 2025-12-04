@@ -77,7 +77,7 @@ const RecentPredictionsCard: React.FC<RecentPredictionsCardProps> = ({
             <Button
               variant="contained"
               color="primary"
-              onClick={() => onNavigate('/predictions/new')}
+              onClick={() => onNavigate('/dashboard/predictions/new')}
             >
               Create Your First Prediction
             </Button>
@@ -95,7 +95,7 @@ const RecentPredictionsCard: React.FC<RecentPredictionsCardProps> = ({
                         <IconButton
                           edge="end"
                           size="small"
-                          onClick={() => onNavigate(`/monitor/${prediction.id}`)}
+                          onClick={() => onNavigate(`/dashboard/monitor/${prediction.id}`)}
                           title="Monitor"
                         >
                           <MonitorIcon />
@@ -105,7 +105,7 @@ const RecentPredictionsCard: React.FC<RecentPredictionsCardProps> = ({
                         <IconButton
                           edge="end"
                           size="small"
-                          onClick={() => onNavigate(`/results/${prediction.id}`)}
+                          onClick={() => onNavigate(`/dashboard/results/${prediction.id}`)}
                           title="View Results"
                         >
                           <ViewIcon />
@@ -117,9 +117,9 @@ const RecentPredictionsCard: React.FC<RecentPredictionsCardProps> = ({
                   <ListItemButton
                     onClick={() => {
                       if (prediction.status === 'running') {
-                        onNavigate(`/monitor/${prediction.id}`);
+                        onNavigate(`/dashboard/monitor/${prediction.id}`);
                       } else if (prediction.status === 'completed') {
-                        onNavigate(`/results/${prediction.id}`);
+                        onNavigate(`/dashboard/results/${prediction.id}`);
                       }
                     }}
                     sx={{ pr: 10 }}
@@ -163,7 +163,7 @@ const RecentPredictionsCard: React.FC<RecentPredictionsCardProps> = ({
 
         {predictions.length > 5 && (
           <Box mt={2} display="flex" justifyContent="center">
-            <Button variant="text" onClick={() => onNavigate('/history')}>
+            <Button variant="text" onClick={() => onNavigate('/dashboard/history')}>
               View All Predictions
             </Button>
           </Box>

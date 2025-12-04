@@ -225,3 +225,147 @@ async def submit_feedback(
         message="Thank you for your feedback! We appreciate your input.",
         feedback_id=feedback_id
     )
+
+
+class ContactRequest(BaseModel):
+    """Contact form submission request model."""
+    name: str = Field(..., min_length=2, max_length=100, description="Contact name")
+    email: EmailStr = Field(..., description="Contact email address")
+    message: str = Field(..., min_length=10, max_length=5000, description="Contact message")
+
+
+class ContactResponse(BaseModel):
+    """Contact form submission response model."""
+    success: bool
+    message: str
+
+
+def send_contact_email(
+    name: str,
+    email: str,
+    message: str
+):
+    """Send contact form email to the configured recipient."""
+    
+    # Get email configuration from settings
+    smtp_host: Optional[str] = getattr(settings, 'SMTP_HOST', None)
+    smtp_port: int = getattr(settings, 'SMTP_PORT', 587)
+    smtp_user: Optional[str] = getattr(settings, 'SMTP_USER', None)
+    smtp_password: Optional[str] = getattr(settings, 'SMTP_PASSWORD', None)
+    feedback_recipient: Optional[str] = getattr(settings, 'FEEDBACK_EMAIL', None)
+    
+    if not all([smtp_host, smtp_user, smtp_password, feedback_recipient]):
+        logger.warning("Email configuration incomplete. Contact logged but not emailed.")
+        logger.info(f"CONTACT from {name} ({email})")
+        logger.info(f"Message: {message[:500]}...")
+        return False
+    
+    # Type narrowing
+    assert smtp_host is not None
+    assert smtp_user is not None
+    assert smtp_password is not None
+    assert feedback_recipient is not None
+    
+    try:
+        # Create email
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = f"[EmergentFolds Contact] Message from {name}"
+        msg['From'] = smtp_user
+        msg['To'] = feedback_recipient
+        msg['Reply-To'] = email
+        
+        timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+        
+        # Plain text version
+        text_content = f"""
+New Contact Form Submission
+===========================
+
+From: {name}
+Email: {email}
+Time: {timestamp}
+
+Message:
+--------
+{message}
+"""
+        
+        # HTML version
+        html_content = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+        .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+        .header {{ background: linear-gradient(135deg, #293B5F 0%, #47597E 100%); color: white; padding: 20px; border-radius: 8px 8px 0 0; }}
+        .content {{ background: #f9f9f9; padding: 20px; border: 1px solid #ddd; border-top: none; border-radius: 0 0 8px 8px; }}
+        .info {{ background: white; padding: 15px; border-radius: 4px; margin-bottom: 15px; }}
+        .info-row {{ margin: 8px 0; }}
+        .label {{ font-weight: bold; color: #666; }}
+        .message {{ background: white; padding: 15px; border-radius: 4px; white-space: pre-wrap; }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2 style="margin: 0;">📧 New Contact Form Submission</h2>
+        </div>
+        <div class="content">
+            <div class="info">
+                <div class="info-row"><span class="label">From:</span> {name}</div>
+                <div class="info-row"><span class="label">Email:</span> <a href="mailto:{email}">{email}</a></div>
+                <div class="info-row"><span class="label">Time:</span> {timestamp}</div>
+            </div>
+            <h3>Message:</h3>
+            <div class="message">{message}</div>
+        </div>
+    </div>
+</body>
+</html>
+"""
+        
+        text_part = MIMEText(text_content, 'plain')
+        html_part = MIMEText(html_content, 'html')
+        msg.attach(text_part)
+        msg.attach(html_part)
+        
+        # Send email
+        with smtplib.SMTP(smtp_host, smtp_port) as server:
+            server.starttls()
+            server.login(smtp_user, smtp_password)
+            server.send_message(msg)
+        
+        logger.info(f"Contact email sent successfully from {name}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Failed to send contact email: {str(e)}")
+        return False
+
+
+@router.post("/contact", response_model=ContactResponse)
+async def submit_contact(
+    contact: ContactRequest,
+    background_tasks: BackgroundTasks
+):
+    """
+    Submit contact form message.
+    
+    Public endpoint - no authentication required.
+    Sends the message to the configured email address.
+    """
+    # Send email in background
+    background_tasks.add_task(
+        send_contact_email,
+        name=contact.name,
+        email=contact.email,
+        message=contact.message
+    )
+    
+    logger.info(f"Contact form received from {contact.name} ({contact.email})")
+    
+    return ContactResponse(
+        success=True,
+        message="Thank you for reaching out! We'll get back to you soon."
+    )

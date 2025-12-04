@@ -35,7 +35,7 @@ const HistoryCardView: React.FC<HistoryCardViewProps> = ({
   const navigate = useNavigate();
 
   const handleViewResult = (predictionId: string) => {
-    navigate(`/results/${predictionId}`);
+    navigate(`/dashboard/results/${predictionId}`);
   };
 
   const handleDownload = (predictionId: string) => {
