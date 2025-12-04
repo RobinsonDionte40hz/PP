@@ -126,11 +126,11 @@ campaign_*/
 checkpoints/*.json
 checkpoints/checkpoint_*.json
 pdb_cache/
-results/
-results/**/*.json
-results/experiments/*.json
-results/logs/*.log
-results/test_results/*.json
+/results/
+/results/**/*.json
+/results/experiments/*.json
+/results/logs/*.log
+/results/test_results/*.json
 scaling_results/
 test_checkpoints/
 test_results.json
@@ -140,6 +140,9 @@ validation_*.json
 visualization_output/
 *_results.json
 *.pdb
+
+# Don't ignore frontend components
+!frontend/src/components/results/
 
 # ============================================================================
 # Node.js (frontend)
