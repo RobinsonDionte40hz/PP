@@ -27,7 +27,10 @@ fi
 
 echo -e "\n${YELLOW}Step 1: Installing prerequisites...${NC}"
 apt update
-apt install -y curl git docker.io docker-compose-plugin certbot nodejs npm
+apt install -y curl git docker.io docker-compose-plugin certbot || true
+
+# Node.js is optional for Docker deployment - skip if conflicts
+apt install -y nodejs npm 2>/dev/null || echo "Node.js already installed or conflicts - skipping (not required for Docker deployment)"
 
 # Start Docker
 systemctl start docker
