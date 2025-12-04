@@ -438,39 +438,44 @@ const LandingPage: React.FC = () => {
             <Grid size={{ xs: 12, md: 6 }}>
               <Box
                 sx={{
-                  animation: `${float} 4s ease-in-out infinite, ${pulse} 3s ease-in-out infinite`,
                   textAlign: 'center',
                   position: 'relative',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
                 }}
               >
                 {/* White light glow behind logo */}
                 <Box
                   sx={{
                     position: 'absolute',
-                    top: '50%',
-                    left: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    width: '60%',
-                    height: '60%',
+                    width: '350px',
+                    height: '350px',
                     borderRadius: '50%',
-                    background: 'radial-gradient(circle, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.15) 40%, rgba(255, 255, 255, 0) 70%)',
-                    filter: 'blur(30px)',
+                    background: 'radial-gradient(circle, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0.2) 30%, rgba(255, 255, 255, 0) 60%)',
+                    filter: 'blur(40px)',
                     zIndex: 0,
                     animation: `${pulse} 4s ease-in-out infinite`,
                   }}
                 />
-                <img
-                  src="/emergentfoldslogo.png"
-                  alt="EmergentFolds Protein Structure"
-                  style={{
-                    maxWidth: '100%',
-                    height: 'auto',
-                    maxHeight: '500px',
-                    filter: 'drop-shadow(0 20px 40px rgba(41, 59, 95, 0.3))',
+                <Box
+                  sx={{
+                    animation: `${float} 4s ease-in-out infinite, ${pulse} 3s ease-in-out infinite`,
                     position: 'relative',
                     zIndex: 1,
                   }}
-                />
+                >
+                  <img
+                    src="/emergentfoldslogo.png"
+                    alt="EmergentFolds Protein Structure"
+                    style={{
+                      maxWidth: '100%',
+                      height: 'auto',
+                      maxHeight: '500px',
+                      filter: 'drop-shadow(0 20px 40px rgba(41, 59, 95, 0.3))',
+                    }}
+                  />
+                </Box>
               </Box>
             </Grid>
           </Grid>
