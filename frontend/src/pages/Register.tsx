@@ -407,10 +407,10 @@ const Register: React.FC = () => {
               >
                 <Box
                   component="img"
-                  src="/emergentfolds-logo.svg"
+                  src="/emergentfolds-logo.png"
                   alt="EmergentFolds"
                   sx={{
-                    height: 80,
+                    height: 120,
                     width: 'auto',
                     filter: (theme) => theme.palette.mode === 'dark' 
                       ? 'brightness(1.2)' 
