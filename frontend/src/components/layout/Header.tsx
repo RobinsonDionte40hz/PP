@@ -71,7 +71,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
         {/* EmergentFolds Logo */}
         <Box
           component="img"
-          src="/emergentfolds-logo.svg"
+          src="/emergentfoldslogo.png"
           alt="EmergentFolds"
           sx={{
             height: 32,
