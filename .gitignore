@@ -1,67 +1,155 @@
+# ============================================================================
+# SECURITY - SENSITIVE FILES (NEVER COMMIT THESE)
+# ============================================================================
 
+# SSH Keys
+key_file
+key_file.pub
+*.pem
+*.key
+id_rsa
+id_rsa.pub
+id_ed25519
+id_ed25519.pub
+*.ppk
+
+# Environment files with secrets
+.env
+.env.local
+.env.production
+.env.staging
+.env.*.local
+backend/.env
+frontend/.env
+
+# Credentials and secrets
+MASTER_CREDENTIALS.txt
+*credentials*
+*secrets*
+*.secret
+secrets.json
+credentials.json
+
+# SSL Certificates
+docker/nginx/ssl/*.pem
+docker/nginx/ssl/*.crt
+docker/nginx/ssl/*.key
+ssl/
+
+# Database files with data
+*.db
+*.sqlite
+*.sqlite3
+backend/*.db
+
+# ============================================================================
+# SAFE TO COMMIT - Example/Template files
+# ============================================================================
+!.env.example
+!backend/.env.example
+!frontend/.env.example
 !.gitignore
 !PUBLICATION_DRAFT.md
 !README.md
+
+# ============================================================================
+# Python
+# ============================================================================
 *$py.class
 *.egg
 *.egg-info/
-*.log
-*.pdb
 *.py[cod]
 *.pyc
 *.pyo
 *.so
-*.swo
-*.swp
-*.tmp
-*_results.json
-*~
-.DS_Store
 .Python
 .eggs/
-.idea/
 .installed.cfg
-.kiro/
-.pytest_cache/
-.venv/
-.vscode/
-ENV/
-Thumbs.db
 __pycache__/
-backup_*/
 build/
-campaign_*/
-checkpoints/*.json
-checkpoints/checkpoint_*.json
 develop-eggs/
 dist/
 downloads/
 eggs/
-env/
 lib/
 lib64/
-myvenv/
 parts/
-pdb_cache/
+sdist/
+var/
+wheels/
+
+# ============================================================================
+# Virtual Environments
+# ============================================================================
+.venv/
+ENV/
+env/
+myvenv/
 pypy_env/
+venv/
+
+# ============================================================================
+# IDE/Editor
+# ============================================================================
+.idea/
+.vscode/
+.kiro/
+*.swo
+*.swp
+*~
+
+# ============================================================================
+# OS Files
+# ============================================================================
+.DS_Store
+Thumbs.db
+
+# ============================================================================
+# Logs and Temporary Files
+# ============================================================================
+*.log
+*.tmp
+temp.*
+temp.pdb
+
+# ============================================================================
+# Project Specific - Data and Results
+# ============================================================================
+backup_*/
+campaign_*/
+checkpoints/*.json
+checkpoints/checkpoint_*.json
+pdb_cache/
 results/
 results/**/*.json
 results/experiments/*.json
 results/logs/*.log
 results/test_results/*.json
 scaling_results/
-sdist/
-temp.*
-temp.pdb
 test_checkpoints/
 test_results.json
 ubf_protein/checkpoints/checkpoint_*.json
 ubiquitin_*.json
 validation_*.json
-var/
-venv/
 visualization_output/
-wheels/
+*_results.json
+*.pdb
+
+# ============================================================================
+# Node.js (frontend)
+# ============================================================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ============================================================================
+# Build outputs
+# ============================================================================
+frontend/dist/
+frontend/build/
+.cache/
+*.tsbuildinfo
 # Backup directories
 # Campaign data
 # Checkpoints (keep only recent)

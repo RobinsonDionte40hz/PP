@@ -1,0 +1,63 @@
+MIT License
+
+Copyright (c) 2025 Dionte Robinson
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---
+
+## Components Under This License
+
+### Open Source Components (MIT Licensed)
+
+The following components of this project are released under the MIT License:
+
+1. **Web Interface** (`frontend/`, `backend/`)
+   - React frontend application
+   - FastAPI backend server
+   - Docker configurations
+   - API implementations
+
+2. **QCPP System** (Root directory quantum coherence code)
+   - `QuantumCoherenceProteinPredictor`
+   - `QCProteinPipeline`
+   - Analysis and visualization tools
+
+3. **UBF Protein System** (`ubf_protein/`)
+   - Multi-agent optimization framework
+   - Consciousness-inspired exploration algorithms
+   - Energy functions and physics integrations
+
+4. **Documentation** (`docs/`)
+   - Setup guides
+   - API documentation
+   - User guides
+
+### Third-Party Dependencies
+
+This project uses various open-source libraries. See `requirements.txt` files
+for a complete list. Each dependency is subject to its own license terms.
+
+### Excluded from License
+
+The following are NOT covered by this license:
+- User data and credentials
+- Private configuration files
+- SSL certificates
+- Database contents
