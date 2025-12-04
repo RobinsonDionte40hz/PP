@@ -265,6 +265,7 @@ const LandingPage: React.FC = () => {
           bgcolor: alpha(theme.palette.background.paper, 0.9),
           backdropFilter: 'blur(10px)',
           borderBottom: `1px solid ${theme.palette.divider}`,
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
         }}
       >
         <Container maxWidth="lg">
@@ -404,7 +405,7 @@ const LandingPage: React.FC = () => {
       </Box>
 
       {/* Workflow Section */}
-      <Box id="workflow" sx={{ py: 12, bgcolor: 'background.paper' }}>
+      <Box id="workflow" sx={{ py: 12, bgcolor: 'background.paper', boxShadow: '0 -10px 40px rgba(0, 0, 0, 0.1), 0 10px 40px rgba(0, 0, 0, 0.1)' }}>
         <Container maxWidth="lg">
           <Box sx={{ textAlign: 'center', mb: 8 }}>
             <Typography variant="h2" fontWeight={700} gutterBottom>
@@ -465,6 +466,7 @@ const LandingPage: React.FC = () => {
         sx={{
           py: 12,
           background: `linear-gradient(180deg, ${alpha('#293B5F', 0.02)} 0%, ${alpha('#47597E', 0.05)} 100%)`,
+          boxShadow: '0 -10px 40px rgba(0, 0, 0, 0.1), 0 10px 40px rgba(0, 0, 0, 0.1)',
         }}
       >
         <Container maxWidth="lg">
@@ -509,7 +511,7 @@ const LandingPage: React.FC = () => {
       </Box>
 
       {/* Documentation Section */}
-      <Box id="docs" sx={{ py: 12, bgcolor: 'background.paper' }}>
+      <Box id="docs" sx={{ py: 12, bgcolor: 'background.paper', boxShadow: '0 -10px 40px rgba(0, 0, 0, 0.1), 0 10px 40px rgba(0, 0, 0, 0.1)' }}>
         <Container maxWidth="lg">
           <Box sx={{ textAlign: 'center', mb: 8 }}>
             <Typography variant="h2" fontWeight={700} gutterBottom>
@@ -577,6 +579,7 @@ const LandingPage: React.FC = () => {
         sx={{
           py: 12,
           background: `linear-gradient(135deg, ${alpha('#293B5F', 0.05)} 0%, ${alpha('#B2AB8C', 0.1)} 100%)`,
+          boxShadow: '0 -10px 40px rgba(0, 0, 0, 0.1), 0 10px 40px rgba(0, 0, 0, 0.1)',
         }}
       >
         <Container maxWidth="md">
@@ -608,7 +611,7 @@ const LandingPage: React.FC = () => {
       </Box>
 
       {/* Contact Section */}
-      <Box id="contact" sx={{ py: 12, bgcolor: 'background.paper' }}>
+      <Box id="contact" sx={{ py: 12, bgcolor: 'background.paper', boxShadow: '0 -10px 40px rgba(0, 0, 0, 0.1), 0 10px 40px rgba(0, 0, 0, 0.1)' }}>
         <Container maxWidth="lg">
           <Grid container spacing={6}>
             <Grid size={{ xs: 12, md: 5 }}>
@@ -729,6 +732,7 @@ const LandingPage: React.FC = () => {
           py: 6,
           bgcolor: '#293B5F',
           color: 'white',
+          boxShadow: '0 -10px 40px rgba(0, 0, 0, 0.2)',
         }}
       >
         <Container maxWidth="lg">
