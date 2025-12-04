@@ -273,13 +273,21 @@ const LandingPage: React.FC = () => {
       >
         <Container maxWidth="lg">
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', py: 1.5 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <img
-                src="/emergentfoldslogo.png"
-                alt="EmergentFolds"
-                style={{ height: '40px', width: 'auto' }}
-              />
-            </Box>
+            <Typography
+              variant="h6"
+              sx={{
+                fontWeight: 700,
+                background: 'linear-gradient(135deg, #293B5F 0%, #47597E 50%, #B2AB8C 100%)',
+                backgroundClip: 'text',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                cursor: 'pointer',
+                fontSize: { xs: '1.1rem', sm: '1.25rem' },
+              }}
+              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            >
+              EmergentFolds
+            </Typography>
             {/* Desktop Navigation */}
             <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 2 }}>
               <Link href="#workflow" color="inherit" underline="hover" sx={{ fontWeight: 500 }}>
