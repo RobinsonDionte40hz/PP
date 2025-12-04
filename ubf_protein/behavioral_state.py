@@ -1,18 +1,17 @@
 """
 Search Strategy Implementation (Derived from Exploration Parameters)
 
-Copyright (c) 2025 Dionte Robinson. All Rights Reserved.
+Copyright (c) 2025 Dionte Robinson
+MIT License - See LICENSE file for details
 
-PROPRIETARY ALGORITHM - Patent Pending
-This module contains proprietary 2D→5D behavioral transformation formulas
-that convert exploration parameters into multi-dimensional search strategies.
+If you use this work in academic research, please cite:
+    Robinson, D. (2025). UBF Protein System - Behavioral State Derivation.
+    https://github.com/RobinsonDionte40hz/PP
 
-Key innovations include:
-- Novel 5D search strategy space derivation
+Key formulas:
+- 2D→5D behavioral transformation
 - Geometric mean combinations for hydrophobic drive
 - Adaptive risk tolerance calculations
-
-For commercial licensing, contact: dionterobinson.biorxiv@gmail.com
 
 ---
 

@@ -1,16 +1,17 @@
 """
 Quantum Coherence Protein Predictor (QCPP)
 
-Copyright (c) 2025 Dionte Robinson. All Rights Reserved.
+Copyright (c) 2025 Dionte Robinson
+MIT License - See LICENSE file for details
 
-This module contains proprietary algorithms for protein stability prediction
-using quantum coherence principles and golden ratio mathematics.
+If you use this work in academic research, please cite:
+    Robinson, D. (2025). Quantum Coherence Protein Predictor.
+    https://github.com/RobinsonDionte40hz/PP
 
-PATENT PENDING: The QCP formula and related algorithms may be subject to
-patent protection. Unauthorized commercial use is prohibited.
-
-Licensed under MIT License for non-commercial research use.
-For commercial licensing, contact: dionterobinson.biorxiv@gmail.com
+Key algorithms:
+- QCP Formula: QCP = 4.0 + (2^n × φ^l × m)
+- φ-harmonic THz spectrum prediction
+- Field coherence calculations
 """
 
 import numpy as np

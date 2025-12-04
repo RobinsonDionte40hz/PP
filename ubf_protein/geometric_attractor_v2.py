@@ -1,19 +1,18 @@
 """
 Geometric Attractor Module V2 - Percentage-Based Relationship Scoring
 
-Copyright (c) 2025 Dionte Robinson. All Rights Reserved.
+Copyright (c) 2025 Dionte Robinson
+MIT License - See LICENSE file for details
 
-PROPRIETARY ALGORITHM - Patent Pending
-This module contains proprietary geometric pattern detection algorithms for
-analyzing protein conformations using golden ratio and Platonic solid relationships.
+If you use this work in academic research, please cite:
+    Robinson, D. (2025). UBF Protein System - Geometric Attractor V2.
+    https://github.com/RobinsonDionte40hz/PP
 
-Key innovations include:
+Key algorithms:
 - Percentage-based φ-pattern scoring system
-- Platonic solid similarity algorithms (icosahedron, dodecahedron, octahedron)
+- Platonic solid similarity algorithms
 - Golden angle detection (137.5°, 222.5°)
 - Fibonacci sequence correlation in protein geometry
-
-For commercial licensing, contact: dionterobinson.biorxiv@gmail.com
 
 ---
 

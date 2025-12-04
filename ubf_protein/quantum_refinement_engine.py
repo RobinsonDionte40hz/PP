@@ -1,18 +1,17 @@
 """
 Quantum Refinement Engine for UBF Protein System
 
-Copyright (c) 2025 Dionte Robinson. All Rights Reserved.
+Copyright (c) 2025 Dionte Robinson
+MIT License - See LICENSE file for details
 
-PROPRIETARY ALGORITHM - Patent Pending
-This module contains proprietary quantum refinement algorithms for improving
-protein structure predictions from coarse-grained (7-14Å) to near-native (<5Å).
+If you use this work in academic research, please cite:
+    Robinson, D. (2025). UBF Protein System - Quantum Refinement Engine.
+    https://github.com/RobinsonDionte40hz/PP
 
-Key innovations include:
+Key algorithms:
 - Quantum core identification and THz resonance cascades
 - Golden ratio geometric pattern optimization
 - Two-stage refinement architecture
-
-For commercial licensing, contact: dionterobinson.biorxiv@gmail.com
 
 ---
 
