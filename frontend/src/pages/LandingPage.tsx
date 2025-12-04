@@ -329,7 +329,7 @@ const LandingPage: React.FC = () => {
                     lineHeight: 1.1,
                     mb: 3,
                     background: (theme) => theme.palette.mode === 'dark'
-                      ? 'linear-gradient(135deg, #DBE6FD 0%, #B2AB8C 50%, #DBE6FD 100%)'
+                      ? 'linear-gradient(135deg, #1C1C1C 0%, #B2AB8C 50%, #1C1C1C 100%)'
                       : 'linear-gradient(135deg, #293B5F 0%, #47597E 50%, #293B5F 100%)',
                     backgroundClip: 'text',
                     WebkitBackgroundClip: 'text',
