@@ -32,7 +32,6 @@ import { useWebSocket } from '../hooks/useWebSocket';
 import { usePredictions } from '../hooks/usePredictions';
 import MetricsGrid from '../components/monitoring/MetricsGrid';
 import LiveCharts from '../components/monitoring/LiveCharts';
-import EventLog from '../components/monitoring/EventLog';
 import SecondaryStructurePanel from '../components/monitoring/SecondaryStructurePanel';
 import StructurePreviewModal from '../components/monitoring/StructurePreviewModal';
 import { ErrorAlert } from '../components/common';
@@ -205,7 +204,6 @@ const LiveMonitoring: React.FC = () => {
   }
   
   const [progressData, setProgressData] = useState<PredictionProgress[]>([]);
-  const [events, setEvents] = useState<Array<{ level: 'info' | 'warning' | 'error' | 'success'; message: string; timestamp: string }>>([]);
   const [showStructureModal, setShowStructureModal] = useState(false);
   const [secondaryStructure, setSecondaryStructure] = useState<SecondaryStructureData | undefined>(undefined);
 
@@ -229,8 +227,6 @@ const LiveMonitoring: React.FC = () => {
         if (message.data.secondary_structure) {
           setSecondaryStructure(message.data.secondary_structure);
         }
-      } else if (message.type === 'log') {
-        setEvents((prev) => [...prev.slice(-99), message.data]);
       } else if (message.type === 'status') {
         queryClient.invalidateQueries({ queryKey: ['prediction', id] });
       }
