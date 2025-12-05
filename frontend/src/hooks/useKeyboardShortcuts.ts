@@ -27,7 +27,7 @@ export function useKeyboardShortcuts() {
         case 'n':
           // Ctrl/Cmd + N: New prediction
           event.preventDefault();
-          navigate('/predictions/new');
+          navigate('/dashboard/predictions/new');
           break;
 
         case 'h':
@@ -39,13 +39,13 @@ export function useKeyboardShortcuts() {
         case 'l':
           // Ctrl/Cmd + L: History
           event.preventDefault();
-          navigate('/history');
+          navigate('/dashboard/history');
           break;
 
         case ',':
           // Ctrl/Cmd + ,: Settings (common pattern)
           event.preventDefault();
-          navigate('/settings');
+          navigate('/dashboard/settings');
           break;
 
         case 'k':
