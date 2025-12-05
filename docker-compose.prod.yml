@@ -76,6 +76,7 @@ services:
       - ./visualization_output:/app/visualization_output
       - ./pdb_cache:/app/pdb_cache
       - ./results:/app/results
+      - ./user_data:/app/user_data
       - backend_logs:/app/logs
     env_file:
       - .env.production
@@ -125,6 +126,7 @@ services:
       - ./visualization_output:/app/visualization_output
       - ./pdb_cache:/app/pdb_cache
       - ./results:/app/results
+      - ./user_data:/app/user_data
       - worker_logs:/app/logs
     env_file:
       - .env.production

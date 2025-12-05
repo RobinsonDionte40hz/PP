@@ -2109,19 +2109,26 @@ class ProteinAgent(IProteinAgent):
         
         # Downsample if we exceed max_snapshots
         if len(self._trajectory_snapshots) > self._max_snapshots:
-            # Keep first 20%, last 20%, sample 60% middle at 50% rate
-            keep_start = max(1, int(self._max_snapshots * 0.2))
-            keep_end = max(1, int(self._max_snapshots * 0.2))
-            middle_start = keep_start
-            middle_end = len(self._trajectory_snapshots) - keep_end
+            # Use uniform sampling to maintain even distribution across iterations
+            # This ensures trajectory data spans the full prediction, not just start/end
+            target_count = int(self._max_snapshots * 0.8)  # Keep 80% of max
+            n = len(self._trajectory_snapshots)
             
-            # Downsample middle by keeping every other snapshot
-            downsampled = (
-                self._trajectory_snapshots[:keep_start] +
-                self._trajectory_snapshots[middle_start:middle_end:2] +
-                self._trajectory_snapshots[-keep_end:]
-            )
-            self._trajectory_snapshots = downsampled
+            # Calculate step size for uniform sampling
+            step = n / target_count
+            
+            # Always keep first and last snapshot
+            indices = set([0, n - 1])
+            
+            # Add uniformly distributed samples
+            for i in range(target_count - 2):
+                idx = int(i * step)
+                if idx < n:
+                    indices.add(idx)
+            
+            # Sort indices and build new list
+            sorted_indices = sorted(indices)
+            self._trajectory_snapshots = [self._trajectory_snapshots[i] for i in sorted_indices]
 
     def get_trajectory_snapshots(self) -> List[ConformationSnapshot]:
         """

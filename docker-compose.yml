@@ -31,6 +31,7 @@ services:
       - ./checkpoints:/app/checkpoints
       - ./visualization_output:/app/visualization_output
       - ./pdb_cache:/app/pdb_cache
+      - ./user_data:/app/user_data
     env_file:
       - .env
 
@@ -53,6 +54,7 @@ services:
       - ./checkpoints:/app/checkpoints
       - ./visualization_output:/app/visualization_output
       - ./pdb_cache:/app/pdb_cache
+      - ./user_data:/app/user_data
     env_file:
       - .env
 

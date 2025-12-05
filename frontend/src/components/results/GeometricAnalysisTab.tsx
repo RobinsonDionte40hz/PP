@@ -77,39 +77,45 @@ const GeometricAnalysisTab: React.FC<GeometricAnalysisTabProps> = ({ predictionI
       const geo = data.geometric_analysis;
       const qcpp = data.qcpp_metrics || {};
       
+      // Extract platonic similarities (nested structure from backend)
+      const platonic = geo.platonic_similarities || {};
+      const symmetry = geo.symmetry_metrics || {};
+      
       // Transform backend data to frontend format
+      // Backend returns: platonic_similarities.icosahedron (0-1 similarity)
+      // Frontend displays as percentage
       return {
         patterns: [
           { 
             name: 'Icosahedron', 
-            score: geo.icosahedron_percentage / 100 || 0, 
-            count: geo.icosahedron_count || 0, 
-            percentage: geo.icosahedron_percentage || 0 
+            score: platonic.icosahedron || 0, 
+            count: geo.phi_pattern_count || 0, 
+            percentage: (platonic.icosahedron || 0) * 100
           },
           { 
             name: 'Dodecahedron', 
-            score: geo.dodecahedron_percentage / 100 || 0, 
-            count: geo.dodecahedron_count || 0, 
-            percentage: geo.dodecahedron_percentage || 0 
+            score: platonic.dodecahedron || 0, 
+            count: geo.phi_pattern_count || 0, 
+            percentage: (platonic.dodecahedron || 0) * 100
           },
           { 
             name: 'Octahedron', 
-            score: geo.octahedron_percentage / 100 || 0, 
-            count: geo.octahedron_count || 0, 
-            percentage: geo.octahedron_percentage || 0 
+            score: platonic.octahedron || 0, 
+            count: geo.phi_pattern_count || 0, 
+            percentage: (platonic.octahedron || 0) * 100
           },
           { 
             name: 'Golden Ratio (φ)', 
-            score: geo.golden_ratio_percentage / 100 || 0, 
-            count: geo.golden_ratio_count || 0, 
+            score: (geo.golden_ratio_percentage || 0) / 100, 
+            count: geo.phi_pattern_count || 0, 
             percentage: geo.golden_ratio_percentage || 0 
           },
         ],
         phiAngles: geo.phi_angles || [],
         symmetry: {
-          overall: geo.overall_symmetry || 0,
-          local: geo.local_symmetry || 0,
-          global: geo.global_symmetry || 0,
+          overall: symmetry.rotational || 0,
+          local: symmetry.local || 0,
+          global: symmetry.radius_of_gyration || 0,
         },
         qcppMetrics: {
           avgQCP: qcpp.qcp_score || 0,
