@@ -75,6 +75,20 @@ async def emit_log(request: EmitProgressRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/emit/error")
+async def emit_error(request: EmitProgressRequest):
+    """Emit error notification via WebSocket (called by Celery workers)"""
+    try:
+        await socket_manager.emit_error(
+            request.prediction_id,
+            request.data
+        )
+        return {"status": "success"}
+    except Exception as e:
+        logger.error(f"Failed to emit error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/subscribers/{prediction_id}")
 async def get_subscribers(prediction_id: str):
     """Get subscriber count for a prediction"""

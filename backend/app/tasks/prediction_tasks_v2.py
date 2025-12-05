@@ -286,7 +286,7 @@ def run_prediction_v2(self, prediction_id: str):
             
             with httpx.Client() as client:
                 client.post(
-                    f'{backend_url}/api/ws/emit/complete',
+                    f'{backend_url}/api/ws/emit/completion',
                     json={
                         'prediction_id': prediction_id,
                         'data': {
