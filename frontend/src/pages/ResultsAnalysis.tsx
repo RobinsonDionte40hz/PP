@@ -12,6 +12,12 @@ import {
   Alert,
   CircularProgress,
   Stack,
+  ToggleButtonGroup,
+  ToggleButton,
+  IconButton,
+  Tooltip,
+  alpha,
+  useTheme,
 } from '@mui/material';
 import {
   ArrowBack,
@@ -21,15 +27,27 @@ import {
   CheckCircle,
   Warning,
   Error as ErrorIcon,
+  ViewModule as CardViewIcon,
+  ViewList as TableViewIcon,
+  Refresh as RefreshIcon,
+  CompareArrows as CompareIcon,
+  Assessment as ResultsIcon,
 } from '@mui/icons-material';
 import { predictionService } from '../services/predictionService';
+import { usePredictions } from '../hooks/usePredictions';
 import {
   SummaryTab,
   DetailedMetricsTab,
   TrajectoryTab,
   GeometricAnalysisTab,
 } from '../components/results';
+import HistoryFilters from '../components/history/HistoryFilters';
+import HistoryCardView from '../components/history/HistoryCardView';
+import HistoryTableView from '../components/history/HistoryTableView';
+import ComparisonModal from '../components/history/ComparisonModal';
 import { ResultsAnalysisSkeleton } from '../components/common/skeletons';
+import ErrorAlert from '../components/common/ErrorAlert';
+import { TableSkeleton } from '../components/common/skeletons';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -60,10 +78,246 @@ function a11yProps(index: number) {
   };
 }
 
+type ViewMode = 'card' | 'table';
+
+interface FilterState {
+  status?: string;
+  dateRange?: [Date | null, Date | null];
+  qualityLevel?: string;
+  sortBy: 'created_at' | 'energy' | 'rmsd' | 'iterations';
+  sortOrder: 'asc' | 'desc';
+  searchQuery: string;
+}
+
+// Component for showing history/past results
+const PastResultsList: React.FC = () => {
+  const theme = useTheme();
+  const navigate = useNavigate();
+  const [viewMode, setViewMode] = useState<ViewMode>('card');
+  const [filters, setFilters] = useState<FilterState>({
+    sortBy: 'created_at',
+    sortOrder: 'desc',
+    searchQuery: '',
+  });
+  const [selectedPredictions, setSelectedPredictions] = useState<string[]>([]);
+  const [comparisonModalOpen, setComparisonModalOpen] = useState(false);
+
+  // Only fetch completed predictions
+  const { data: predictions, isLoading, isError, error, refetch } = usePredictions({
+    status: 'completed',
+  });
+
+  const handleViewModeChange = (_event: React.MouseEvent<HTMLElement>, newMode: ViewMode | null) => {
+    if (newMode !== null) {
+      setViewMode(newMode);
+    }
+  };
+
+  const handleFilterChange = (newFilters: Partial<FilterState>) => {
+    setFilters((prev) => ({ ...prev, ...newFilters }));
+  };
+
+  const handleSelectPrediction = (predictionId: string) => {
+    setSelectedPredictions((prev) => {
+      if (prev.includes(predictionId)) {
+        return prev.filter((id) => id !== predictionId);
+      } else {
+        return [...prev, predictionId];
+      }
+    });
+  };
+
+  const handleClearSelection = () => {
+    setSelectedPredictions([]);
+  };
+
+  const handleCompare = () => {
+    if (selectedPredictions.length >= 2) {
+      setComparisonModalOpen(true);
+    }
+  };
+
+  const handleRefresh = () => {
+    refetch();
+  };
+
+  // Apply client-side filtering and sorting
+  const filteredAndSortedPredictions = React.useMemo(() => {
+    if (!predictions) return [];
+
+    let filtered = [...predictions];
+
+    // Search filter
+    if (filters.searchQuery) {
+      const query = filters.searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (p) =>
+          p.id.toLowerCase().includes(query) ||
+          p.sequence?.toLowerCase().includes(query)
+      );
+    }
+
+    // Sort
+    filtered.sort((a, b) => {
+      let comparison = 0;
+      switch (filters.sortBy) {
+        case 'created_at':
+          comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+          break;
+        case 'energy':
+          comparison = (a.final_energy || 0) - (b.final_energy || 0);
+          break;
+        case 'rmsd':
+          comparison = (a.final_rmsd || 0) - (b.final_rmsd || 0);
+          break;
+        case 'iterations':
+          comparison = (a.total_iterations || 0) - (b.total_iterations || 0);
+          break;
+      }
+      return filters.sortOrder === 'asc' ? comparison : -comparison;
+    });
+
+    return filtered;
+  }, [predictions, filters]);
+
+  if (isLoading) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Typography variant="h4" fontWeight="bold" gutterBottom>
+          Past Results
+        </Typography>
+        <TableSkeleton rows={5} columns={5} />
+      </Box>
+    );
+  }
+
+  if (isError) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Typography variant="h4" fontWeight="bold" gutterBottom>
+          Past Results
+        </Typography>
+        <ErrorAlert message={error instanceof Error ? error.message : 'Failed to load results'} />
+      </Box>
+    );
+  }
+
+  if (!predictions || predictions.length === 0) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Typography variant="h4" fontWeight="bold" gutterBottom>
+          Past Results
+        </Typography>
+        <Paper
+          sx={{
+            p: 6,
+            textAlign: 'center',
+            background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.05)} 0%, ${alpha(theme.palette.background.paper, 1)} 100%)`,
+          }}
+        >
+          <ResultsIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
+          <Typography variant="h6" color="text.secondary" gutterBottom>
+            No Completed Predictions
+          </Typography>
+          <Typography variant="body2" color="text.secondary" mb={3}>
+            Complete a prediction to see results here
+          </Typography>
+          <Button variant="contained" onClick={() => navigate('/dashboard/predict')}>
+            New Prediction
+          </Button>
+        </Paper>
+      </Box>
+    );
+  }
+
+  return (
+    <Box sx={{ p: 3 }}>
+      {/* Header */}
+      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+        <Box>
+          <Typography variant="h4" fontWeight="bold" gutterBottom>
+            Past Results
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Browse and analyze your completed predictions
+          </Typography>
+        </Box>
+        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+          {selectedPredictions.length > 0 && (
+            <>
+              <Chip
+                label={`${selectedPredictions.length} selected`}
+                onDelete={handleClearSelection}
+                color="primary"
+              />
+              <Button
+                variant="outlined"
+                startIcon={<CompareIcon />}
+                onClick={handleCompare}
+                disabled={selectedPredictions.length < 2}
+              >
+                Compare
+              </Button>
+            </>
+          )}
+          <Tooltip title="Refresh">
+            <IconButton onClick={handleRefresh}>
+              <RefreshIcon />
+            </IconButton>
+          </Tooltip>
+          <ToggleButtonGroup
+            value={viewMode}
+            exclusive
+            onChange={handleViewModeChange}
+            size="small"
+          >
+            <ToggleButton value="card">
+              <CardViewIcon />
+            </ToggleButton>
+            <ToggleButton value="table">
+              <TableViewIcon />
+            </ToggleButton>
+          </ToggleButtonGroup>
+        </Box>
+      </Box>
+
+      {/* Filters */}
+      <HistoryFilters filters={filters} onChange={handleFilterChange} />
+
+      {/* Results */}
+      {viewMode === 'card' ? (
+        <HistoryCardView
+          predictions={filteredAndSortedPredictions}
+          selectedPredictions={selectedPredictions}
+          onSelectPrediction={handleSelectPrediction}
+        />
+      ) : (
+        <HistoryTableView
+          predictions={filteredAndSortedPredictions}
+          selectedPredictions={selectedPredictions}
+          onSelectPrediction={handleSelectPrediction}
+        />
+      )}
+
+      {/* Comparison Modal */}
+      <ComparisonModal
+        open={comparisonModalOpen}
+        onClose={() => setComparisonModalOpen(false)}
+        predictionIds={selectedPredictions}
+      />
+    </Box>
+  );
+};
+
 const ResultsAnalysis: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [currentTab, setCurrentTab] = useState(0);
+  
+  // If id is 'latest', show the history/past results list
+  if (id === 'latest') {
+    return <PastResultsList />;
+  }
 
   // Fetch prediction results
   const { data: prediction, isLoading, error } = useQuery({

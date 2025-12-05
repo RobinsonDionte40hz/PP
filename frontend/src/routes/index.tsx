@@ -15,7 +15,6 @@ const LiveMonitoring = lazy(() => import('../pages/LiveMonitoring'));
 const ResultsAnalysis = lazy(() => import('../pages/ResultsAnalysis'));
 const StructureVisualization = lazy(() => import('../pages/StructureVisualization'));
 const CampaignManagement = lazy(() => import('../pages/CampaignManagement'));
-const HistoryBrowser = lazy(() => import('../pages/HistoryBrowser'));
 const Settings = lazy(() => import('../pages/Settings'));
 const Login = lazy(() => import('../pages/Login'));
 const Register = lazy(() => import('../pages/Register'));
@@ -113,10 +112,6 @@ export const router = createBrowserRouter([
       {
         path: 'campaigns',
         element: withSuspense(CampaignManagement),
-      },
-      {
-        path: 'history',
-        element: withSuspense(HistoryBrowser),
       },
       {
         path: 'visualization',

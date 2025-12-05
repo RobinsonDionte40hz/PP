@@ -10,6 +10,11 @@ import {
   Stack,
   alpha,
   useTheme,
+  Card,
+  CardContent,
+  CardActions,
+  Chip,
+  Grid,
 } from '@mui/material';
 import {
   Pause as PauseIcon,
@@ -18,24 +23,170 @@ import {
   Visibility as ViewIcon,
   Download as DownloadIcon,
   ArrowBack as BackIcon,
+  MonitorHeart as MonitorIcon,
 } from '@mui/icons-material';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { predictionService } from '../services';
 import { useWebSocket } from '../hooks/useWebSocket';
+import { usePredictions } from '../hooks/usePredictions';
 import MetricsGrid from '../components/monitoring/MetricsGrid';
 import LiveCharts from '../components/monitoring/LiveCharts';
 import EventLog from '../components/monitoring/EventLog';
 import StructurePreviewModal from '../components/monitoring/StructurePreviewModal';
 import { ErrorAlert } from '../components/common';
 import { MetricsGridSkeleton, LiveChartsSkeleton } from '../components/common/skeletons';
-import type { PredictionProgress } from '../types/api';
+import type { PredictionProgress, PredictionResponse } from '../types/api';
+
+// Component for showing list of active predictions
+const ActivePredictionsList: React.FC = () => {
+  const theme = useTheme();
+  const navigate = useNavigate();
+  
+  const { data: predictions, isLoading, error } = usePredictions({ status: 'running' });
+  const { data: pendingPredictions } = usePredictions({ status: 'pending' });
+  
+  const activePredictions = [
+    ...(predictions || []),
+    ...(pendingPredictions || []),
+  ];
+
+  if (isLoading) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Typography variant="h4" fontWeight="bold" gutterBottom>
+          Active Predictions
+        </Typography>
+        <LinearProgress />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <ErrorAlert error={error} title="Failed to load predictions" />
+      </Box>
+    );
+  }
+
+  if (activePredictions.length === 0) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Typography variant="h4" fontWeight="bold" gutterBottom>
+          Active Predictions
+        </Typography>
+        <Paper
+          sx={{
+            p: 6,
+            textAlign: 'center',
+            background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.05)} 0%, ${alpha(theme.palette.background.paper, 1)} 100%)`,
+          }}
+        >
+          <MonitorIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
+          <Typography variant="h6" color="text.secondary" gutterBottom>
+            No Active Predictions
+          </Typography>
+          <Typography variant="body2" color="text.secondary" mb={3}>
+            Start a new prediction to see it here
+          </Typography>
+          <Button variant="contained" onClick={() => navigate('/dashboard/predict')}>
+            New Prediction
+          </Button>
+        </Paper>
+      </Box>
+    );
+  }
+
+  return (
+    <Box sx={{ p: 3 }}>
+      <Typography variant="h4" fontWeight="bold" gutterBottom>
+        Active Predictions
+      </Typography>
+      <Typography variant="body2" color="text.secondary" mb={3}>
+        {activePredictions.length} prediction(s) currently running or pending
+      </Typography>
+      
+      <Grid container spacing={3}>
+        {activePredictions.map((prediction: PredictionResponse) => {
+          const progress = prediction.total_iterations > 0
+            ? (prediction.current_iteration / prediction.total_iterations) * 100
+            : 0;
+          
+          return (
+            <Grid size={{ xs: 12, md: 6, lg: 4 }} key={prediction.id}>
+              <Card
+                sx={{
+                  height: '100%',
+                  cursor: 'pointer',
+                  transition: 'transform 0.2s, box-shadow 0.2s',
+                  '&:hover': {
+                    transform: 'translateY(-4px)',
+                    boxShadow: 4,
+                  },
+                }}
+                onClick={() => navigate(`/dashboard/monitor/${prediction.id}`)}
+              >
+                <CardContent>
+                  <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+                    <Typography variant="subtitle2" color="text.secondary" noWrap sx={{ maxWidth: '60%' }}>
+                      {prediction.id.slice(0, 8)}...
+                    </Typography>
+                    <Chip
+                      label={prediction.status}
+                      size="small"
+                      color={prediction.status === 'running' ? 'success' : 'warning'}
+                    />
+                  </Box>
+                  
+                  <Typography variant="body2" color="text.secondary" mb={1}>
+                    Sequence: {prediction.sequence?.slice(0, 20)}...
+                  </Typography>
+                  
+                  <Box mb={1}>
+                    <Box display="flex" justifyContent="space-between" mb={0.5}>
+                      <Typography variant="caption" color="text.secondary">
+                        Progress
+                      </Typography>
+                      <Typography variant="caption" fontWeight="bold">
+                        {progress.toFixed(1)}%
+                      </Typography>
+                    </Box>
+                    <LinearProgress
+                      variant="determinate"
+                      value={progress}
+                      sx={{ height: 6, borderRadius: 3 }}
+                    />
+                  </Box>
+                  
+                  <Typography variant="caption" color="text.secondary">
+                    Iteration {prediction.current_iteration?.toLocaleString() || 0} / {prediction.total_iterations?.toLocaleString() || 0}
+                  </Typography>
+                </CardContent>
+                <CardActions>
+                  <Button size="small" color="primary">
+                    View Details
+                  </Button>
+                </CardActions>
+              </Card>
+            </Grid>
+          );
+        })}
+      </Grid>
+    </Box>
+  );
+};
 
 const LiveMonitoring: React.FC = () => {
   const theme = useTheme();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  
+  // If id is 'active', show the list of active predictions
+  if (id === 'active') {
+    return <ActivePredictionsList />;
+  }
   
   const [progressData, setProgressData] = useState<PredictionProgress[]>([]);
   const [events, setEvents] = useState<Array<{ level: 'info' | 'warning' | 'error' | 'success'; message: string; timestamp: string }>>([]);

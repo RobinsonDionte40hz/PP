@@ -15,7 +15,6 @@ import AddCircleIcon from '@mui/icons-material/AddCircle';
 import MonitorHeartIcon from '@mui/icons-material/MonitorHeart';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import CampaignIcon from '@mui/icons-material/Campaign';
-import HistoryIcon from '@mui/icons-material/History';
 import SettingsIcon from '@mui/icons-material/Settings';
 
 interface SidebarProps {
@@ -35,12 +34,11 @@ const mainNavItems: NavItem[] = [
   { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
   { text: 'New Prediction', icon: <AddCircleIcon />, path: '/dashboard/predict' },
   { text: 'Live Monitoring', icon: <MonitorHeartIcon />, path: '/dashboard/monitor/active' },
-  { text: 'Results Analysis', icon: <AssessmentIcon />, path: '/dashboard/results/latest' },
+  { text: 'Past Results', icon: <AssessmentIcon />, path: '/dashboard/results/latest' },
 ];
 
 const secondaryNavItems: NavItem[] = [
   { text: 'Campaign Management', icon: <CampaignIcon />, path: '/dashboard/campaigns' },
-  { text: 'History Browser', icon: <HistoryIcon />, path: '/dashboard/history' },
 ];
 
 const settingsNavItems: NavItem[] = [
