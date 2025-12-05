@@ -97,14 +97,13 @@ class PredictionService:
             query = db.query(Prediction).filter(Prediction.id == prediction_id)
             
             # If user_id provided, validate ownership through session
-            # But also allow predictions without session_id (legacy/standalone predictions)
             if user_id:
                 prediction = query.first()
                 if prediction:
-                    # If prediction has no session, allow access (standalone prediction)
+                    # Predictions without session_id are orphaned - don't allow access
                     if prediction.session_id is None:
-                        return prediction
-                    # If prediction has session, verify ownership
+                        return None
+                    # Verify user owns the session
                     session = db.query(WorkSession).filter(
                         WorkSession.id == prediction.session_id,
                         WorkSession.user_id == user_id
@@ -141,14 +140,10 @@ class PredictionService:
             query = db.query(Prediction)
             
             # Filter by user ownership through session join
-            # Also include predictions with no session (legacy/standalone)
+            # Only show predictions that belong to the user's sessions
             if user_id:
-                from sqlalchemy import or_
-                query = query.outerjoin(WorkSession, Prediction.session_id == WorkSession.id).filter(
-                    or_(
-                        WorkSession.user_id == user_id,
-                        Prediction.session_id.is_(None)  # Include sessionless predictions
-                    )
+                query = query.join(WorkSession, Prediction.session_id == WorkSession.id).filter(
+                    WorkSession.user_id == user_id
                 )
             
             # Filter by status
