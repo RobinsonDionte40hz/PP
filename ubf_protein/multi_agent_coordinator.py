@@ -485,17 +485,20 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
                     
                     # Update best conformation tracking (thread-safe)
                     with update_lock:
+                        # Track best energy
                         if energy < self._best_energy:
                             self._best_energy = energy
-                            # Update best conformation from the agent that achieved this
+                        
+                        # Update best conformation by RMSD (primary metric)
+                        # Only update if this is actually a better RMSD
+                        if rmsd < self._best_rmsd and rmsd < float('inf'):
+                            self._best_rmsd = rmsd
+                            # Find and store the conformation with this RMSD
                             for agent in self._agents:
                                 best_conf = agent.get_best_conformation()
-                                if abs(best_conf.energy - energy) < 0.01:  # Match by energy
+                                if best_conf.rmsd_to_native and abs(best_conf.rmsd_to_native - rmsd) < 0.01:
                                     self._best_conformation = best_conf
                                     break
-                        
-                        if rmsd < self._best_rmsd:
-                            self._best_rmsd = rmsd
 
             total_conformations_explored += iteration_conformations
 

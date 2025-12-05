@@ -49,6 +49,7 @@ services:
     volumes:
       - ./backend:/app
       - ./ubf_protein:/ubf_protein
+      - ./src:/src
       - ./checkpoints:/app/checkpoints
       - ./visualization_output:/app/visualization_output
       - ./pdb_cache:/app/pdb_cache

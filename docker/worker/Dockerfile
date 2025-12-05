@@ -25,7 +25,10 @@ COPY backend/ .
 # Copy ubf_protein module (needed by prediction_tasks) to parent of /app
 COPY ubf_protein/ /ubf_protein/
 
-# Add parent directory to PYTHONPATH so ubf_protein can be imported
+# Copy src directory (contains QCPP protein_predictor.py)
+COPY src/ /src/
+
+# Add parent directory to PYTHONPATH so ubf_protein and src can be imported
 ENV PYTHONPATH=/
 
 # Run Celery worker
