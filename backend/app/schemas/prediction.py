@@ -17,6 +17,9 @@ class PredictionConfigurationSchema(BaseModel):
     checkpoint_interval: int = Field(default=50, ge=SecurityConfig.MIN_CHECKPOINT_INTERVAL, le=SecurityConfig.MAX_CHECKPOINT_INTERVAL, description="Checkpoint every N iterations")
     native_pdb: Optional[str] = Field(default=None, description="PDB ID for native structure comparison")
     qcpp_config: Optional[str] = Field(default=None, description="QCPP configuration: default, high_performance, high_accuracy")
+    enable_mediators: bool = Field(default=False, description="Enable mediator agents for pattern detection")
+    mediator_count: int = Field(default=3, ge=1, le=10, description="Number of mediator agents")
+    enable_refinement: bool = Field(default=False, description="Enable quantum refinement post-processing")
     
     @field_validator("diversity")
     @classmethod
