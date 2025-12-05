@@ -73,22 +73,43 @@ const TrajectoryTab: React.FC<TrajectoryTabProps> = ({ predictionId }) => {
         return [];
       }
       
+      // Helper to parse agent_id from various formats
+      const parseAgentId = (agentId: string | number): number => {
+        if (typeof agentId === 'number') return agentId;
+        if (typeof agentId === 'string') {
+          // Handle formats: "agent_0", "agent_1", "0", "1", etc.
+          const match = agentId.match(/\d+/);
+          return match ? parseInt(match[0], 10) : 0;
+        }
+        return 0;
+      };
+      
+      // Track the best energy point to mark as is_best
+      let bestEnergy = Infinity;
+      let bestIndex = -1;
+      data.trajectory.forEach((point: { energy: number }, index: number) => {
+        if (point.energy < bestEnergy) {
+          bestEnergy = point.energy;
+          bestIndex = index;
+        }
+      });
+      
       const points: TrajectoryPoint[] = data.trajectory.map((point: {
         iteration: number;
         energy: number;
-        rmsd: number | null;
+        rmsd?: number | null;
         aggressiveness: number;
         consistency: number;
-        agent_id: string;
-        is_best: boolean;
-      }) => ({
+        agent_id: string | number;
+        is_best?: boolean;
+      }, index: number) => ({
         iteration: point.iteration,
         energy: point.energy,
         rmsd: point.rmsd ?? 0,
         aggressiveness: point.aggressiveness,
         consistency: point.consistency,
-        agent_id: parseInt(point.agent_id.replace('agent_', '')) || 0,
-        is_best: point.is_best,
+        agent_id: parseAgentId(point.agent_id),
+        is_best: point.is_best ?? (index === bestIndex),
       }));
       
       return points;

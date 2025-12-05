@@ -804,6 +804,9 @@ class PredictionRunner:
             logger.info(f"Saving trajectory: {len(agents)} agents")
             
             total_snapshots = 0
+            best_energy = float('inf')
+            best_idx = -1
+            
             for agent in agents:
                 agent_id = agent.get_agent_id()
                 snapshots = agent.get_trajectory_snapshots()
@@ -817,8 +820,17 @@ class PredictionRunner:
                         'rmsd': snapshot.conformation.rmsd_to_native,
                         'aggressiveness': snapshot.consciousness_state.frequency,
                         'consistency': snapshot.consciousness_state.coherence,
-                        'timestamp': snapshot.timestamp
+                        'timestamp': snapshot.timestamp,
+                        'is_best': False  # Will be updated below
                     })
+                    # Track best energy point
+                    if snapshot.conformation.energy < best_energy:
+                        best_energy = snapshot.conformation.energy
+                        best_idx = len(trajectory_data) - 1
+            
+            # Mark the best structure
+            if best_idx >= 0:
+                trajectory_data[best_idx]['is_best'] = True
             
             logger.info(f"Collected {total_snapshots} snapshots from {len(agents)} agents")
             trajectory_data.sort(key=lambda x: (x['iteration'], x['agent_id']))
