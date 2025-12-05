@@ -193,7 +193,7 @@ class ProteinAgent(IProteinAgent):
 
         # Store initial conformation coordinates for folding distance tracking
         # This allows RMSD calculation even without a native structure
-        self._initial_coordinates = list(self._current_conformation.atom_coordinates)
+        self._initial_coordinates = [tuple(coord) for coord in self._current_conformation.atom_coordinates]
         self._folding_rmsd = 0.0  # RMSD from initial state (measures how much structure changed)
 
         # Calculate RMSD for initial conformation if native structure is available
@@ -663,13 +663,25 @@ class ProteinAgent(IProteinAgent):
         if self._rmsd_calculator is not None:
             try:
                 folding_result = self._rmsd_calculator.calculate_rmsd(
-                    predicted_coords=outcome.new_conformation.atom_coordinates,
+                    predicted_coords=list(outcome.new_conformation.atom_coordinates),
                     native_coords=self._initial_coordinates,
                     calculate_metrics=False
                 )
                 self._folding_rmsd = folding_result.rmsd
             except Exception as e:
-                logger.debug(f"Failed to calculate folding distance: {e}")
+                logger.warning(f"Failed to calculate folding distance: {e}")
+        else:
+            # Fallback: simple manual RMSD calculation without alignment
+            try:
+                coords_new = outcome.new_conformation.atom_coordinates
+                coords_init = self._initial_coordinates
+                if len(coords_new) == len(coords_init) and len(coords_new) > 0:
+                    sum_sq = 0.0
+                    for (x1, y1, z1), (x2, y2, z2) in zip(coords_new, coords_init):
+                        sum_sq += (x1 - x2)**2 + (y1 - y2)**2 + (z1 - z2)**2
+                    self._folding_rmsd = math.sqrt(sum_sq / len(coords_new))
+            except Exception as e:
+                logger.debug(f"Fallback folding RMSD calculation failed: {e}")
         
         # Task 5: Update best GDT-TS and TM-score
         if (outcome.new_conformation.gdt_ts_score is not None and
