@@ -34,8 +34,22 @@ export const campaignService = {
     offset?: number;
   }): Promise<CampaignResponse[]> {
     try {
-      const response = await api.get<CampaignResponse[]>('/campaigns', { params });
-      return response.data;
+      // Convert limit/offset to page/page_size for backend compatibility
+      const backendParams = {
+        status: params?.status,
+        page: params?.offset ? Math.floor(params.offset / (params.limit || 20)) + 1 : 1,
+        page_size: params?.limit || 20,
+      };
+      
+      const response = await api.get<{
+        campaigns: CampaignResponse[];
+        total: number;
+        page: number;
+        page_size: number;
+      }>('/campaigns', { params: backendParams });
+      
+      // Extract campaigns array from paginated response
+      return response.data.campaigns || [];
     } catch (error) {
       throw this.handleError(error);
     }
