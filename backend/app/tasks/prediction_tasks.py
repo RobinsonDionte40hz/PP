@@ -183,8 +183,8 @@ def run_prediction(self, prediction_id: str):
             try:
                 from ubf_protein.rmsd_calculator import NativeStructureLoader
                 native_loader = NativeStructureLoader()
-                native_structure = native_loader.load_pdb_structure(native_pdb, sequence)
-                logger.info(f"Loaded native structure from PDB ID: {native_pdb}")
+                native_structure = native_loader.load_from_pdb_id(native_pdb)
+                logger.info(f"Loaded native structure from PDB ID: {native_pdb} ({native_structure.n_residues} residues)")
             except Exception as e:
                 logger.warning(f"Failed to load native structure {native_pdb}: {e}")
         
@@ -346,7 +346,8 @@ def run_prediction(self, prediction_id: str):
                 
                 # Load native structure
                 native_loader = NativeStructureLoader()
-                native_coords = native_loader.load_pdb_structure(native_pdb, sequence)
+                native_loaded = native_loader.load_from_pdb_id(native_pdb)
+                native_coords = native_loaded.ca_coords
                 
                 # Initialize refinement engine
                 refinement_engine = QuantumRefinementEngine(
