@@ -347,7 +347,6 @@ def run_prediction(self, prediction_id: str):
                 # Load native structure
                 native_loader = NativeStructureLoader()
                 native_loaded = native_loader.load_from_pdb_id(native_pdb)
-                native_coords = native_loaded.ca_coords
                 
                 # Initialize refinement engine
                 refinement_engine = QuantumRefinementEngine(
@@ -356,23 +355,17 @@ def run_prediction(self, prediction_id: str):
                     target_geometry=target_geometry
                 )
                 
-                # Run two-stage refinement
-                refined_conf = refinement_engine.refine_conformation(
+                # Run quantum refinement (pass NativeStructure object, not just coords)
+                refinement_result = refinement_engine.refine_structure_quantum(
                     best_conf,
-                    native_coords,
-                    max_iterations_stage1=100,
-                    max_iterations_stage2=50
+                    native_structure=native_loaded,
+                    max_iterations=150
                 )
                 
-                # Recalculate metrics
-                from ubf_protein.energy_function import EnergyFunction
-                from ubf_protein.rmsd_calculator import RMSDCalculator
-                
-                energy_fn = EnergyFunction(sequence)
-                refined_energy = energy_fn.calculate_total_energy(refined_conf)
-                
-                rmsd_calc = RMSDCalculator()
-                refined_rmsd = rmsd_calc.calculate_rmsd(refined_conf.atom_coordinates, native_coords)
+                # Extract refined conformation and metrics from result
+                refined_conf = refinement_result.refined_structure
+                refined_energy = refinement_result.final_energy
+                refined_rmsd = refinement_result.final_rmsd
                 
                 refinement_applied = True
                 logger.info(f"Quantum refinement completed: RMSD {best_rmsd:.2f}Å -> {refined_rmsd:.2f}Å ({((best_rmsd - refined_rmsd) / best_rmsd * 100):.1f}% improvement)")
