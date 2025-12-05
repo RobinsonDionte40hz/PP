@@ -155,7 +155,7 @@ const VirtualizedHistoryTable: React.FC<VirtualizedHistoryTableProps> = ({
 
         {/* RMSD */}
         <Box sx={{ width: '12%', minWidth: 100 }}>
-          {prediction.best_rmsd !== undefined ? (
+          {prediction.best_rmsd !== undefined && prediction.best_rmsd !== null ? (
             <Typography variant="body2">{prediction.best_rmsd.toFixed(2)}</Typography>
           ) : (
             <Typography variant="body2" color="text.secondary">

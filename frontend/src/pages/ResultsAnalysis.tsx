@@ -380,8 +380,8 @@ const ResultsAnalysis: React.FC = () => {
     );
   };
 
-  const getQualityChip = (rmsd?: number) => {
-    if (!rmsd) return null;
+  const getQualityChip = (rmsd?: number | null) => {
+    if (rmsd === undefined || rmsd === null) return null;
 
     if (rmsd < 2) {
       return <Chip label="Excellent" color="success" size="small" />;
@@ -458,7 +458,7 @@ const ResultsAnalysis: React.FC = () => {
 
             <Stack direction="row" spacing={1}>
               {getStatusChip(prediction.status)}
-              {prediction.best_rmsd !== undefined && getQualityChip(prediction.best_rmsd)}
+              {prediction.best_rmsd !== undefined && prediction.best_rmsd !== null && getQualityChip(prediction.best_rmsd)}
             </Stack>
           </Box>
 

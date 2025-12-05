@@ -124,7 +124,7 @@ const HistoryCardView: React.FC<HistoryCardViewProps> = ({
                   </Typography>
                 </Box>
               )}
-              {prediction.best_rmsd !== undefined && (
+              {prediction.best_rmsd !== undefined && prediction.best_rmsd !== null && (
                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                   <Typography variant="body2" color="text.secondary">
                     RMSD:

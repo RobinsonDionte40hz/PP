@@ -123,7 +123,7 @@ const SummaryTab: React.FC<SummaryTabProps> = ({ prediction }) => {
 
   // Calculate quality scores
   const getQualityScore = (rmsd?: number | null): number => {
-    if (!rmsd || rmsd === Infinity) return 0;
+    if (rmsd === undefined || rmsd === null || rmsd === Infinity) return 0;
     if (rmsd < 2) return 95;
     if (rmsd < 4) return 75;
     if (rmsd < 5) return 55;

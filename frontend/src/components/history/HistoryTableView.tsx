@@ -165,7 +165,7 @@ const HistoryTableView: React.FC<HistoryTableViewProps> = ({
                   )}
                 </TableCell>
                 <TableCell>
-                  {prediction.best_rmsd !== undefined ? (
+                  {prediction.best_rmsd !== undefined && prediction.best_rmsd !== null ? (
                     <Typography variant="body2">{prediction.best_rmsd.toFixed(2)}</Typography>
                   ) : (
                     <Typography variant="body2" color="text.secondary">

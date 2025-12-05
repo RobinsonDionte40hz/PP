@@ -35,20 +35,20 @@ const MetricsGrid: React.FC<MetricsGridProps> = React.memo(({ prediction, latest
     },
     {
       title: 'RMSD',
-      value: currentRMSD !== null && currentRMSD !== Infinity ? currentRMSD.toFixed(2) : '-',
-      unit: 'Å',
+      value: currentRMSD !== null && currentRMSD !== undefined && currentRMSD !== Infinity ? currentRMSD.toFixed(2) : 'N/A',
+      unit: currentRMSD !== null && currentRMSD !== undefined && currentRMSD !== Infinity ? 'Å' : '',
       color: 'info' as const,
-      trend: (currentRMSD !== null && bestRMSD !== null && currentRMSD !== Infinity && bestRMSD !== Infinity
+      trend: (currentRMSD !== null && currentRMSD !== undefined && bestRMSD !== null && bestRMSD !== undefined && currentRMSD !== Infinity && bestRMSD !== Infinity
         ? currentRMSD < bestRMSD ? 'down' : 'up'
         : undefined) as 'up' | 'down' | 'neutral' | undefined,
       tooltip: 'Root Mean Square Deviation from native structure (if available). Lower is better. Values <2Å indicate excellent accuracy.',
     },
     {
       title: 'Best RMSD',
-      value: bestRMSD !== null && bestRMSD !== Infinity ? bestRMSD.toFixed(2) : 'N/A',
-      unit: bestRMSD !== Infinity ? 'Å' : '',
+      value: bestRMSD !== null && bestRMSD !== undefined && bestRMSD !== Infinity ? bestRMSD.toFixed(2) : 'N/A',
+      unit: bestRMSD !== null && bestRMSD !== undefined && bestRMSD !== Infinity ? 'Å' : '',
       color: 'success' as const,
-      tooltip: 'Best (lowest) RMSD achieved. <2Å = Excellent, 2-4Å = Good, 4-5Å = Acceptable, >5Å = Research phase.',
+      tooltip: 'Best (lowest) RMSD achieved. <2Å = Excellent, 2-4Å = Good, 4-5Å = Acceptable, >5Å = Research phase. Shows N/A if no native structure provided.',
     },
     {
       title: 'Aggressiveness',

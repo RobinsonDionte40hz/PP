@@ -80,49 +80,53 @@ export const router = createBrowserRouter([
             </ProtectedRoute>
           </ErrorBoundary>
         ),
-    children: [
-      {
-        index: true,
-        element: withSuspense(Dashboard),
+        children: [
+          {
+            index: true,
+            element: withSuspense(Dashboard),
+          },
+          {
+            path: 'predict',
+            element: withSuspense(PredictionForm),
+          },
+          {
+            path: 'predictions/new',
+            element: withSuspense(PredictionForm),
+          },
+          {
+            path: 'monitor/:id',
+            element: withSuspense(LiveMonitoring),
+          },
+          {
+            path: 'monitor/active',
+            element: withSuspense(LiveMonitoring),
+          },
+          {
+            path: 'results/:id',
+            element: withSuspense(ResultsAnalysis),
+          },
+          {
+            path: 'results/latest',
+            element: withSuspense(ResultsAnalysis),
+          },
+          {
+            path: 'campaigns',
+            element: withSuspense(CampaignManagement),
+          },
+          {
+            path: 'visualization',
+            element: withSuspense(StructureVisualization),
+          },
+          {
+            path: 'history',
+            element: withSuspense(ResultsAnalysis),
+          },
+          {
+            path: 'settings',
+            element: withSuspense(Settings),
+          },
+        ],
       },
-      {
-        path: 'predict',
-        element: withSuspense(PredictionForm),
-      },
-      {
-        path: 'predictions/new',
-        element: withSuspense(PredictionForm),
-      },
-      {
-        path: 'monitor/:id',
-        element: withSuspense(LiveMonitoring),
-      },
-      {
-        path: 'monitor/active',
-        element: withSuspense(LiveMonitoring),
-      },
-      {
-        path: 'results/:id',
-        element: withSuspense(ResultsAnalysis),
-      },
-      {
-        path: 'results/latest',
-        element: withSuspense(ResultsAnalysis),
-      },
-      {
-        path: 'campaigns',
-        element: withSuspense(CampaignManagement),
-      },
-      {
-        path: 'visualization',
-        element: withSuspense(StructureVisualization),
-      },
-        {
-          path: 'settings',
-          element: withSuspense(Settings),
-        },
-      ],
-    },
     ],
   },
 ]);

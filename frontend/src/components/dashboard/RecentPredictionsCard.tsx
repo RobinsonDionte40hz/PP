@@ -146,7 +146,7 @@ const RecentPredictionsCard: React.FC<RecentPredictionsCardProps> = ({
                             </Typography>
                           )}
                           {prediction.status === 'completed' &&
-                            prediction.best_rmsd && (
+                            prediction.best_rmsd !== undefined && prediction.best_rmsd !== null && (
                               <Typography variant="caption" color="success.main" display="block">
                                 RMSD: {prediction.best_rmsd.toFixed(2)} Å
                               </Typography>
