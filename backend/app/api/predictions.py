@@ -60,8 +60,8 @@ async def create_prediction(
     """
     user_id = get_user_id(user)
     try:
-        # Create prediction
-        prediction = prediction_service.create_prediction(data)
+        # Create prediction with user's session
+        prediction = prediction_service.create_prediction(data, user_id=user_id)
         
         # Try to queue Celery task
         celery_available = False

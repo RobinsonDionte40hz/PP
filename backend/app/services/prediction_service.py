@@ -24,8 +24,13 @@ class PredictionService:
         """Get database session"""
         return SessionLocal()
     
-    def create_prediction(self, data: PredictionCreateSchema) -> Prediction:
-        """Create a new prediction"""
+    def create_prediction(self, data: PredictionCreateSchema, user_id: Optional[str] = None) -> Prediction:
+        """Create a new prediction
+        
+        Args:
+            data: Prediction configuration
+            user_id: User ID to associate prediction with (will create/use default session)
+        """
         db = self._get_db()
         try:
             prediction_id = f"pred_{uuid.uuid4().hex[:12]}"
@@ -33,9 +38,15 @@ class PredictionService:
             # Build configuration
             config = data.configuration.model_dump() if data.configuration else {}
             
+            # Get or create default session for user
+            session_id = None
+            if user_id:
+                session_id = self._get_or_create_default_session(db, user_id)
+            
             prediction = Prediction(
                 id=prediction_id,
                 sequence=data.sequence,
+                session_id=session_id,
                 status=PredictionStatus.PENDING.value,  # Store as string
                 configuration=config,
                 total_iterations=config.get("iterations", 1000),
@@ -45,11 +56,39 @@ class PredictionService:
             db.commit()
             db.refresh(prediction)
             
-            logger.info(f"Created prediction {prediction_id} for sequence length {len(data.sequence)}")
+            logger.info(f"Created prediction {prediction_id} for sequence length {len(data.sequence)} (session: {session_id})")
             
             return prediction
         finally:
             db.close()
+    
+    def _get_or_create_default_session(self, db: Session, user_id: str) -> str:
+        """Get or create a default session for the user"""
+        # Look for existing default session
+        default_session = db.query(WorkSession).filter(
+            WorkSession.user_id == user_id,
+            WorkSession.name == "Default Session"
+        ).first()
+        
+        if default_session:
+            return default_session.id
+        
+        # Create new default session
+        from datetime import timezone
+        session_id = str(uuid.uuid4())
+        now = datetime.now(timezone.utc)
+        new_session = WorkSession(
+            id=session_id,
+            user_id=user_id,
+            name="Default Session",
+            created_at=now,
+            updated_at=now,
+            last_active_at=now
+        )
+        db.add(new_session)
+        db.commit()
+        logger.info(f"Created default session {session_id} for user {user_id}")
+        return session_id
     
     def get_prediction(self, prediction_id: str, user_id: Optional[str] = None) -> Optional[Prediction]:
         """Get prediction by ID, optionally filtered by user ownership"""
@@ -58,10 +97,22 @@ class PredictionService:
             query = db.query(Prediction).filter(Prediction.id == prediction_id)
             
             # If user_id provided, validate ownership through session
+            # But also allow predictions without session_id (legacy/standalone predictions)
             if user_id:
-                query = query.join(WorkSession, Prediction.session_id == WorkSession.id).filter(
-                    WorkSession.user_id == user_id
-                )
+                prediction = query.first()
+                if prediction:
+                    # If prediction has no session, allow access (standalone prediction)
+                    if prediction.session_id is None:
+                        return prediction
+                    # If prediction has session, verify ownership
+                    session = db.query(WorkSession).filter(
+                        WorkSession.id == prediction.session_id,
+                        WorkSession.user_id == user_id
+                    ).first()
+                    if session:
+                        return prediction
+                    return None  # User doesn't own this prediction
+                return None
             
             return query.first()
         finally:
@@ -90,9 +141,14 @@ class PredictionService:
             query = db.query(Prediction)
             
             # Filter by user ownership through session join
+            # Also include predictions with no session (legacy/standalone)
             if user_id:
-                query = query.join(WorkSession, Prediction.session_id == WorkSession.id).filter(
-                    WorkSession.user_id == user_id
+                from sqlalchemy import or_
+                query = query.outerjoin(WorkSession, Prediction.session_id == WorkSession.id).filter(
+                    or_(
+                        WorkSession.user_id == user_id,
+                        Prediction.session_id.is_(None)  # Include sessionless predictions
+                    )
                 )
             
             # Filter by status
