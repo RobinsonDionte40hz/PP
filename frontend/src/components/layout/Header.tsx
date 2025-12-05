@@ -8,6 +8,7 @@ import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import LogoutIcon from '@mui/icons-material/Logout';
 import SettingsIcon from '@mui/icons-material/Settings';
+import HomeIcon from '@mui/icons-material/Home';
 import { useNavigate } from 'react-router-dom';
 import { useThemeStore } from '../../store/themeStore.ts';
 import { useAuth } from '../../hooks/useAuth';
@@ -95,6 +96,13 @@ export default function Header({ onMenuClick }: HeaderProps) {
         />
         
         <Box sx={{ flexGrow: 1 }} />
+        
+        {/* Home Button */}
+        <Tooltip title="Back to Home">
+          <IconButton color="inherit" onClick={() => navigate('/')} sx={{ mr: 1 }}>
+            <HomeIcon />
+          </IconButton>
+        </Tooltip>
         
         {/* System Status */}
         <Chip 

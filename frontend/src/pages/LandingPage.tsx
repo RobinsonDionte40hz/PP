@@ -44,6 +44,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { keyframes } from '@mui/system';
 import { useThemeStore } from '../store/themeStore';
+import { useAuth } from '../hooks/useAuth';
 
 // Animations
 const fadeInUp = keyframes`
@@ -77,6 +78,7 @@ const LandingPage: React.FC = () => {
   const theme = useTheme();
   const navigate = useNavigate();
   const { mode, toggleTheme } = useThemeStore();
+  const { isAuthenticated } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [contactForm, setContactForm] = useState({
     name: '',
@@ -309,12 +311,20 @@ const LandingPage: React.FC = () => {
               <IconButton onClick={toggleTheme} color="inherit" sx={{ ml: 1 }}>
                 {mode === 'dark' ? <LightModeIcon /> : <DarkModeIcon />}
               </IconButton>
-              <Button variant="outlined" onClick={() => navigate('/login')} sx={{ ml: 1 }}>
-                Login
-              </Button>
-              <Button variant="contained" onClick={() => navigate('/register')}>
-                Get Started
-              </Button>
+              {isAuthenticated ? (
+                <Button variant="contained" onClick={() => navigate('/dashboard')} sx={{ ml: 1 }}>
+                  Go to Dashboard
+                </Button>
+              ) : (
+                <>
+                  <Button variant="outlined" onClick={() => navigate('/login')} sx={{ ml: 1 }}>
+                    Login
+                  </Button>
+                  <Button variant="contained" onClick={() => navigate('/register')}>
+                    Get Started
+                  </Button>
+                </>
+              )}
             </Box>
             {/* Mobile Menu Button */}
             <IconButton
@@ -354,14 +364,20 @@ const LandingPage: React.FC = () => {
                   {mode === 'dark' ? <LightModeIcon /> : <DarkModeIcon />}
                 </IconButton>
               </Box>
-              <Stack direction="row" spacing={2} sx={{ mt: 1 }}>
-                <Button variant="outlined" onClick={() => { navigate('/login'); setMobileMenuOpen(false); }} fullWidth>
-                  Login
+              {isAuthenticated ? (
+                <Button variant="contained" onClick={() => { navigate('/dashboard'); setMobileMenuOpen(false); }} fullWidth sx={{ mt: 1 }}>
+                  Go to Dashboard
                 </Button>
-                <Button variant="contained" onClick={() => { navigate('/register'); setMobileMenuOpen(false); }} fullWidth>
-                  Get Started
-                </Button>
-              </Stack>
+              ) : (
+                <Stack direction="row" spacing={2} sx={{ mt: 1 }}>
+                  <Button variant="outlined" onClick={() => { navigate('/login'); setMobileMenuOpen(false); }} fullWidth>
+                    Login
+                  </Button>
+                  <Button variant="contained" onClick={() => { navigate('/register'); setMobileMenuOpen(false); }} fullWidth>
+                    Get Started
+                  </Button>
+                </Stack>
+              )}
             </Box>
           )}
         </Container>
