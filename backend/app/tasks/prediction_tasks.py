@@ -232,9 +232,11 @@ def run_prediction(self, prediction_id: str):
             
             # Get best metrics - MultiAgentCoordinator returns (conformation, energy, rmsd) tuple
             best_conf, best_energy, best_rmsd = coordinator.get_best_conformation()
+            folding_rmsd = getattr(results, 'folding_rmsd', None)
             metrics = sanitize_metrics({
                 "current_energy": best_energy,
                 "current_rmsd": best_rmsd if best_rmsd is not None else None,
+                "folding_rmsd": folding_rmsd,  # Always available - RMSD from initial state
                 "conformations_explored": results.total_conformations_explored,
                 "best_energy": results.best_energy,
                 "best_rmsd": results.best_rmsd
@@ -266,6 +268,7 @@ def run_prediction(self, prediction_id: str):
                     'progress_percentage': progress,
                     'current_energy': float(best_energy) if best_energy is not None else None,
                     'current_rmsd': float(best_rmsd) if best_rmsd is not None and best_rmsd != float('inf') else None,
+                    'folding_rmsd': float(folding_rmsd) if folding_rmsd is not None else None,
                     'conformations_explored': results.total_conformations_explored,
                     'best_energy': float(results.best_energy) if results.best_energy is not None else None,
                     'best_rmsd': float(results.best_rmsd) if results.best_rmsd is not None and results.best_rmsd != float('inf') else None,
@@ -486,6 +489,7 @@ def run_prediction(self, prediction_id: str):
                 metrics=sanitize_metrics({
                     "best_energy": refined_energy,
                     "best_rmsd": refined_rmsd,
+                    "folding_rmsd": getattr(final_results, 'folding_rmsd', None),  # Always available
                     "final_energy": refined_energy,
                     "final_rmsd": refined_rmsd,
                     "current_energy": refined_energy,
@@ -552,6 +556,7 @@ def run_prediction(self, prediction_id: str):
             "iterations": iterations,
             "best_energy": final_results.best_energy,
             "best_rmsd": final_results.best_rmsd,
+            "folding_rmsd": getattr(final_results, 'folding_rmsd', None),
             "result_path": str(result_file)
         }
     

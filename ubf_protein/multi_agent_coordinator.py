@@ -610,8 +610,12 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
                     logger.warning(f"Trajectory recording failed at iteration {self._total_iterations}: {e}")
 
         # Collect final agent metrics
+        best_folding_rmsd = 0.0  # Track best folding distance across agents
         for i, agent in enumerate(self._agents):
             metrics_dict = agent.get_exploration_metrics()
+            agent_folding_rmsd = metrics_dict.get("folding_rmsd", 0.0)
+            if agent_folding_rmsd > best_folding_rmsd:
+                best_folding_rmsd = agent_folding_rmsd
             metrics = ExplorationMetrics(
                 agent_id=f"agent_{i}",
                 iterations_completed=int(metrics_dict["iterations_completed"]),
@@ -622,7 +626,8 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
                 learning_improvement=metrics_dict.get("learning_improvement", 0.0),
                 avg_decision_time_ms=metrics_dict["avg_decision_time_ms"],
                 stuck_in_minima_count=int(metrics_dict["stuck_in_minima_count"]),
-                successful_escapes=int(metrics_dict["successful_escapes"])
+                successful_escapes=int(metrics_dict["successful_escapes"]),
+                folding_rmsd=agent_folding_rmsd
             )
             agent_metrics.append(metrics)
 
@@ -675,6 +680,7 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
             collective_learning_benefit=collective_learning_benefit,
             total_runtime_seconds=total_runtime,
             shared_memories_created=self._shared_memory_pool.get_total_memories(),
+            folding_rmsd=best_folding_rmsd,  # Best folding distance across all agents
             qcpp_trajectory_data=qcpp_trajectory_data,
             qcpp_rmsd_correlations=qcpp_rmsd_correlations,
             qcpp_energy_correlations=qcpp_energy_correlations,

@@ -63,6 +63,7 @@ export interface PredictionResponse {
     current_rmsd?: number;
     best_rmsd?: number;
     final_rmsd?: number;
+    folding_rmsd?: number;  // RMSD from initial state (always available)
     energy_change?: number;
     convergence_rate?: number;
     final_aggressiveness?: number;
@@ -94,6 +95,7 @@ export interface PredictionProgress {
   progress_percentage: number;
   current_energy: number;
   current_rmsd?: number;
+  folding_rmsd?: number;  // RMSD from initial state (always available)
   conformations_explored?: number;
   best_energy?: number;
   best_rmsd?: number;

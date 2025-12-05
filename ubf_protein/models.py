@@ -326,7 +326,6 @@ class AgentProfile:
 # ============================================================================
 
 @dataclass
-@dataclass
 class ExplorationMetrics:
     """Metrics for tracking agent performance"""
     agent_id: str
@@ -342,6 +341,8 @@ class ExplorationMetrics:
     # Task 5: Add GDT-TS and TM-score tracking
     best_gdt_ts_score: Optional[float] = None  # Best GDT-TS score (0-100)
     best_tm_score: Optional[float] = None  # Best TM-score (0-1)
+    # Folding distance: RMSD from initial state (always available)
+    folding_rmsd: Optional[float] = None  # How much structure changed from initial
 
 @dataclass
 class ExplorationResults:
@@ -359,6 +360,8 @@ class ExplorationResults:
     validation_quality: Optional[str] = None  # 'excellent', 'good', 'acceptable', 'poor', or None if no native structure
     best_gdt_ts: Optional[float] = None  # Best GDT-TS score across all agents
     best_tm_score: Optional[float] = None  # Best TM-score across all agents
+    # Folding distance: RMSD from initial state (always available, even without native structure)
+    folding_rmsd: Optional[float] = None  # How much the structure changed from initial extended state
     # Task 9: QCPP-UBF integration - trajectory and correlation analysis
     qcpp_trajectory_data: Optional[Dict[str, Any]] = None  # Integrated trajectory with QCPP metrics
     qcpp_rmsd_correlations: Optional[Dict[str, float]] = None  # QCPP-RMSD correlation analysis

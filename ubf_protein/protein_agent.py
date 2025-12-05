@@ -149,13 +149,17 @@ class ProteinAgent(IProteinAgent):
         # Task 5: Initialize RMSD calculator and store native structure
         self._native_structure = native_structure
         self._rmsd_calculator = None
-        if HAS_RMSD_CALCULATOR and native_structure is not None:
+        # Always initialize RMSD calculator for folding distance tracking (even without native)
+        if HAS_RMSD_CALCULATOR:
             try:
                 self._rmsd_calculator = RMSDCalculator(align_structures=True)
-                logger.info("RMSD calculator initialized for native structure validation")
+                if native_structure is not None:
+                    logger.info("RMSD calculator initialized for native structure validation")
+                else:
+                    logger.info("RMSD calculator initialized for folding distance tracking")
             except Exception as e:
                 logger.error(f"Error initializing RMSDCalculator: {e}")
-                logger.warning("Native structure validation will be disabled")
+                logger.warning("RMSD tracking will be disabled")
         
         # Initialize energy calculator (if enabled)
         self._energy_calculator: Optional[IPhysicsCalculator] = None
@@ -186,6 +190,11 @@ class ProteinAgent(IProteinAgent):
             self._current_conformation = self._generate_initial_conformation()
         else:
             self._current_conformation = initial_conformation
+
+        # Store initial conformation coordinates for folding distance tracking
+        # This allows RMSD calculation even without a native structure
+        self._initial_coordinates = list(self._current_conformation.atom_coordinates)
+        self._folding_rmsd = 0.0  # RMSD from initial state (measures how much structure changed)
 
         # Calculate RMSD for initial conformation if native structure is available
         if self._rmsd_calculator is not None and self._native_structure is not None:
@@ -649,6 +658,18 @@ class ProteinAgent(IProteinAgent):
             self._best_conformation = outcome.new_conformation  # Update best structure
             # Track RMSD improvement for learning calculation
             self._rmsd_history.append(self._best_rmsd)
+        
+        # Calculate folding distance (RMSD from initial state) - always available
+        if self._rmsd_calculator is not None:
+            try:
+                folding_result = self._rmsd_calculator.calculate_rmsd(
+                    predicted_coords=outcome.new_conformation.atom_coordinates,
+                    native_coords=self._initial_coordinates,
+                    calculate_metrics=False
+                )
+                self._folding_rmsd = folding_result.rmsd
+            except Exception as e:
+                logger.debug(f"Failed to calculate folding distance: {e}")
         
         # Task 5: Update best GDT-TS and TM-score
         if (outcome.new_conformation.gdt_ts_score is not None and
@@ -1642,6 +1663,7 @@ class ProteinAgent(IProteinAgent):
             "memories_created": self._memories_created,
             "best_energy": self._best_energy,
             "best_rmsd": self._best_rmsd,
+            "folding_rmsd": self._folding_rmsd,  # RMSD from initial state (always available)
             "avg_decision_time_ms": (
                 self._total_decision_time_ms / max(1, self._iterations_completed)
             ),

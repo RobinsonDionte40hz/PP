@@ -87,10 +87,13 @@ const StatisticsCard: React.FC<StatisticsCardProps> = ({ stats, predictions }) =
     }));
   }, [predictions]);
 
-  // RMSD distribution data
+  // RMSD distribution data - use folding_rmsd as fallback when best_rmsd is not available
   const rmsdDistribution = useMemo(() => {
     const completedPredictions = predictions.filter(
-      (p) => p.status === 'completed' && p.best_rmsd
+      (p) => p.status === 'completed' && (
+        (p.best_rmsd !== null && p.best_rmsd !== undefined && p.best_rmsd !== Infinity) ||
+        (p.metrics?.folding_rmsd !== null && p.metrics?.folding_rmsd !== undefined)
+      )
     );
 
     const bins = [
@@ -101,7 +104,9 @@ const StatisticsCard: React.FC<StatisticsCardProps> = ({ stats, predictions }) =
     ];
 
     completedPredictions.forEach((pred) => {
-      const rmsd = pred.best_rmsd!;
+      const rmsd = (pred.best_rmsd !== null && pred.best_rmsd !== undefined && pred.best_rmsd !== Infinity)
+        ? pred.best_rmsd
+        : (pred.metrics?.folding_rmsd ?? 0);
       const bin = bins.find((b) => rmsd >= b.min && rmsd < b.max);
       if (bin) bin.count += 1;
     });
@@ -129,8 +134,8 @@ const StatisticsCard: React.FC<StatisticsCardProps> = ({ stats, predictions }) =
       color: theme.palette.error.main,
     },
     {
-      label: 'Avg RMSD',
-      value: stats ? `${stats.avgRMSD.toFixed(2)} Å` : '-',
+      label: 'Avg Folding',
+      value: stats && stats.avgRMSD > 0 ? `${stats.avgRMSD.toFixed(2)} Å` : 'No data',
       icon: <ScienceIcon />,
       color: theme.palette.info.main,
     },

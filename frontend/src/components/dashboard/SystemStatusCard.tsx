@@ -178,10 +178,10 @@ const SystemStatusCard: React.FC<SystemStatusCardProps> = ({ stats }) => {
                 <TrendingIcon sx={{ color: theme.palette.primary.main }} />
                 <Box>
                   <Typography variant="body2" fontWeight="bold">
-                    {stats.avgRMSD > 0 && !isNaN(stats.avgRMSD) ? `${stats.avgRMSD.toFixed(2)} Å` : 'N/A'}
+                    {stats.avgRMSD > 0 && !isNaN(stats.avgRMSD) ? `${stats.avgRMSD.toFixed(2)} Å` : 'No data'}
                   </Typography>
                   <Typography variant="caption" color="text.secondary">
-                    Avg. RMSD
+                    Avg. Folding Distance
                   </Typography>
                 </Box>
               </Box>

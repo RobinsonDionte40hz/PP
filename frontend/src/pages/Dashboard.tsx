@@ -39,12 +39,22 @@ const Dashboard: React.FC = () => {
       const completed = allPredictions.filter(p => p.status === 'completed').length;
       const failed = allPredictions.filter(p => p.status === 'failed').length;
       
-      // Calculate average RMSD for completed predictions (handle null/undefined values)
+      // Calculate average RMSD for completed predictions
+      // Use best_rmsd (native comparison) if available, otherwise fall back to folding_rmsd
       const completedWithRMSD = allPredictions.filter(
-        p => p.status === 'completed' && p.best_rmsd !== null && p.best_rmsd !== undefined
+        p => p.status === 'completed' && (
+          (p.best_rmsd !== null && p.best_rmsd !== undefined && p.best_rmsd !== Infinity) ||
+          (p.metrics?.folding_rmsd !== null && p.metrics?.folding_rmsd !== undefined)
+        )
       );
       const avgRMSD = completedWithRMSD.length > 0
-        ? completedWithRMSD.reduce((sum, p) => sum + (p.best_rmsd || 0), 0) / completedWithRMSD.length
+        ? completedWithRMSD.reduce((sum, p) => {
+            // Prefer best_rmsd (native comparison), fall back to folding_rmsd
+            const rmsdValue = (p.best_rmsd !== null && p.best_rmsd !== undefined && p.best_rmsd !== Infinity)
+              ? p.best_rmsd
+              : (p.metrics?.folding_rmsd || 0);
+            return sum + rmsdValue;
+          }, 0) / completedWithRMSD.length
         : 0;
 
       // Calculate success rate (completed vs failed) - handle division by zero

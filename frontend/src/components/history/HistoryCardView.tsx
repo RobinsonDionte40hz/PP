@@ -124,16 +124,22 @@ const HistoryCardView: React.FC<HistoryCardViewProps> = ({
                   </Typography>
                 </Box>
               )}
-              {prediction.best_rmsd !== undefined && prediction.best_rmsd !== null && (
+              {(prediction.best_rmsd !== undefined && prediction.best_rmsd !== null && prediction.best_rmsd !== Infinity) ||
+               (prediction.metrics?.folding_rmsd !== undefined && prediction.metrics?.folding_rmsd !== null) ? (
                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                   <Typography variant="body2" color="text.secondary">
-                    RMSD:
+                    {prediction.best_rmsd !== undefined && prediction.best_rmsd !== null && prediction.best_rmsd !== Infinity 
+                      ? 'RMSD:' 
+                      : 'Folding:'}
                   </Typography>
                   <Typography variant="body2" fontWeight="medium">
-                    {prediction.best_rmsd.toFixed(2)} Å
+                    {(prediction.best_rmsd !== undefined && prediction.best_rmsd !== null && prediction.best_rmsd !== Infinity
+                      ? prediction.best_rmsd
+                      : prediction.metrics?.folding_rmsd ?? 0
+                    ).toFixed(2)} Å
                   </Typography>
                 </Box>
-              )}
+              ) : null}
               <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                 <Typography variant="body2" color="text.secondary">
                   Iterations:

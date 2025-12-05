@@ -11,9 +11,13 @@ interface MetricsGridProps {
 const MetricsGrid: React.FC<MetricsGridProps> = React.memo(({ prediction, latestProgress }) => {
   // Extract metrics from nested object - prefer WebSocket data for real-time updates
   const bestEnergy = latestProgress?.best_energy ?? prediction.metrics?.best_energy ?? null;
+  // Use native RMSD if available, otherwise fall back to folding RMSD
   const bestRMSD = latestProgress?.best_rmsd ?? prediction.metrics?.best_rmsd ?? null;
+  const foldingRMSD = latestProgress?.folding_rmsd ?? prediction.metrics?.folding_rmsd ?? null;
+  const displayRMSD = (bestRMSD !== null && bestRMSD !== undefined && bestRMSD !== Infinity) ? bestRMSD : foldingRMSD;
   const currentEnergy = latestProgress?.current_energy ?? prediction.metrics?.current_energy ?? bestEnergy;
-  const currentRMSD = latestProgress?.current_rmsd ?? prediction.metrics?.current_rmsd ?? bestRMSD;
+  const currentRMSD = latestProgress?.current_rmsd ?? prediction.metrics?.current_rmsd ?? displayRMSD;
+  const rmsdLabel = (bestRMSD !== null && bestRMSD !== undefined && bestRMSD !== Infinity) ? 'RMSD (Native)' : 'Folding Distance';
 
   const metrics = [
     {
@@ -34,21 +38,25 @@ const MetricsGrid: React.FC<MetricsGridProps> = React.memo(({ prediction, latest
       tooltip: 'Lowest potential energy achieved during this prediction. The optimization goal is to minimize this value.',
     },
     {
-      title: 'RMSD',
+      title: rmsdLabel,
       value: currentRMSD !== null && currentRMSD !== undefined && currentRMSD !== Infinity ? currentRMSD.toFixed(2) : 'N/A',
       unit: currentRMSD !== null && currentRMSD !== undefined && currentRMSD !== Infinity ? 'Å' : '',
       color: 'info' as const,
-      trend: (currentRMSD !== null && currentRMSD !== undefined && bestRMSD !== null && bestRMSD !== undefined && currentRMSD !== Infinity && bestRMSD !== Infinity
-        ? currentRMSD < bestRMSD ? 'down' : 'up'
+      trend: (currentRMSD !== null && currentRMSD !== undefined && displayRMSD !== null && displayRMSD !== undefined && currentRMSD !== Infinity && displayRMSD !== Infinity
+        ? currentRMSD < displayRMSD ? 'down' : 'up'
         : undefined) as 'up' | 'down' | 'neutral' | undefined,
-      tooltip: 'Root Mean Square Deviation from native structure (if available). Lower is better. Values <2Å indicate excellent accuracy.',
+      tooltip: rmsdLabel === 'Folding Distance' 
+        ? 'How much the structure changed from the initial extended state. Higher values indicate more folding.'
+        : 'Root Mean Square Deviation from native structure. Lower is better. Values <2Å indicate excellent accuracy.',
     },
     {
-      title: 'Best RMSD',
-      value: bestRMSD !== null && bestRMSD !== undefined && bestRMSD !== Infinity ? bestRMSD.toFixed(2) : 'N/A',
-      unit: bestRMSD !== null && bestRMSD !== undefined && bestRMSD !== Infinity ? 'Å' : '',
+      title: rmsdLabel === 'Folding Distance' ? 'Best Folding' : 'Best RMSD',
+      value: displayRMSD !== null && displayRMSD !== undefined && displayRMSD !== Infinity ? displayRMSD.toFixed(2) : 'N/A',
+      unit: displayRMSD !== null && displayRMSD !== undefined && displayRMSD !== Infinity ? 'Å' : '',
       color: 'success' as const,
-      tooltip: 'Best (lowest) RMSD achieved. <2Å = Excellent, 2-4Å = Good, 4-5Å = Acceptable, >5Å = Research phase. Shows N/A if no native structure provided.',
+      tooltip: rmsdLabel === 'Folding Distance'
+        ? 'Maximum structural change from initial state. Indicates how much the protein has folded.'
+        : 'Best (lowest) RMSD achieved. <2Å = Excellent, 2-4Å = Good, 4-5Å = Acceptable, >5Å = Research phase.',
     },
     {
       title: 'Aggressiveness',

@@ -165,8 +165,14 @@ const HistoryTableView: React.FC<HistoryTableViewProps> = ({
                   )}
                 </TableCell>
                 <TableCell>
-                  {prediction.best_rmsd !== undefined && prediction.best_rmsd !== null ? (
-                    <Typography variant="body2">{prediction.best_rmsd.toFixed(2)}</Typography>
+                  {(prediction.best_rmsd !== undefined && prediction.best_rmsd !== null && prediction.best_rmsd !== Infinity) ||
+                   (prediction.metrics?.folding_rmsd !== undefined && prediction.metrics?.folding_rmsd !== null) ? (
+                    <Typography variant="body2">
+                      {(prediction.best_rmsd !== undefined && prediction.best_rmsd !== null && prediction.best_rmsd !== Infinity
+                        ? prediction.best_rmsd
+                        : prediction.metrics?.folding_rmsd ?? 0
+                      ).toFixed(2)}
+                    </Typography>
                   ) : (
                     <Typography variant="body2" color="text.secondary">
                       N/A
