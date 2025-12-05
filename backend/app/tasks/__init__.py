@@ -1,4 +1,21 @@
 """Tasks package"""
+# Legacy tasks (deprecated - use v2 versions)
 from app.tasks.prediction_tasks import run_prediction, pause_prediction, stop_prediction
 
-__all__ = ["run_prediction", "pause_prediction", "stop_prediction"]
+# V2 tasks using unified PredictionRunner (RECOMMENDED)
+from app.tasks.prediction_tasks_v2 import (
+    run_prediction_v2, 
+    pause_prediction_v2, 
+    stop_prediction_v2
+)
+
+__all__ = [
+    # Legacy (deprecated)
+    "run_prediction", 
+    "pause_prediction", 
+    "stop_prediction",
+    # V2 (recommended)
+    "run_prediction_v2",
+    "pause_prediction_v2", 
+    "stop_prediction_v2",
+]

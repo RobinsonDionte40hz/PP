@@ -141,6 +141,33 @@ Use `QCProteinPipeline.run_validation_pipeline()` with experimental data from `e
 - **Adaptive** (`adaptive_config.py`): Auto-scaling for small/medium/large proteins
 - **Persistence** (`checkpoint.py`): SHA256 integrity, auto-save, rotation
 - **Visualization** (`visualization.py`): JSON/PDB/CSV export with 2D projections
+- **Unified Runner** (`prediction_runner.py`): Single source of truth for predictions (Dec 2025)
+
+#### PredictionRunner - UNIFIED PREDICTION INTERFACE
+**ALL prediction code paths MUST use `PredictionRunner`** - it is the single source of truth.
+
+```python
+from ubf_protein.prediction_runner import PredictionRunner, PredictionConfig
+
+config = PredictionConfig(
+    sequence="MQIFVKT...",
+    native_pdb="1UBQ",        # For RMSD validation (optional)
+    agents=10,
+    iterations=500,
+    qcpp_config="default",    # 'default', 'high_performance', 'high_accuracy', 'none'
+    enable_refinement=True,   # Quantum refinement for better RMSD
+)
+
+runner = PredictionRunner(config)
+results = runner.run(progress_callback=my_callback)
+
+# Results include: best_energy, best_rmsd, gdt_ts_score, tm_score, etc.
+```
+
+**Key Points:**
+- `test_protein.py` (CLI) and `prediction_tasks_v2.py` (Celery) both use `PredictionRunner`
+- Do NOT reimplement prediction logic elsewhere - it causes inconsistent results
+- The old `prediction_tasks.py` is DEPRECATED - use `prediction_tasks_v2.py`
 
 ### Key Patterns & Conventions
 

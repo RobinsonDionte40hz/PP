@@ -66,8 +66,9 @@ async def create_prediction(
         # Try to queue Celery task
         celery_available = False
         try:
-            from app.tasks import run_prediction
-            task = run_prediction.delay(prediction.id)
+            # Use V2 task with unified PredictionRunner
+            from app.tasks import run_prediction_v2
+            task = run_prediction_v2.delay(prediction.id)
             
             # Update with task ID
             from app.schemas.prediction import PredictionUpdateSchema
@@ -76,7 +77,7 @@ async def create_prediction(
                 PredictionUpdateSchema(task_id=task.id, status=PredictionStatus.QUEUED)
             )
             
-            logger.info(f"Queued prediction {prediction.id} with task {task.id}")
+            logger.info(f"Queued prediction {prediction.id} with task {task.id} (using PredictionRunner V2)")
             celery_available = True
         except Exception as celery_error:
             # Celery/Redis not available - keep prediction in pending state
