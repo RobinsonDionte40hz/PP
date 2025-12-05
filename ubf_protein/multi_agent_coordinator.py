@@ -613,11 +613,23 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
 
         # Collect final agent metrics
         best_folding_rmsd = 0.0  # Track best folding distance across agents
+        best_gdt_ts = 0.0  # Track best GDT-TS score across agents
+        best_tm_score = 0.0  # Track best TM-score across agents
+        
         for i, agent in enumerate(self._agents):
             metrics_dict = agent.get_exploration_metrics()
             agent_folding_rmsd = metrics_dict.get("folding_rmsd", 0.0)
             if agent_folding_rmsd > best_folding_rmsd:
                 best_folding_rmsd = agent_folding_rmsd
+            
+            # Track best GDT-TS and TM-score across all agents
+            agent_gdt_ts = metrics_dict.get("best_gdt_ts", 0.0)
+            agent_tm_score = metrics_dict.get("best_tm_score", 0.0)
+            if agent_gdt_ts > best_gdt_ts:
+                best_gdt_ts = agent_gdt_ts
+            if agent_tm_score > best_tm_score:
+                best_tm_score = agent_tm_score
+            
             metrics = ExplorationMetrics(
                 agent_id=f"agent_{i}",
                 iterations_completed=int(metrics_dict["iterations_completed"]),
@@ -629,7 +641,9 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
                 avg_decision_time_ms=metrics_dict["avg_decision_time_ms"],
                 stuck_in_minima_count=int(metrics_dict["stuck_in_minima_count"]),
                 successful_escapes=int(metrics_dict["successful_escapes"]),
-                folding_rmsd=agent_folding_rmsd
+                folding_rmsd=agent_folding_rmsd,
+                best_gdt_ts_score=agent_gdt_ts if agent_gdt_ts > 0 else None,
+                best_tm_score=agent_tm_score if agent_tm_score > 0 else None
             )
             agent_metrics.append(metrics)
 
@@ -672,6 +686,23 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
             except Exception as e:
                 logger.warning(f"Correlation analysis failed: {e}")
 
+        # Calculate validation quality based on RMSD and GDT-TS
+        validation_quality = None
+        if self._best_rmsd != float('inf'):
+            # Quality assessment based on structural biology standards
+            if self._best_rmsd < 2.0 and best_gdt_ts > 80:
+                validation_quality = "excellent"
+            elif self._best_rmsd < 3.0 and best_gdt_ts > 70:
+                validation_quality = "good"
+            elif self._best_rmsd < 5.0 and best_gdt_ts > 50:
+                validation_quality = "acceptable"
+            elif self._best_rmsd < 5.0 or best_gdt_ts > 50:
+                validation_quality = "acceptable"  # One criterion met
+            else:
+                validation_quality = "poor"
+            
+            logger.info(f"Validation quality: {validation_quality} (RMSD={self._best_rmsd:.2f}Å, GDT-TS={best_gdt_ts:.1f})")
+
         return ExplorationResults(
             total_iterations=self._total_iterations,
             total_conformations_explored=total_conformations_explored,
@@ -682,6 +713,9 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
             collective_learning_benefit=collective_learning_benefit,
             total_runtime_seconds=total_runtime,
             shared_memories_created=self._shared_memory_pool.get_total_memories(),
+            validation_quality=validation_quality,
+            best_gdt_ts=best_gdt_ts if best_gdt_ts > 0 else None,
+            best_tm_score=best_tm_score if best_tm_score > 0 else None,
             folding_rmsd=best_folding_rmsd,  # Best folding distance across all agents
             qcpp_trajectory_data=qcpp_trajectory_data,
             qcpp_rmsd_correlations=qcpp_rmsd_correlations,
