@@ -131,17 +131,33 @@ const StructurePreviewModal: React.FC<StructurePreviewModalProps> = ({
           </Box>
         )}
 
-        {error && (
-          <Alert 
-            severity="warning" 
-            action={
-              <Button color="inherit" size="small" onClick={() => refetch()}>
-                Retry
-              </Button>
-            }
+        {error && !isLoading && (
+          <Box
+            display="flex"
+            flexDirection="column"
+            alignItems="center"
+            justifyContent="center"
+            py={6}
           >
-            {error instanceof Error ? error.message : 'Failed to load structure. The prediction may still be running.'}
-          </Alert>
+            <View3DIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
+            <Alert 
+              severity="info" 
+              sx={{ maxWidth: 450 }}
+              action={
+                <Button color="inherit" size="small" onClick={() => refetch()}>
+                  Retry
+                </Button>
+              }
+            >
+              <Typography variant="body2" fontWeight="bold" gutterBottom>
+                Structure Not Available Yet
+              </Typography>
+              <Typography variant="body2">
+                The 3D structure will be available once the prediction completes. 
+                The prediction is currently running - check back when it finishes.
+              </Typography>
+            </Alert>
+          </Box>
         )}
 
         {structure && !isLoading && (
