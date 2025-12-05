@@ -50,12 +50,12 @@ try:
     from .geometric_attractor import GeometricAttractorAnalyzer
     from .adaptive_config import create_config_for_sequence
 except ImportError:
-    # Handle direct execution
-    from multi_agent_coordinator import MultiAgentCoordinator
-    from qcpp_integration import QCPPIntegrationAdapter
-    from rmsd_calculator import RMSDCalculator, NativeStructureLoader
-    from geometric_attractor import GeometricAttractorAnalyzer
-    from adaptive_config import create_config_for_sequence
+    # Handle direct execution or Docker environment
+    from ubf_protein.multi_agent_coordinator import MultiAgentCoordinator
+    from ubf_protein.qcpp_integration import QCPPIntegrationAdapter
+    from ubf_protein.rmsd_calculator import RMSDCalculator, NativeStructureLoader
+    from ubf_protein.geometric_attractor import GeometricAttractorAnalyzer
+    from ubf_protein.adaptive_config import create_config_for_sequence
 
 # Import QCPP predictor
 try:
