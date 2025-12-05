@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   Box,
   Stack,
@@ -14,6 +15,8 @@ import {
   ToggleButton,
   ToggleButtonGroup,
   Divider,
+  CircularProgress,
+  Alert,
 } from '@mui/material';
 import {
   ShowChart,
@@ -60,27 +63,43 @@ const DetailedMetricsTab: React.FC<DetailedMetricsTabProps> = ({ prediction }) =
   const waterShielding = metrics.water_shielding ?? null;
   const qcpScore = metrics.qcp_score ?? null;
 
-  // Generate mock convergence data (in production, fetch from backend)
-  const generateConvergenceData = () => {
-    const iterations = prediction.total_iterations || 5000;
-    const points = Math.min(100, iterations);
-    const step = Math.floor(iterations / points);
+  // Fetch trajectory data for convergence charts
+  const { data: trajectoryData, isLoading: trajectoryLoading } = useQuery({
+    queryKey: ['trajectory', prediction.id],
+    queryFn: async () => {
+      const response = await fetch(`/api/results/${prediction.id}/trajectory`);
+      if (!response.ok) return null;
+      const data = await response.json();
+      return data.trajectory || [];
+    },
+  });
 
-    return Array.from({ length: points }, (_, i) => {
-      const iter = i * step;
-      const progress = iter / iterations;
-
-      return {
-        iteration: iter,
-        energy: -50 - progress * 150 + Math.random() * 30,
-        rmsd: 15 - progress * 10 + Math.random() * 2,
-        aggressiveness: 9 + Math.sin(progress * Math.PI * 4) * 3,
-        consistency: 0.4 + progress * 0.4 + Math.random() * 0.1,
-      };
-    });
-  };
-
-  const convergenceData = generateConvergenceData();
+  // Transform trajectory data for convergence charts
+  const convergenceData = React.useMemo(() => {
+    if (!trajectoryData || trajectoryData.length === 0) {
+      // Fallback: generate basic line from initial to final
+      const iterations = prediction.total_iterations || 1000;
+      const initialEnergy = metrics.initial_energy ?? 0;
+      const finalEnergy = bestEnergy ?? initialEnergy;
+      
+      return [
+        { iteration: 0, energy: initialEnergy, rmsd: metrics.initial_rmsd ?? 15 },
+        { iteration: iterations, energy: finalEnergy, rmsd: bestRMSD ?? 10 },
+      ];
+    }
+    
+    // Sample trajectory data for chart (max 100 points)
+    const step = Math.max(1, Math.floor(trajectoryData.length / 100));
+    return trajectoryData
+      .filter((_: unknown, i: number) => i % step === 0)
+      .map((point: { iteration: number; energy: number; rmsd: number; aggressiveness: number; consistency: number }) => ({
+        iteration: point.iteration,
+        energy: point.energy,
+        rmsd: point.rmsd || 0,
+        aggressiveness: point.aggressiveness,
+        consistency: point.consistency,
+      }));
+  }, [trajectoryData, prediction.total_iterations, metrics.initial_energy, metrics.initial_rmsd, bestEnergy, bestRMSD]);
 
   // Quality metrics with actual data
   const qualityMetrics = [
@@ -122,14 +141,18 @@ const DetailedMetricsTab: React.FC<DetailedMetricsTabProps> = ({ prediction }) =
     },
   ];
 
-  // Memory statistics (mock data)
+  // Memory/QCPP statistics from actual metrics
+  const qcppTotalAnalyses = metrics.qcpp_total_analyses ?? null;
+  const qcppCacheHitRate = metrics.qcpp_cache_hit_rate ?? null;
+  const qcppAvgTime = metrics.qcpp_avg_time_ms ?? null;
+  
   const memoryStats = [
-    { metric: 'Total Memories', value: '1,247', description: 'Stored experiences' },
-    { metric: 'Shared Memories', value: '342', description: 'Significance ≥ 0.7' },
-    { metric: 'High-Impact Memories', value: '89', description: 'Significance ≥ 0.9' },
-    { metric: 'Memory Retrievals', value: '5,623', description: 'Query operations' },
-    { metric: 'Avg Retrieval Time', value: '4.2 μs', description: 'Query performance' },
-    { metric: 'Cache Hit Rate', value: '87.3%', description: 'Memory efficiency' },
+    { metric: 'QCPP Analyses', value: qcppTotalAnalyses !== null ? qcppTotalAnalyses.toLocaleString() : 'N/A', description: 'Total quantum analyses' },
+    { metric: 'Cache Hit Rate', value: qcppCacheHitRate !== null ? `${(qcppCacheHitRate * 100).toFixed(1)}%` : 'N/A', description: 'QCPP cache efficiency' },
+    { metric: 'Avg Analysis Time', value: qcppAvgTime !== null ? `${qcppAvgTime.toFixed(2)} ms` : 'N/A', description: 'Per-analysis time' },
+    { metric: 'Conformations', value: conformationsExplored !== null ? conformationsExplored.toLocaleString() : 'N/A', description: 'Total explored' },
+    { metric: 'Unique Structures', value: uniqueStructures !== null ? uniqueStructures.toLocaleString() : 'N/A', description: 'Distinct conformations' },
+    { metric: 'Convergence', value: convergenceRate !== null ? `${convergenceRate.toFixed(1)}%` : 'N/A', description: 'Optimization progress' },
   ];
 
   const getStatusColor = (status: string) => {

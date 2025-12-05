@@ -59,35 +59,67 @@ interface GeometricPattern {
 const GeometricAnalysisTab: React.FC<GeometricAnalysisTabProps> = ({ predictionId }) => {
   const [viewMode, setViewMode] = useState<'overview' | 'details'>('overview');
 
-  // Fetch geometric analysis data
+  // Fetch geometric analysis data from backend
   const { data: geometricData, isLoading, error } = useQuery({
     queryKey: ['geometric-analysis', predictionId],
     queryFn: async () => {
-      // Mock data - in production, fetch from backend
+      const response = await fetch(`/api/results/${predictionId}/geometric`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch geometric analysis');
+      }
+      const data = await response.json();
+      
+      // If no geometric analysis available, return null
+      if (!data.geometric_analysis) {
+        return null;
+      }
+      
+      const geo = data.geometric_analysis;
+      const qcpp = data.qcpp_metrics || {};
+      
+      // Transform backend data to frontend format
       return {
         patterns: [
-          { name: 'Icosahedron', score: 0.78, count: 23, percentage: 34.3 },
-          { name: 'Dodecahedron', score: 0.65, count: 18, percentage: 26.9 },
-          { name: 'Octahedron', score: 0.52, count: 15, percentage: 22.4 },
-          { name: 'Tetrahedron', score: 0.41, count: 11, percentage: 16.4 },
+          { 
+            name: 'Icosahedron', 
+            score: geo.icosahedron_percentage / 100 || 0, 
+            count: geo.icosahedron_count || 0, 
+            percentage: geo.icosahedron_percentage || 0 
+          },
+          { 
+            name: 'Dodecahedron', 
+            score: geo.dodecahedron_percentage / 100 || 0, 
+            count: geo.dodecahedron_count || 0, 
+            percentage: geo.dodecahedron_percentage || 0 
+          },
+          { 
+            name: 'Octahedron', 
+            score: geo.octahedron_percentage / 100 || 0, 
+            count: geo.octahedron_count || 0, 
+            percentage: geo.octahedron_percentage || 0 
+          },
+          { 
+            name: 'Golden Ratio (φ)', 
+            score: geo.golden_ratio_percentage / 100 || 0, 
+            count: geo.golden_ratio_count || 0, 
+            percentage: geo.golden_ratio_percentage || 0 
+          },
         ],
-        phiAngles: Array.from({ length: 50 }, (_, i) => ({
-          residue: i + 1,
-          angle: 137.5 + (Math.random() - 0.5) * 30,
-          deviation: Math.abs((137.5 + (Math.random() - 0.5) * 30) - 137.5),
-          category: (Math.random() > 0.7 ? 'excellent' : Math.random() > 0.4 ? 'good' : 'poor') as 'excellent' | 'good' | 'poor',
-        })),
+        phiAngles: geo.phi_angles || [],
         symmetry: {
-          overall: 0.72,
-          local: 0.68,
-          global: 0.76,
+          overall: geo.overall_symmetry || 0,
+          local: geo.local_symmetry || 0,
+          global: geo.global_symmetry || 0,
         },
         qcppMetrics: {
-          avgQCP: 5.82,
-          fieldCoherence: 0.84,
-          thzPeaks: [0.12, 0.32, 0.61, 0.98, 1.59], // THz
-          quantumStability: 0.79,
+          avgQCP: qcpp.qcp_score || 0,
+          fieldCoherence: qcpp.resonance_40hz || 0,
+          thzPeaks: geo.thz_peaks || [],
+          quantumStability: qcpp.qaap_alignment || 0,
+          waterShielding: qcpp.water_shielding || 0,
+          cacheHitRate: qcpp.qcpp_cache_hit_rate || 0,
         },
+        raw: geo,  // Keep raw data for debugging
       };
     },
   });

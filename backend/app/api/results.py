@@ -154,6 +154,62 @@ async def get_trajectory(
 
 
 @router.get(
+    "/{prediction_id}/geometric",
+    summary="Get geometric analysis",
+    description="Get geometric attractor analysis including phi angles and patterns"
+)
+async def get_geometric_analysis(
+    prediction_id: str = Path(..., description="Prediction ID")
+):
+    """
+    Get geometric analysis data for visualization.
+    
+    Returns phi angle distributions, Platonic solid patterns, and QCPP metrics.
+    """
+    prediction = prediction_service.get_prediction(prediction_id)
+    
+    if not prediction:
+        raise HTTPException(status_code=404, detail="Prediction not found")
+    
+    if not prediction.result_path:
+        return {
+            "prediction_id": prediction_id,
+            "message": "No results available - prediction may still be running",
+            "geometric_analysis": None
+        }
+    
+    result_file = FilePath(prediction.result_path) / "results.json"
+    
+    if not result_file.exists():
+        return {
+            "prediction_id": prediction_id,
+            "message": "Results file not found",
+            "geometric_analysis": None
+        }
+    
+    try:
+        with open(result_file, 'r') as f:
+            results_data = json.load(f)
+        
+        geometric = results_data.get('geometric_analysis')
+        qcpp_metrics = {
+            'qaap_alignment': results_data.get('qaap_alignment'),
+            'resonance_40hz': results_data.get('resonance_40hz'),
+            'water_shielding': results_data.get('water_shielding'),
+            'qcp_score': results_data.get('qcp_score'),
+            'qcpp_cache_hit_rate': results_data.get('qcpp_cache_hit_rate'),
+        }
+        
+        return {
+            "prediction_id": prediction_id,
+            "geometric_analysis": geometric,
+            "qcpp_metrics": qcpp_metrics,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to load results: {str(e)}")
+
+
+@router.get(
     "/{prediction_id}/metrics",
     summary="Get detailed metrics",
     description="Get comprehensive metrics breakdown"
