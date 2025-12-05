@@ -29,9 +29,18 @@ from app.services.work_session_service import work_session_service
 from app.models.prediction import PredictionStatus
 from app.schemas.prediction import PredictionUpdateSchema
 
-# Add project root to path for ubf_protein imports
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
-sys.path.insert(0, project_root)
+# Add paths for ubf_protein imports
+# In Docker: ubf_protein is at /ubf_protein/ with PYTHONPATH=/
+# Locally: ubf_protein is at ../../.. relative to this file
+if os.path.exists('/ubf_protein'):
+    # Docker environment
+    if '/' not in sys.path:
+        sys.path.insert(0, '/')
+else:
+    # Local development
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
+    if project_root not in sys.path:
+        sys.path.insert(0, project_root)
 
 # Import unified PredictionRunner
 from ubf_protein.prediction_runner import (
