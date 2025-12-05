@@ -109,14 +109,7 @@ const SequenceStep: React.FC<SequenceStepProps> = ({ formData, onChange }) => {
 
       const pdbText = await response.text();
       
-      // Parse sequence from PDB SEQRES records
-      const seqresLines = pdbText.split('\n').filter(line => line.startsWith('SEQRES'));
-      
-      if (seqresLines.length === 0) {
-        throw new Error('No sequence found in PDB file');
-      }
-
-      // Extract amino acids from SEQRES lines
+      // Extract amino acids from ATOM records (only structured/observed residues)
       const aaMap: { [key: string]: string } = {
         'ALA': 'A', 'CYS': 'C', 'ASP': 'D', 'GLU': 'E', 'PHE': 'F',
         'GLY': 'G', 'HIS': 'H', 'ILE': 'I', 'LYS': 'K', 'LEU': 'L',
@@ -124,15 +117,49 @@ const SequenceStep: React.FC<SequenceStepProps> = ({ formData, onChange }) => {
         'SER': 'S', 'THR': 'T', 'VAL': 'V', 'TRP': 'W', 'TYR': 'Y'
       };
 
-      let sequence = '';
-      seqresLines.forEach(line => {
-        const parts = line.split(/\s+/).slice(4); // Skip SEQRES, chain, number, count
-        parts.forEach(aa => {
-          if (aaMap[aa]) {
-            sequence += aaMap[aa];
+      // Parse ATOM records for CA atoms (one per residue) from chain A
+      const lines = pdbText.split('\n');
+      const residues: { resNum: number; resName: string }[] = [];
+      const seenResidues = new Set<string>();
+      
+      for (const line of lines) {
+        if (line.startsWith('ATOM') || line.startsWith('HETATM')) {
+          const atomName = line.substring(12, 16).trim();
+          const resName = line.substring(17, 20).trim();
+          const chainId = line.substring(21, 22);
+          const resSeq = parseInt(line.substring(22, 26).trim(), 10);
+          
+          // Only process CA atoms from first chain (usually 'A' or ' ')
+          if (atomName === 'CA' && aaMap[resName]) {
+            const key = `${chainId}:${resSeq}`;
+            if (!seenResidues.has(key)) {
+              seenResidues.add(key);
+              residues.push({ resNum: resSeq, resName });
+            }
           }
+        }
+        // Stop at first TER or ENDMDL (single chain/model only)
+        if (line.startsWith('TER') || line.startsWith('ENDMDL')) {
+          if (residues.length > 0) break;
+        }
+      }
+
+      // Sort by residue number and build sequence
+      residues.sort((a, b) => a.resNum - b.resNum);
+      let sequence = residues.map(r => aaMap[r.resName]).join('');
+
+      if (sequence.length === 0) {
+        // Fallback to SEQRES if no ATOM records found
+        const seqresLines = lines.filter(line => line.startsWith('SEQRES'));
+        seqresLines.forEach(line => {
+          const parts = line.split(/\s+/).slice(4);
+          parts.forEach(aa => {
+            if (aaMap[aa]) {
+              sequence += aaMap[aa];
+            }
+          });
         });
-      });
+      }
 
       if (sequence.length === 0) {
         throw new Error('Could not extract sequence from PDB file');
