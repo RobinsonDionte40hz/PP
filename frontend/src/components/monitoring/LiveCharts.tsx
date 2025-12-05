@@ -13,7 +13,6 @@ import {
 } from '@mui/material';
 import {
   HelpOutline as HelpIcon,
-  ExpandMore as ExpandIcon,
   ExpandLess as CollapseIcon,
 } from '@mui/icons-material';
 import {
