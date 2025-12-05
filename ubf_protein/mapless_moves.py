@@ -327,6 +327,18 @@ class CapabilityBasedMoveEvaluator(IMoveEvaluator):
             0.15 * historical_success +
             0.2 * goal_alignment
         )
+        
+        # Bias toward hydrophobic collapse when RMSD is HIGH (>20Å)
+        # Below 20Å, we need diverse moves for refinement
+        if current_rmsd is not None:
+            if move.move_type == MoveType.HYDROPHOBIC_COLLAPSE:
+                if current_rmsd > 30.0:
+                    total_weight *= 4.0  # 4x weight for collapse moves
+                elif current_rmsd > 25.0:
+                    total_weight *= 3.0  # 3x weight
+                elif current_rmsd > 20.0:
+                    total_weight *= 2.0  # 2x weight
+                # Below 20Å: no special bias - let other moves compete
 
         return total_weight
 

@@ -216,12 +216,18 @@ class RMSDCalculator:
             H_np = np.array(H)
             U, S, Vt = np.linalg.svd(H_np)
             
-            # Check for reflection (det(UV^T) should be positive)
-            d = np.linalg.det(U @ Vt)
-            if d < 0:
-                Vt[-1, :] *= -1
+            # Correct Kabsch formula: R = V @ U^T (to rotate coords1 onto coords2)
+            # Note: numpy returns Vt (V transposed), so V = Vt.T
+            V = Vt.T
+            R = V @ U.T
             
-            R = U @ Vt
+            # Check for reflection (det(R) should be positive for proper rotation)
+            d = np.linalg.det(R)
+            if d < 0:
+                # Flip sign of last column of V to get proper rotation
+                V[:, -1] *= -1
+                R = V @ U.T
+            
             return R.tolist()
         except ImportError:
             pass

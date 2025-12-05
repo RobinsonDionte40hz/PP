@@ -406,10 +406,16 @@ class ProteinAgent(IProteinAgent):
                     # Execute the move (simulate conformational change)
                     new_conformation = self._execute_move(best_move)
 
-                    # Validate the new conformation
-                    validation_result = self._validator.validate_conformation(new_conformation)
+                    # CRITICAL FIX: Check if move was rejected (returned unchanged conformation)
+                    # This happens when steric clashes prevent the move
+                    move_was_rejected = (new_conformation is self._current_conformation)
+
+                    # Validate the new conformation (skip if move was already rejected)
+                    validation_result = None
+                    if not move_was_rejected:
+                        validation_result = self._validator.validate_conformation(new_conformation)
                     
-                    if not validation_result.is_valid:
+                    if validation_result is not None and not validation_result.is_valid:
                         self._validation_failures += 1
                         logger.warning(f"Invalid conformation detected: {validation_result.issues[:3]}")
                         
@@ -431,8 +437,12 @@ class ProteinAgent(IProteinAgent):
                     rmsd_change = abs(energy_change) * 0.1  # Simplified RMSD estimation
 
                     # Determine success using Metropolis-Hastings acceptance criterion
-                    # Accept if energy decreases OR with probability based on temperature
-                    accept_move = self._metropolis_accept(energy_change)
+                    # CRITICAL: If move was rejected by steric clashes, never accept
+                    if move_was_rejected:
+                        accept_move = False
+                    else:
+                        # Accept if energy decreases OR with probability based on temperature
+                        accept_move = self._metropolis_accept(energy_change)
                     
                     if accept_move:
                         self._moves_accepted += 1
@@ -1386,34 +1396,103 @@ class ProteinAgent(IProteinAgent):
     def _apply_hydrophobic_collapse(self, coords: List[Tuple[float, float, float]],
                                    target_residues: List[int]) -> List[Tuple[float, float, float]]:
         """
-        Bring hydrophobic residues closer together.
+        Bring hydrophobic residues closer together with CAREFUL compaction.
+        
+        This is a key folding mechanism - hydrophobic residues drive protein
+        folding by clustering in the core away from water.
+        
+        Uses iterative small steps to avoid steric clashes.
         """
         new_coords = list(coords)
 
-        # Find centroid of target residues
         if not target_residues:
             return new_coords
 
-        centroid = [0.0, 0.0, 0.0]
+        # Calculate global centroid of the entire protein (for global compaction)
+        global_centroid = [0.0, 0.0, 0.0]
+        for coord in coords:
+            global_centroid[0] += coord[0]
+            global_centroid[1] += coord[1]
+            global_centroid[2] += coord[2]
+        global_centroid = [c / len(coords) for c in global_centroid]
+
+        # Calculate centroid of hydrophobic target residues
+        hydrophobic_centroid = [0.0, 0.0, 0.0]
         for idx in target_residues:
             if idx < len(coords):
-                centroid[0] += coords[idx][0]
-                centroid[1] += coords[idx][1]
-                centroid[2] += coords[idx][2]
+                hydrophobic_centroid[0] += coords[idx][0]
+                hydrophobic_centroid[1] += coords[idx][1]
+                hydrophobic_centroid[2] += coords[idx][2]
+        hydrophobic_centroid = [c / len(target_residues) for c in hydrophobic_centroid]
 
-        centroid = [c / len(target_residues) for c in centroid]
+        # Calculate current protein "radius" (max distance from global centroid)
+        max_radius = 0.0
+        for coord in coords:
+            dist = math.sqrt(sum((coord[i] - global_centroid[i])**2 for i in range(3)))
+            max_radius = max(max_radius, dist)
 
-        # Move target residues slightly toward centroid
-        for idx in target_residues:
-            if idx >= len(coords):
-                continue
+        # Expected radius based on protein size (empirical: ~2-3 Å per residue radius for globular)
+        expected_radius = 8.0 + 0.15 * len(coords)  # More realistic estimate
+        
+        # SMALL collapse factor per iteration (5-10%) - will be applied multiple times
+        # This prevents creating steric clashes in a single move
+        base_collapse = 0.08  # 8% per pass (increased for faster folding)
+        
+        # Apply multiple small collapse passes
+        num_passes = 5  # 5 passes of 8% each = ~40% total potential collapse
+        min_safe_distance = 3.2  # Slightly under native minimum (3.9Å) to allow folding
+        
+        for pass_num in range(num_passes):
+            # Move hydrophobic residues toward their centroid (core formation)
+            for idx in target_residues:
+                if idx >= len(new_coords):
+                    continue
 
-            x, y, z = coords[idx]
-            # Move 10% toward centroid
-            new_x = x + 0.1 * (centroid[0] - x)
-            new_y = y + 0.1 * (centroid[1] - y)
-            new_z = z + 0.1 * (centroid[2] - z)
-            new_coords[idx] = (new_x, new_y, new_z)
+                x, y, z = new_coords[idx]
+                # Calculate proposed new position
+                new_x = x + base_collapse * (hydrophobic_centroid[0] - x)
+                new_y = y + base_collapse * (hydrophobic_centroid[1] - y)
+                new_z = z + base_collapse * (hydrophobic_centroid[2] - z)
+                proposed = (new_x, new_y, new_z)
+                
+                # Check if this creates any steric clashes with non-adjacent residues
+                clash = False
+                for j in range(len(new_coords)):
+                    if abs(j - idx) <= 1:  # Skip adjacent
+                        continue
+                    other = new_coords[j]
+                    dist = math.sqrt(sum((proposed[k] - other[k])**2 for k in range(3)))
+                    if dist < min_safe_distance:
+                        clash = True
+                        break
+                
+                if not clash:
+                    new_coords[idx] = proposed
+
+            # Also apply gentler global compaction
+            global_collapse = base_collapse * 0.3  # 1.5% per pass for non-hydrophobic
+            for idx in range(len(new_coords)):
+                if idx in target_residues:
+                    continue  # Already moved
+                x, y, z = new_coords[idx]
+                new_x = x + global_collapse * (global_centroid[0] - x)
+                new_y = y + global_collapse * (global_centroid[1] - y)
+                new_z = z + global_collapse * (global_centroid[2] - z)
+                proposed = (new_x, new_y, new_z)
+                
+                # Check for clashes
+                clash = False
+                for j in range(len(new_coords)):
+                    if abs(j - idx) <= 1:
+                        continue
+                    other = new_coords[j]
+                    dist = math.sqrt(sum((proposed[k] - other[k])**2 for k in range(3)))
+                    if dist < min_safe_distance:
+                        clash = True
+                        break
+                
+                if not clash:
+                    new_coords[idx] = proposed
 
         return new_coords
 
