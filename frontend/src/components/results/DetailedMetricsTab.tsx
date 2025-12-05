@@ -15,10 +15,17 @@ import {
   ToggleButton,
   ToggleButtonGroup,
   Divider,
+  Tooltip,
+  IconButton,
+  Collapse,
+  alpha,
+  useTheme,
 } from '@mui/material';
 import {
   ShowChart,
   TableChart,
+  HelpOutline as HelpIcon,
+  ExpandLess as CollapseIcon,
 } from '@mui/icons-material';
 import type { PredictionResponse } from '../../types/api';
 import {
@@ -30,7 +37,7 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip,
+  Tooltip as RechartsTooltip,
   Legend,
   ReferenceLine,
 } from 'recharts';
@@ -40,7 +47,10 @@ interface DetailedMetricsTabProps {
 }
 
 const DetailedMetricsTab: React.FC<DetailedMetricsTabProps> = ({ prediction }) => {
+  const theme = useTheme();
   const [viewMode, setViewMode] = useState<'charts' | 'table'>('charts');
+  const [showConvergenceHelp, setShowConvergenceHelp] = useState(false);
+  const [showQualityHelp, setShowQualityHelp] = useState(false);
 
   // Extract metrics from nested object
   const metrics = prediction.metrics || {};
@@ -189,9 +199,46 @@ const DetailedMetricsTab: React.FC<DetailedMetricsTabProps> = ({ prediction }) =
         <>
           {/* Energy Convergence */}
           <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              Energy Convergence
-            </Typography>
+            <Box display="flex" alignItems="center" gap={1} mb={1}>
+              <Typography variant="h6">
+                Energy Convergence
+              </Typography>
+              <Tooltip title={showConvergenceHelp ? 'Hide explanation' : 'Show explanation'}>
+                <IconButton
+                  size="small"
+                  onClick={() => setShowConvergenceHelp(!showConvergenceHelp)}
+                  sx={{ color: showConvergenceHelp ? 'primary.main' : 'text.secondary' }}
+                >
+                  {showConvergenceHelp ? <CollapseIcon fontSize="small" /> : <HelpIcon fontSize="small" />}
+                </IconButton>
+              </Tooltip>
+            </Box>
+            
+            <Collapse in={showConvergenceHelp}>
+              <Box
+                sx={{
+                  mb: 2,
+                  p: 2,
+                  backgroundColor: alpha(theme.palette.info.main, 0.08),
+                  borderRadius: 1,
+                  borderLeft: `3px solid ${theme.palette.info.main}`,
+                }}
+              >
+                <Typography variant="body2" color="text.secondary" paragraph>
+                  These charts show how the prediction improved over time:
+                </Typography>
+                <Typography variant="body2" color="text.secondary" component="div">
+                  • <strong>Energy</strong>: Should decrease (become more negative). Values below 0 indicate a stable structure.
+                </Typography>
+                <Typography variant="body2" color="text.secondary" component="div">
+                  • <strong>RMSD</strong>: Should decrease if a native structure was provided. Reference lines show quality thresholds.
+                </Typography>
+                <Typography variant="body2" color="text.secondary" component="div">
+                  • <strong>Parameters</strong>: Aggressiveness and consistency adapt based on success. Stable values indicate convergence.
+                </Typography>
+              </Box>
+            </Collapse>
+            
             <Typography variant="caption" color="text.secondary" display="block" mb={2}>
               System energy over optimization iterations
             </Typography>
@@ -200,7 +247,7 @@ const DetailedMetricsTab: React.FC<DetailedMetricsTabProps> = ({ prediction }) =
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="iteration" label={{ value: 'Iteration', position: 'insideBottom', offset: -5 }} />
                 <YAxis label={{ value: 'Energy (kcal/mol)', angle: -90, position: 'insideLeft' }} />
-                <Tooltip />
+                <RechartsTooltip />
                 <Legend />
                 <ReferenceLine y={0} stroke="#666" strokeDasharray="3 3" label="Stability Threshold" />
                 <Area
@@ -228,7 +275,7 @@ const DetailedMetricsTab: React.FC<DetailedMetricsTabProps> = ({ prediction }) =
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="iteration" label={{ value: 'Iteration', position: 'insideBottom', offset: -5 }} />
                 <YAxis label={{ value: 'RMSD (Å)', angle: -90, position: 'insideLeft' }} />
-                <Tooltip />
+                <RechartsTooltip />
                 <Legend />
                 <ReferenceLine y={5} stroke="#ff9800" strokeDasharray="3 3" label="Acceptable" />
                 <ReferenceLine y={2} stroke="#4caf50" strokeDasharray="3 3" label="Excellent" />
@@ -258,7 +305,7 @@ const DetailedMetricsTab: React.FC<DetailedMetricsTabProps> = ({ prediction }) =
                 <XAxis dataKey="iteration" label={{ value: 'Iteration', position: 'insideBottom', offset: -5 }} />
                 <YAxis yAxisId="left" label={{ value: 'Aggressiveness', angle: -90, position: 'insideLeft' }} />
                 <YAxis yAxisId="right" orientation="right" label={{ value: 'Consistency', angle: 90, position: 'insideRight' }} />
-                <Tooltip />
+                <RechartsTooltip />
                 <Legend />
                 <Line
                   yAxisId="left"
@@ -284,6 +331,53 @@ const DetailedMetricsTab: React.FC<DetailedMetricsTabProps> = ({ prediction }) =
         </>
       ) : (
         <>
+          {/* Quality Metrics Header with Help */}
+          <Box display="flex" alignItems="center" gap={1} mb={2}>
+            <Typography variant="h6">
+              Quality Metrics
+            </Typography>
+            <Tooltip title={showQualityHelp ? 'Hide explanation' : 'Show explanation'}>
+              <IconButton
+                size="small"
+                onClick={() => setShowQualityHelp(!showQualityHelp)}
+                sx={{ color: showQualityHelp ? 'primary.main' : 'text.secondary' }}
+              >
+                {showQualityHelp ? <CollapseIcon fontSize="small" /> : <HelpIcon fontSize="small" />}
+              </IconButton>
+            </Tooltip>
+          </Box>
+          
+          <Collapse in={showQualityHelp}>
+            <Box
+              sx={{
+                mb: 2,
+                p: 2,
+                backgroundColor: alpha(theme.palette.info.main, 0.08),
+                borderRadius: 1,
+                borderLeft: `3px solid ${theme.palette.info.main}`,
+              }}
+            >
+              <Typography variant="body2" color="text.secondary" paragraph>
+                Metrics are compared against scientific thresholds from structural biology literature:
+              </Typography>
+              <Typography variant="body2" color="text.secondary" component="div">
+                • <strong>Structure Quality</strong>: RMSD and GDT-TS compare to native structure. TM-Score indicates fold similarity.
+              </Typography>
+              <Typography variant="body2" color="text.secondary" component="div">
+                • <strong>Energy Metrics</strong>: Negative energy = stable. Energy should decrease during optimization.
+              </Typography>
+              <Typography variant="body2" color="text.secondary" component="div">
+                • <strong>Exploration Metrics</strong>: Agent parameters and exploration statistics.
+              </Typography>
+              <Typography variant="body2" color="text.secondary" component="div">
+                • <strong>Quantum Metrics</strong>: QCPP physics-based metrics (optional, if QCPP was enabled).
+              </Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block', fontStyle: 'italic' }}>
+                Status: PASS = meets threshold, WARNING = borderline, FAIL = below threshold, UNKNOWN = data not available
+              </Typography>
+            </Box>
+          </Collapse>
+
           {/* Quality Metrics Tables */}
           {qualityMetrics.map((category, idx) => (
             <Paper key={idx} sx={{ p: 3 }}>

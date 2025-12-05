@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Box,
   Paper,
@@ -10,12 +10,16 @@ import {
   Divider,
   useTheme,
   alpha,
+  IconButton,
+  Collapse,
 } from '@mui/material';
 import {
   TrendingUp as HelixIcon,
   ViewStream as SheetIcon,
   Waves as CoilIcon,
   Science as ScienceIcon,
+  HelpOutline as HelpIcon,
+  ExpandLess as CollapseIcon,
 } from '@mui/icons-material';
 
 interface SecondaryStructureData {
@@ -59,6 +63,7 @@ const SecondaryStructurePanel: React.FC<SecondaryStructurePanelProps> = ({
   source = 'sequence_estimate',
 }) => {
   const theme = useTheme();
+  const [showHelp, setShowHelp] = useState(false);
 
   // Generate simple SS estimate from sequence if not provided
   const estimatedSS = useMemo(() => {
@@ -188,6 +193,15 @@ const SecondaryStructurePanel: React.FC<SecondaryStructurePanelProps> = ({
           <Typography variant="h6" fontWeight="bold">
             Secondary Structure
           </Typography>
+          <Tooltip title={showHelp ? 'Hide explanation' : 'Show explanation'}>
+            <IconButton
+              size="small"
+              onClick={() => setShowHelp(!showHelp)}
+              sx={{ color: showHelp ? 'primary.main' : 'text.secondary' }}
+            >
+              {showHelp ? <CollapseIcon fontSize="small" /> : <HelpIcon fontSize="small" />}
+            </IconButton>
+          </Tooltip>
         </Box>
         <Chip 
           label={source === 'structure' ? 'From Structure' : source === 'live' ? 'Live' : 'Estimated'}
@@ -196,6 +210,44 @@ const SecondaryStructurePanel: React.FC<SecondaryStructurePanelProps> = ({
           variant="outlined"
         />
       </Box>
+
+      <Collapse in={showHelp}>
+        <Box
+          sx={{
+            mb: 2,
+            p: 2,
+            backgroundColor: alpha(theme.palette.info.main, 0.08),
+            borderRadius: 1,
+            borderLeft: `3px solid ${theme.palette.info.main}`,
+          }}
+        >
+          <Typography variant="subtitle2" fontWeight="bold" color="info.main" gutterBottom>
+            Understanding Secondary Structure
+          </Typography>
+          <Typography variant="body2" color="text.secondary" paragraph>
+            Secondary structure describes local folding patterns in a protein:
+          </Typography>
+          <Typography variant="body2" color="text.secondary" component="div">
+            <strong>α-Helix</strong>: Spiral coils stabilized by hydrogen bonds between residues i and i+4. 
+            Common in membrane proteins and DNA-binding regions.
+          </Typography>
+          <Typography variant="body2" color="text.secondary" component="div" sx={{ mt: 0.5 }}>
+            <strong>β-Sheet</strong>: Extended strands connected by H-bonds. Form the core of many enzymes 
+            and antibody domains.
+          </Typography>
+          <Typography variant="body2" color="text.secondary" component="div" sx={{ mt: 0.5 }}>
+            <strong>Coil/Loop</strong>: Irregular regions connecting helices and sheets. Often flexible 
+            and involved in protein function.
+          </Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block', fontStyle: 'italic' }}>
+            {source === 'sequence_estimate' 
+              ? 'Currently showing predictions based on amino acid propensities (Chou-Fasman). Updates as structure forms.'
+              : source === 'live'
+              ? 'Live updates from actual structure geometry as the prediction progresses.'
+              : 'Calculated from the predicted 3D coordinates using distance-based criteria.'}
+          </Typography>
+        </Box>
+      </Collapse>
 
       {isLoading ? (
         <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

@@ -7,14 +7,22 @@ import {
   ToggleButton,
   useTheme,
   alpha,
+  Tooltip,
+  IconButton,
+  Collapse,
 } from '@mui/material';
+import {
+  HelpOutline as HelpIcon,
+  ExpandMore as ExpandIcon,
+  ExpandLess as CollapseIcon,
+} from '@mui/icons-material';
 import {
   LineChart,
   Line,
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip,
+  Tooltip as RechartsTooltip,
   ResponsiveContainer,
   Legend,
 } from 'recharts';
@@ -25,6 +33,26 @@ interface LiveChartsProps {
 }
 
 type ChartType = 'energy' | 'rmsd' | 'params' | 'all';
+
+// Chart explanations
+const CHART_EXPLANATIONS: Record<ChartType, { title: string; description: string }> = {
+  energy: {
+    title: 'Energy Optimization',
+    description: 'Shows how the potential energy changes during prediction. The system uses molecular mechanics (bond, angle, dihedral, VDW, electrostatic, H-bond terms) to calculate energy. Lower energy = more stable structure. Current Energy fluctuates as agents explore; Best Energy tracks the lowest found.',
+  },
+  rmsd: {
+    title: 'Structural Accuracy',
+    description: 'RMSD (Root Mean Square Deviation) measures how similar the predicted structure is to the native/reference structure. Lower RMSD = better accuracy. Values <2Å indicate excellent prediction, 2-4Å is good, >5Å suggests the structure needs more refinement.',
+  },
+  params: {
+    title: 'Agent Exploration Parameters',
+    description: 'Aggressiveness (3-15) controls how bold the exploration is - higher values try larger moves. Consistency (0.2-1.0) indicates behavioral stability. These parameters adapt automatically: success increases both, failures decrease them.',
+  },
+  all: {
+    title: 'Complete Overview',
+    description: 'All metrics combined. Watch for: Energy decreasing (good), RMSD decreasing (if native structure provided), and parameters stabilizing as the prediction converges.',
+  },
+};
 
 // Downsample data for better performance with large datasets
 const downsampleData = (data: PredictionProgress[], maxPoints: number = 500): PredictionProgress[] => {
@@ -48,6 +76,7 @@ const downsampleData = (data: PredictionProgress[], maxPoints: number = 500): Pr
 const LiveCharts: React.FC<LiveChartsProps> = React.memo(({ progressData }) => {
   const theme = useTheme();
   const [chartType, setChartType] = useState<ChartType>('energy');
+  const [showHelp, setShowHelp] = useState(false);
 
   // Memoize downsampled data to prevent recalculation on every render
   const chartData = useMemo(() => {
@@ -77,7 +106,7 @@ const LiveCharts: React.FC<LiveChartsProps> = React.memo(({ progressData }) => {
           stroke={theme.palette.text.secondary}
           label={{ value: 'Energy (kcal/mol)', angle: -90, position: 'insideLeft' }}
         />
-        <Tooltip
+        <RechartsTooltip
           contentStyle={{
             backgroundColor: theme.palette.background.paper,
             border: `1px solid ${theme.palette.divider}`,
@@ -120,7 +149,7 @@ const LiveCharts: React.FC<LiveChartsProps> = React.memo(({ progressData }) => {
           stroke={theme.palette.text.secondary}
           label={{ value: 'RMSD (Å)', angle: -90, position: 'insideLeft' }}
         />
-        <Tooltip
+        <RechartsTooltip
           contentStyle={{
             backgroundColor: theme.palette.background.paper,
             border: `1px solid ${theme.palette.divider}`,
@@ -163,7 +192,7 @@ const LiveCharts: React.FC<LiveChartsProps> = React.memo(({ progressData }) => {
           stroke={theme.palette.text.secondary}
           label={{ value: 'Value', angle: -90, position: 'insideLeft' }}
         />
-        <Tooltip
+        <RechartsTooltip
           contentStyle={{
             backgroundColor: theme.palette.background.paper,
             border: `1px solid ${theme.palette.divider}`,
@@ -231,12 +260,25 @@ const LiveCharts: React.FC<LiveChartsProps> = React.memo(({ progressData }) => {
     }
   };
 
+  const currentExplanation = CHART_EXPLANATIONS[chartType];
+
   return (
     <Paper elevation={2} sx={{ p: 3 }}>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h6" fontWeight="bold">
-          Live Charts
-        </Typography>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+        <Box display="flex" alignItems="center" gap={1}>
+          <Typography variant="h6" fontWeight="bold">
+            Live Charts
+          </Typography>
+          <Tooltip title={showHelp ? 'Hide explanation' : 'Show explanation'}>
+            <IconButton
+              size="small"
+              onClick={() => setShowHelp(!showHelp)}
+              sx={{ color: showHelp ? 'primary.main' : 'text.secondary' }}
+            >
+              {showHelp ? <CollapseIcon fontSize="small" /> : <HelpIcon fontSize="small" />}
+            </IconButton>
+          </Tooltip>
+        </Box>
         <ToggleButtonGroup
           value={chartType}
           exclusive
@@ -249,6 +291,25 @@ const LiveCharts: React.FC<LiveChartsProps> = React.memo(({ progressData }) => {
           <ToggleButton value="all">All</ToggleButton>
         </ToggleButtonGroup>
       </Box>
+
+      <Collapse in={showHelp}>
+        <Box
+          sx={{
+            mb: 2,
+            p: 2,
+            backgroundColor: alpha(theme.palette.info.main, 0.08),
+            borderRadius: 1,
+            borderLeft: `3px solid ${theme.palette.info.main}`,
+          }}
+        >
+          <Typography variant="subtitle2" fontWeight="bold" color="info.main" gutterBottom>
+            {currentExplanation.title}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {currentExplanation.description}
+          </Typography>
+        </Box>
+      </Collapse>
 
       {renderChart()}
 

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Stack,
@@ -7,6 +7,11 @@ import {
   LinearProgress,
   Divider,
   Alert,
+  Tooltip,
+  IconButton,
+  Collapse,
+  alpha,
+  useTheme,
 } from '@mui/material';
 import {
   Timeline,
@@ -15,6 +20,8 @@ import {
   CheckCircle,
   TrendingUp,
   TrendingDown,
+  HelpOutline as HelpIcon,
+  ExpandLess as CollapseIcon,
 } from '@mui/icons-material';
 import type { PredictionResponse } from '../../types/api';
 import SecondaryStructureSummary from './SecondaryStructureSummary';
@@ -106,6 +113,11 @@ const MetricCard: React.FC<MetricCardProps> = ({
 };
 
 const SummaryTab: React.FC<SummaryTabProps> = ({ prediction }) => {
+  const theme = useTheme();
+  const [showQualityHelp, setShowQualityHelp] = useState(false);
+  const [showMetricsHelp, setShowMetricsHelp] = useState(false);
+  const [showEnergyHelp, setShowEnergyHelp] = useState(false);
+
   // Extract metrics from nested object
   const bestRMSD = prediction.metrics?.best_rmsd ?? prediction.metrics?.final_rmsd ?? null;
   const bestEnergy = prediction.metrics?.best_energy ?? prediction.metrics?.final_energy ?? null;
@@ -183,9 +195,49 @@ const SummaryTab: React.FC<SummaryTabProps> = ({ prediction }) => {
     <Stack spacing={3}>
       {/* Quality Overview */}
       <Paper sx={{ p: 3 }}>
-        <Typography variant="h6" gutterBottom>
-          Quality Overview
-        </Typography>
+        <Box display="flex" alignItems="center" gap={1} mb={2}>
+          <Typography variant="h6">
+            Quality Overview
+          </Typography>
+          <Tooltip title={showQualityHelp ? 'Hide explanation' : 'Show explanation'}>
+            <IconButton
+              size="small"
+              onClick={() => setShowQualityHelp(!showQualityHelp)}
+              sx={{ color: showQualityHelp ? 'primary.main' : 'text.secondary' }}
+            >
+              {showQualityHelp ? <CollapseIcon fontSize="small" /> : <HelpIcon fontSize="small" />}
+            </IconButton>
+          </Tooltip>
+        </Box>
+        
+        <Collapse in={showQualityHelp}>
+          <Box
+            sx={{
+              mb: 2,
+              p: 2,
+              backgroundColor: alpha(theme.palette.info.main, 0.08),
+              borderRadius: 1,
+              borderLeft: `3px solid ${theme.palette.info.main}`,
+            }}
+          >
+            <Typography variant="body2" color="text.secondary" paragraph>
+              The quality score combines multiple factors to give an overall assessment:
+            </Typography>
+            <Typography variant="body2" color="text.secondary" component="div">
+              • <strong>RMSD Weight</strong>: How close the predicted structure is to the native (if provided)
+            </Typography>
+            <Typography variant="body2" color="text.secondary" component="div">
+              • <strong>Energy</strong>: Lower (more negative) energy indicates a more stable structure
+            </Typography>
+            <Typography variant="body2" color="text.secondary" component="div">
+              • <strong>Convergence</strong>: How well the optimization reached a stable state
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block', fontStyle: 'italic' }}>
+              Score thresholds: 75+/100 = Good quality, 55-74 = Acceptable, Below 55 = Needs improvement
+            </Typography>
+          </Box>
+        </Collapse>
+        
         <Box sx={{ mt: 2 }}>
           <Box display="flex" justifyContent="space-between" mb={1}>
             <Typography variant="body2" color="text.secondary">
@@ -218,6 +270,53 @@ const SummaryTab: React.FC<SummaryTabProps> = ({ prediction }) => {
         predictionId={prediction.id}
         sequence={prediction.protein_sequence || prediction.sequence || ''}
       />
+
+      {/* Key Metrics Section Header */}
+      <Box>
+        <Box display="flex" alignItems="center" gap={1} mb={2}>
+          <Typography variant="h6">
+            Key Metrics
+          </Typography>
+          <Tooltip title={showMetricsHelp ? 'Hide explanation' : 'Show explanation'}>
+            <IconButton
+              size="small"
+              onClick={() => setShowMetricsHelp(!showMetricsHelp)}
+              sx={{ color: showMetricsHelp ? 'primary.main' : 'text.secondary' }}
+            >
+              {showMetricsHelp ? <CollapseIcon fontSize="small" /> : <HelpIcon fontSize="small" />}
+            </IconButton>
+          </Tooltip>
+        </Box>
+        
+        <Collapse in={showMetricsHelp}>
+          <Box
+            sx={{
+              mb: 2,
+              p: 2,
+              backgroundColor: alpha(theme.palette.info.main, 0.08),
+              borderRadius: 1,
+              borderLeft: `3px solid ${theme.palette.info.main}`,
+            }}
+          >
+            <Typography variant="body2" color="text.secondary" component="div" paragraph>
+              <strong>RMSD (Root Mean Square Deviation)</strong>: Measures structural similarity to the reference. 
+              &lt;2Å is excellent, 2-4Å is good, 4-5Å is acceptable for research purposes.
+            </Typography>
+            <Typography variant="body2" color="text.secondary" component="div" paragraph>
+              <strong>Energy</strong>: Total potential energy from molecular mechanics calculation.
+              Negative values indicate stable structures. More negative = more stable.
+            </Typography>
+            <Typography variant="body2" color="text.secondary" component="div" paragraph>
+              <strong>GDT-TS</strong>: Global Distance Test score (0-100). Measures what percentage 
+              of residues are within various distance cutoffs of the native. 65+ is good.
+            </Typography>
+            <Typography variant="body2" color="text.secondary" component="div">
+              <strong>TM-Score</strong>: Template Modeling score (0-1). Values &gt;0.5 indicate same fold, 
+              &gt;0.8 indicates high structural similarity.
+            </Typography>
+          </Box>
+        </Collapse>
+      </Box>
 
       {/* Key Metrics Grid */}
       <Box display="flex" flexWrap="wrap" gap={2}>
@@ -393,6 +492,65 @@ const SummaryTab: React.FC<SummaryTabProps> = ({ prediction }) => {
       )}
 
       {/* Energy Breakdown and Agent Statistics */}
+      <Box>
+        <Box display="flex" alignItems="center" gap={1} mb={2}>
+          <Typography variant="h6">
+            Analysis Details
+          </Typography>
+          <Tooltip title={showEnergyHelp ? 'Hide explanation' : 'Show explanation'}>
+            <IconButton
+              size="small"
+              onClick={() => setShowEnergyHelp(!showEnergyHelp)}
+              sx={{ color: showEnergyHelp ? 'primary.main' : 'text.secondary' }}
+            >
+              {showEnergyHelp ? <CollapseIcon fontSize="small" /> : <HelpIcon fontSize="small" />}
+            </IconButton>
+          </Tooltip>
+        </Box>
+        
+        <Collapse in={showEnergyHelp}>
+          <Box
+            sx={{
+              mb: 2,
+              p: 2,
+              backgroundColor: alpha(theme.palette.info.main, 0.08),
+              borderRadius: 1,
+              borderLeft: `3px solid ${theme.palette.info.main}`,
+            }}
+          >
+            <Typography variant="subtitle2" fontWeight="bold" color="info.main" gutterBottom>
+              Energy Components (Molecular Mechanics)
+            </Typography>
+            <Typography variant="body2" color="text.secondary" component="div">
+              • <strong>Bond</strong>: Energy from stretched/compressed covalent bonds
+            </Typography>
+            <Typography variant="body2" color="text.secondary" component="div">
+              • <strong>Angle</strong>: Energy from bent bond angles
+            </Typography>
+            <Typography variant="body2" color="text.secondary" component="div">
+              • <strong>Dihedral</strong>: Torsion energy from rotation around bonds
+            </Typography>
+            <Typography variant="body2" color="text.secondary" component="div">
+              • <strong>VDW</strong>: Van der Waals (steric) interactions
+            </Typography>
+            <Typography variant="body2" color="text.secondary" component="div">
+              • <strong>Electrostatic</strong>: Coulombic charge interactions
+            </Typography>
+            <Typography variant="body2" color="text.secondary" component="div" paragraph>
+              • <strong>H-Bond</strong>: Hydrogen bonding stabilization
+            </Typography>
+            <Typography variant="subtitle2" fontWeight="bold" color="info.main" gutterBottom>
+              Agent Distribution
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Multi-agent exploration uses diverse strategies: Cautious agents make small careful moves, 
+              Balanced agents use moderate exploration, and Aggressive agents try larger conformational changes.
+              The population mix depends on your diversity setting.
+            </Typography>
+          </Box>
+        </Collapse>
+      </Box>
+
       <Box display="flex" flexWrap="wrap" gap={3}>
         {/* Energy Breakdown */}
         {energyData.length > 0 && (

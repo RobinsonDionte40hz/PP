@@ -15,6 +15,10 @@ import {
   InputLabel,
   Alert,
   CircularProgress,
+  Tooltip,
+  Collapse,
+  alpha,
+  useTheme,
   type SelectChangeEvent,
 } from '@mui/material';
 import {
@@ -24,6 +28,8 @@ import {
   SkipNext,
   Download,
   FilterList,
+  HelpOutline as HelpIcon,
+  ExpandLess as CollapseIcon,
 } from '@mui/icons-material';
 import {
   ResponsiveContainer,
@@ -33,7 +39,7 @@ import {
   YAxis,
   ZAxis,
   CartesianGrid,
-  Tooltip,
+  Tooltip as RechartsTooltip,
   Legend,
   Cell,
 } from 'recharts';
@@ -54,10 +60,12 @@ interface TrajectoryPoint {
 }
 
 const TrajectoryTab: React.FC<TrajectoryTabProps> = ({ predictionId }) => {
+  const theme = useTheme();
   const [currentFrame, setCurrentFrame] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [colorBy, setColorBy] = useState<'energy' | 'agent' | 'rmsd'>('energy');
   const [filterAgent, setFilterAgent] = useState<number | 'all'>('all');
+  const [showHelp, setShowHelp] = useState(false);
 
   // Fetch trajectory data from backend
   const { data: trajectory, isLoading, error } = useQuery({
@@ -214,6 +222,54 @@ const TrajectoryTab: React.FC<TrajectoryTabProps> = ({ predictionId }) => {
 
   return (
     <Stack spacing={3}>
+      {/* Help Section */}
+      <Box display="flex" alignItems="center" gap={1}>
+        <Typography variant="h6">
+          Trajectory Explorer
+        </Typography>
+        <Tooltip title={showHelp ? 'Hide explanation' : 'Show explanation'}>
+          <IconButton
+            size="small"
+            onClick={() => setShowHelp(!showHelp)}
+            sx={{ color: showHelp ? 'primary.main' : 'text.secondary' }}
+          >
+            {showHelp ? <CollapseIcon fontSize="small" /> : <HelpIcon fontSize="small" />}
+          </IconButton>
+        </Tooltip>
+      </Box>
+      
+      <Collapse in={showHelp}>
+        <Box
+          sx={{
+            mb: 2,
+            p: 2,
+            backgroundColor: alpha(theme.palette.info.main, 0.08),
+            borderRadius: 1,
+            borderLeft: `3px solid ${theme.palette.info.main}`,
+          }}
+        >
+          <Typography variant="body2" color="text.secondary" paragraph>
+            The trajectory shows how the prediction evolved over time. Each point represents a 
+            conformation explored during optimization.
+          </Typography>
+          <Typography variant="body2" color="text.secondary" component="div">
+            • <strong>Energy Landscape</strong>: RMSD vs Energy plot. Points moving down-left are improving.
+          </Typography>
+          <Typography variant="body2" color="text.secondary" component="div">
+            • <strong>Parameter Space</strong>: Shows how agent exploration parameters adapted.
+          </Typography>
+          <Typography variant="body2" color="text.secondary" component="div">
+            • <strong>Color coding</strong>: By energy (red=high, green=low), RMSD, or agent ID.
+          </Typography>
+          <Typography variant="body2" color="text.secondary" component="div">
+            • <strong>Gold points</strong>: Best structures found during optimization.
+          </Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block', fontStyle: 'italic' }}>
+            Use the playback controls to animate through the prediction timeline.
+          </Typography>
+        </Box>
+      </Collapse>
+
       {/* Controls */}
       <Paper sx={{ p: 3 }}>
         <Stack spacing={3}>
@@ -358,7 +414,7 @@ const TrajectoryTab: React.FC<TrajectoryTabProps> = ({ predictionId }) => {
               label={{ value: 'Energy (kcal/mol)', angle: -90, position: 'insideLeft' }}
             />
             <ZAxis type="number" range={[50, 200]} />
-            <Tooltip
+            <RechartsTooltip
               cursor={{ strokeDasharray: '3 3' }}
               content={({ active, payload }) => {
                 if (active && payload && payload.length) {
@@ -427,7 +483,7 @@ const TrajectoryTab: React.FC<TrajectoryTabProps> = ({ predictionId }) => {
               label={{ value: 'Consistency', angle: -90, position: 'insideLeft' }}
             />
             <ZAxis type="number" range={[50, 200]} />
-            <Tooltip
+            <RechartsTooltip
               cursor={{ strokeDasharray: '3 3' }}
               content={({ active, payload }) => {
                 if (active && payload && payload.length) {
