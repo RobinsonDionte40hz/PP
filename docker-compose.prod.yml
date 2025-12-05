@@ -44,10 +44,14 @@ services:
         condition: service_healthy
     environment:
       - ENVIRONMENT=production
+      - APP_ENV=production
       # Celery uses Redis DB 0
       - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
       # Auth sessions use Redis DB 1 (separate for isolation)
       - REDIS_SESSION_URL=redis://redis:6379/1
+      - SESSION_REDIS_URL=redis://redis:6379/1
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       - SECRET_KEY=${SECRET_KEY}
       - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost}
@@ -57,6 +61,7 @@ services:
       - JWT_REFRESH_TOKEN_EXPIRE_DAYS=${JWT_REFRESH_TOKEN_EXPIRE_DAYS:-7}
       - JWT_ALGORITHM=${JWT_ALGORITHM:-HS256}
       - SESSION_TTL_SECONDS=${SESSION_TTL_SECONDS:-900}
+      - SESSION_EXPIRE_MINUTES=${SESSION_EXPIRE_MINUTES:-30}
       # Security Configuration (NEW - v1.0.0)
       - ENABLE_CSRF=${ENABLE_CSRF:-true}
       - ENABLE_HSTS=${ENABLE_HSTS:-true}
