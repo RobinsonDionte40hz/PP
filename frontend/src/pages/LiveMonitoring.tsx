@@ -33,6 +33,7 @@ import { usePredictions } from '../hooks/usePredictions';
 import MetricsGrid from '../components/monitoring/MetricsGrid';
 import LiveCharts from '../components/monitoring/LiveCharts';
 import EventLog from '../components/monitoring/EventLog';
+import SecondaryStructurePanel from '../components/monitoring/SecondaryStructurePanel';
 import StructurePreviewModal from '../components/monitoring/StructurePreviewModal';
 import { ErrorAlert } from '../components/common';
 import { MetricsGridSkeleton, LiveChartsSkeleton } from '../components/common/skeletons';
@@ -177,6 +178,21 @@ const ActivePredictionsList: React.FC = () => {
   );
 };
 
+// Type for secondary structure data received via WebSocket
+interface SecondaryStructureData {
+  assignments: string;
+  helix_count: number;
+  sheet_count: number;
+  coil_count: number;
+  helix_percent: number;
+  sheet_percent: number;
+  coil_percent: number;
+  total_residues: number;
+  helix_segments?: [number, number][];
+  sheet_segments?: [number, number][];
+  coil_segments?: [number, number][];
+}
+
 const LiveMonitoring: React.FC = () => {
   const theme = useTheme();
   const { id } = useParams<{ id: string }>();
@@ -191,6 +207,7 @@ const LiveMonitoring: React.FC = () => {
   const [progressData, setProgressData] = useState<PredictionProgress[]>([]);
   const [events, setEvents] = useState<Array<{ level: 'info' | 'warning' | 'error' | 'success'; message: string; timestamp: string }>>([]);
   const [showStructureModal, setShowStructureModal] = useState(false);
+  const [secondaryStructure, setSecondaryStructure] = useState<SecondaryStructureData | undefined>(undefined);
 
   // Fetch prediction details
   const { data: prediction, isLoading, error } = useQuery({
@@ -208,6 +225,10 @@ const LiveMonitoring: React.FC = () => {
     messages.forEach((message) => {
       if (message.type === 'progress') {
         setProgressData((prev) => [...prev.slice(-99), message.data]);
+        // Update secondary structure if available in the progress message
+        if (message.data.secondary_structure) {
+          setSecondaryStructure(message.data.secondary_structure);
+        }
       } else if (message.type === 'log') {
         setEvents((prev) => [...prev.slice(-99), message.data]);
       } else if (message.type === 'status') {
@@ -225,9 +246,10 @@ const LiveMonitoring: React.FC = () => {
       wsLatestProgress,
       progressDataLength: progressData.length,
       latestProgress,
-      isConnected
+      isConnected,
+      secondaryStructure: secondaryStructure ? 'present' : 'none'
     });
-  }, [wsLatestProgress, progressData, latestProgress, isConnected]);
+  }, [wsLatestProgress, progressData, latestProgress, isConnected, secondaryStructure]);
 
   // Control mutations
   const pauseMutation = useMutation({
@@ -447,16 +469,20 @@ const LiveMonitoring: React.FC = () => {
         <MetricsGrid prediction={prediction} latestProgress={latestProgress} />
       </Box>
 
-      {/* Charts and Event Log */}
+      {/* Charts and Secondary Structure Panel */}
       <Box display="flex" flexDirection={{ xs: 'column', lg: 'row' }} gap={3}>
         {/* Charts - 70% width on large screens */}
         <Box flex={{ lg: '2' }} minWidth="0">
           <LiveCharts progressData={progressData} />
         </Box>
 
-        {/* Event Log - 30% width on large screens */}
+        {/* Secondary Structure Panel - 30% width on large screens */}
         <Box flex={{ lg: '1' }} minWidth="0">
-          <EventLog events={events} />
+          <SecondaryStructurePanel 
+            sequence={prediction.sequence}
+            secondaryStructure={secondaryStructure}
+            source={secondaryStructure ? "live" : "sequence_estimate"}
+          />
         </Box>
       </Box>
 

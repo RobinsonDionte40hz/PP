@@ -17,6 +17,7 @@ import {
   TrendingDown,
 } from '@mui/icons-material';
 import type { PredictionResponse } from '../../types/api';
+import SecondaryStructureSummary from './SecondaryStructureSummary';
 import {
   ResponsiveContainer,
   PieChart,
@@ -211,6 +212,12 @@ const SummaryTab: React.FC<SummaryTabProps> = ({ prediction }) => {
           </Typography>
         </Box>
       </Paper>
+
+      {/* Secondary Structure Summary */}
+      <SecondaryStructureSummary 
+        predictionId={prediction.id}
+        sequence={prediction.protein_sequence || prediction.sequence || ''}
+      />
 
       {/* Key Metrics Grid */}
       <Box display="flex" flexWrap="wrap" gap={2}>

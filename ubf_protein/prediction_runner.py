@@ -136,6 +136,8 @@ class ProgressUpdate:
     consistency: Optional[float] = None
     stage: str = "exploration"  # 'exploration', 'refinement', 'analysis'
     message: Optional[str] = None
+    # Secondary structure breakdown (optional, sent periodically)
+    secondary_structure: Optional[Dict[str, Any]] = None
 
 
 @dataclass

@@ -312,3 +312,64 @@ async def compare_results(
     }
     
     return comparison_data
+
+
+@router.get(
+    "/{prediction_id}/secondary-structure",
+    summary="Get secondary structure analysis",
+    description="Get helix/sheet/coil breakdown from the predicted structure"
+)
+async def get_secondary_structure(
+    prediction_id: str = Path(..., description="Prediction ID")
+):
+    """
+    Get secondary structure analysis for a prediction.
+    
+    Returns:
+        - Per-residue assignments (H/E/C)
+        - Counts and percentages for each type
+        - Segment information (contiguous stretches)
+    """
+    from app.utils.secondary_structure import (
+        calculate_secondary_structure, 
+        estimate_ss_from_sequence
+    )
+    
+    prediction = prediction_service.get_prediction(prediction_id)
+    
+    if not prediction:
+        raise HTTPException(status_code=404, detail="Prediction not found")
+    
+    # Check if we have a result file with coordinates
+    if prediction.result_path:
+        result_file = FilePath(prediction.result_path) / "results.json"
+        
+        if result_file.exists():
+            try:
+                with open(result_file, 'r') as f:
+                    results_data = json.load(f)
+                
+                # Try to get coordinates from results
+                coords = results_data.get('best_conformation_coords')
+                
+                if coords:
+                    # Calculate SS from actual structure
+                    ss_result = calculate_secondary_structure(coords, prediction.sequence)
+                    return {
+                        "prediction_id": prediction_id,
+                        "source": "structure",
+                        "secondary_structure": ss_result.to_dict(),
+                        "sequence": prediction.sequence,
+                    }
+            except Exception as e:
+                logger.warning(f"Failed to load structure for SS: {e}")
+    
+    # Fallback: estimate from sequence
+    ss_result = estimate_ss_from_sequence(prediction.sequence)
+    return {
+        "prediction_id": prediction_id,
+        "source": "sequence_estimate",
+        "secondary_structure": ss_result.to_dict(),
+        "sequence": prediction.sequence,
+        "note": "Estimated from sequence propensities - actual structure not yet available"
+    }

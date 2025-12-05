@@ -102,6 +102,22 @@ export interface PredictionProgress {
   aggressiveness?: number;
   consistency?: number;
   timestamp?: string;
+  stage?: string;
+  message?: string;
+  // Secondary structure breakdown (sent periodically during prediction)
+  secondary_structure?: {
+    assignments: string;  // "HHHCCCEEE" format
+    helix_count: number;
+    sheet_count: number;
+    coil_count: number;
+    helix_percent: number;
+    sheet_percent: number;
+    coil_percent: number;
+    total_residues: number;
+    helix_segments?: [number, number][];
+    sheet_segments?: [number, number][];
+    coil_segments?: [number, number][];
+  };
 }
 
 // Campaign Types

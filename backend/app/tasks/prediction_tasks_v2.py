@@ -104,20 +104,27 @@ def create_websocket_progress_callback(prediction_id: str, total_iterations: int
     def progress_callback(update: ProgressUpdate):
         """Emit progress update via WebSocket."""
         try:
+            # Build metrics dict including secondary structure if available
+            metrics_update = {
+                "current_energy": update.current_energy,
+                "current_rmsd": update.current_rmsd,
+                "folding_rmsd": update.folding_rmsd,
+                "best_energy": update.best_energy,
+                "best_rmsd": update.best_rmsd,
+                "conformations_explored": update.conformations_explored,
+            }
+            
+            # Include secondary structure if present
+            if update.secondary_structure:
+                metrics_update["secondary_structure"] = update.secondary_structure
+            
             # Update database
             prediction_service.update_prediction(
                 prediction_id,
                 PredictionUpdateSchema(
                     current_iteration=update.iteration,
                     progress_percentage=update.progress_percentage,
-                    metrics=sanitize_metrics({
-                        "current_energy": update.current_energy,
-                        "current_rmsd": update.current_rmsd,
-                        "folding_rmsd": update.folding_rmsd,
-                        "best_energy": update.best_energy,
-                        "best_rmsd": update.best_rmsd,
-                        "conformations_explored": update.conformations_explored,
-                    })
+                    metrics=sanitize_metrics(metrics_update)
                 )
             )
             
@@ -138,6 +145,10 @@ def create_websocket_progress_callback(prediction_id: str, total_iterations: int
                 'stage': update.stage,
                 'message': update.message,
             }
+            
+            # Include secondary structure in WebSocket payload if available
+            if update.secondary_structure:
+                progress_payload['secondary_structure'] = update.secondary_structure
             
             with httpx.Client() as client:
                 response = client.post(
