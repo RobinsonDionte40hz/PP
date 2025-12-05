@@ -131,7 +131,7 @@ const SecondaryStructurePanel: React.FC<SecondaryStructurePanelProps> = ({
             {i + 1}
           </Typography>
           <Box sx={{ display: 'flex', gap: 0.25 }}>
-            {chunk.split('').map((ssChar, j) => (
+            {chunk.split('').map((ssChar: string, j: number) => (
               <Tooltip 
                 key={j} 
                 title={`${i + j + 1}: ${seqChunk[j] || '?'} (${SS_LABELS[ssChar as keyof typeof SS_LABELS] || 'Unknown'})`}
