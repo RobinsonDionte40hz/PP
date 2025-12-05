@@ -244,6 +244,8 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
                     initial_frequency=frequency,
                     initial_coherence=coherence,
                     adaptive_config=self._adaptive_config,
+                    enable_visualization=True,  # Enable trajectory tracking for visualization
+                    max_snapshots=500,  # Limit snapshots per agent to control memory
                     native_structure=native_structure,
                     qcpp_integration=self._qcpp_integration,
                     qcpp_analysis_frequency=self._qcpp_analysis_frequency,

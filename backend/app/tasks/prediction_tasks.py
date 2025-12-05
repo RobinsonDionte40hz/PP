@@ -479,6 +479,41 @@ def run_prediction(self, prediction_id: str):
         except Exception as e:
             logger.warning(f"Could not save PDB structure: {e}")
         
+        # Save trajectory data from all agents
+        try:
+            trajectory_data = []
+            agent_list = coordinator.get_agents()
+            for agent in agent_list:
+                agent_id = agent.get_agent_id()
+                snapshots = agent.get_trajectory_snapshots()
+                for snapshot in snapshots:
+                    trajectory_data.append({
+                        'iteration': snapshot.iteration,
+                        'agent_id': agent_id,
+                        'energy': snapshot.conformation.energy,
+                        'rmsd': snapshot.conformation.rmsd_to_native if snapshot.conformation.rmsd_to_native is not None else None,
+                        'aggressiveness': snapshot.consciousness_state.frequency,
+                        'consistency': snapshot.consciousness_state.coherence,
+                        'timestamp': snapshot.timestamp,
+                        'is_best': snapshot.conformation.energy == refined_energy
+                    })
+            
+            # Sort by iteration
+            trajectory_data.sort(key=lambda x: (x['iteration'], x['agent_id']))
+            
+            # Save trajectory file
+            trajectory_file = prediction_dir / "trajectory.json"
+            with open(trajectory_file, 'w') as f:
+                json.dump({
+                    'prediction_id': prediction_id,
+                    'total_points': len(trajectory_data),
+                    'agent_count': len(agent_list),
+                    'trajectory': trajectory_data
+                }, f)
+            logger.info(f"Saved trajectory data to {trajectory_file} ({len(trajectory_data)} points)")
+        except Exception as e:
+            logger.warning(f"Could not save trajectory data: {e}")
+        
         # Mark as completed with comprehensive metrics
         prediction_service.update_prediction(
             prediction_id,

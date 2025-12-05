@@ -3,6 +3,7 @@ Results API endpoints
 """
 from fastapi import APIRouter, HTTPException, Path, Query, Response
 from fastapi.responses import JSONResponse, FileResponse
+from pathlib import Path as FilePath
 from typing import Optional, Dict, Any
 from app.services.prediction_service import prediction_service
 import logging
@@ -116,16 +117,40 @@ async def get_trajectory(
     
     Returns coordinates and energies along the exploration path.
     """
+    import json
+    
     prediction = prediction_service.get_prediction(prediction_id)
     
     if not prediction:
         raise HTTPException(status_code=404, detail="Prediction not found")
     
-    # TODO: Load trajectory JSON
-    return {
-        "message": "Trajectory data loading not implemented yet",
-        "prediction_id": prediction_id
-    }
+    # Load trajectory JSON from result path
+    if not prediction.result_path:
+        return {
+            "prediction_id": prediction_id,
+            "total_points": 0,
+            "agent_count": 0,
+            "trajectory": [],
+            "message": "No trajectory data available - prediction may still be running"
+        }
+    
+    trajectory_file = FilePath(prediction.result_path) / "trajectory.json"
+    
+    if not trajectory_file.exists():
+        return {
+            "prediction_id": prediction_id,
+            "total_points": 0,
+            "agent_count": 0,
+            "trajectory": [],
+            "message": "Trajectory file not found - prediction may have been run before trajectory tracking was enabled"
+        }
+    
+    try:
+        with open(trajectory_file, 'r') as f:
+            trajectory_data = json.load(f)
+        return trajectory_data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to load trajectory data: {str(e)}")
 
 
 @router.get(

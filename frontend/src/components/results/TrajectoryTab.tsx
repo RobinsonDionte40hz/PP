@@ -58,24 +58,39 @@ const TrajectoryTab: React.FC<TrajectoryTabProps> = ({ predictionId }) => {
   const [colorBy, setColorBy] = useState<'energy' | 'agent' | 'rmsd'>('energy');
   const [filterAgent, setFilterAgent] = useState<number | 'all'>('all');
 
-  // Fetch trajectory data
+  // Fetch trajectory data from backend
   const { data: trajectory, isLoading, error } = useQuery({
     queryKey: ['trajectory', predictionId],
     queryFn: async () => {
-      // Mock data - in production, fetch from backend
-      const points: TrajectoryPoint[] = [];
-      for (let i = 0; i < 100; i++) {
-        const progress = i / 100;
-        points.push({
-          iteration: i * 50,
-          energy: -50 - progress * 150 + Math.random() * 30,
-          rmsd: 15 - progress * 10 + Math.random() * 2,
-          aggressiveness: 9 + Math.sin(progress * Math.PI * 4) * 3,
-          consistency: 0.4 + progress * 0.4 + Math.random() * 0.1,
-          agent_id: Math.floor(Math.random() * 10),
-          is_best: Math.random() > 0.95,
-        });
+      const response = await fetch(`/api/results/${predictionId}/trajectory`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch trajectory data');
       }
+      const data = await response.json();
+      
+      // Transform backend data to frontend format
+      if (!data.trajectory || data.trajectory.length === 0) {
+        return [];
+      }
+      
+      const points: TrajectoryPoint[] = data.trajectory.map((point: {
+        iteration: number;
+        energy: number;
+        rmsd: number | null;
+        aggressiveness: number;
+        consistency: number;
+        agent_id: string;
+        is_best: boolean;
+      }) => ({
+        iteration: point.iteration,
+        energy: point.energy,
+        rmsd: point.rmsd ?? 0,
+        aggressiveness: point.aggressiveness,
+        consistency: point.consistency,
+        agent_id: parseInt(point.agent_id.replace('agent_', '')) || 0,
+        is_best: point.is_best,
+      }));
+      
       return points;
     },
   });
