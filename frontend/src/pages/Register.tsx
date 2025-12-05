@@ -21,9 +21,12 @@ import {
   Science,
   Biotech,
   AutoAwesome,
+  DarkMode as DarkModeIcon,
+  LightMode as LightModeIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../hooks/useAuth';
 import { useNotification } from '../hooks/useNotification';
+import { useThemeStore } from '../store/themeStore';
 import { getAuthErrorMessage } from '../utils/authErrors';
 import type { RegisterRequest } from '../types/auth';
 
@@ -68,6 +71,7 @@ const Register: React.FC = () => {
   const navigate = useNavigate();
   const { register, login, isLoading } = useAuth();
   const { showSuccess, showError, showInfo, showWarning } = useNotification();
+  const { mode, toggleTheme } = useThemeStore();
   
   // Form state
   const [formData, setFormData] = useState<RegisterFormData>({
@@ -320,7 +324,25 @@ const Register: React.FC = () => {
         margin: 0,
       }}
     >
-      {/* Floating Particles - Hidden on mobile for better UX */}
+      {/* Theme Toggle Button */}
+      <IconButton
+        onClick={toggleTheme}
+        sx={{
+          position: 'fixed',
+          top: 16,
+          right: 16,
+          zIndex: 1200,
+          bgcolor: 'rgba(255, 255, 255, 0.1)',
+          backdropFilter: 'blur(10px)',
+          color: 'white',
+          '&:hover': {
+            bgcolor: 'rgba(255, 255, 255, 0.2)',
+          },
+        }}
+      >
+        {mode === 'dark' ? <LightModeIcon /> : <DarkModeIcon />}
+      </IconButton>
+      {/* Floating Particles - Hidden on mobile for better UX */}}
       <Box
         sx={{
           position: 'absolute',

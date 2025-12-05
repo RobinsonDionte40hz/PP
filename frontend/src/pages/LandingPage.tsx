@@ -38,9 +38,12 @@ import {
   AutoAwesome as AutoAwesomeIcon,
   Menu as MenuIcon,
   Close as CloseIcon,
+  DarkMode as DarkModeIcon,
+  LightMode as LightModeIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { keyframes } from '@mui/system';
+import { useThemeStore } from '../store/themeStore';
 
 // Animations
 const fadeInUp = keyframes`
@@ -73,6 +76,7 @@ const pulse = keyframes`
 const LandingPage: React.FC = () => {
   const theme = useTheme();
   const navigate = useNavigate();
+  const { mode, toggleTheme } = useThemeStore();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [contactForm, setContactForm] = useState({
     name: '',
@@ -302,7 +306,10 @@ const LandingPage: React.FC = () => {
               <Link href="#contact" color="inherit" underline="hover" sx={{ fontWeight: 500 }}>
                 Contact
               </Link>
-              <Button variant="outlined" onClick={() => navigate('/login')} sx={{ ml: 2 }}>
+              <IconButton onClick={toggleTheme} color="inherit" sx={{ ml: 1 }}>
+                {mode === 'dark' ? <LightModeIcon /> : <DarkModeIcon />}
+              </IconButton>
+              <Button variant="outlined" onClick={() => navigate('/login')} sx={{ ml: 1 }}>
                 Login
               </Button>
               <Button variant="contained" onClick={() => navigate('/register')}>
@@ -341,6 +348,12 @@ const LandingPage: React.FC = () => {
               <Link href="#contact" color="inherit" underline="hover" sx={{ fontWeight: 500 }} onClick={() => setMobileMenuOpen(false)}>
                 Contact
               </Link>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Typography variant="body2">Theme:</Typography>
+                <IconButton onClick={toggleTheme} color="inherit" size="small">
+                  {mode === 'dark' ? <LightModeIcon /> : <DarkModeIcon />}
+                </IconButton>
+              </Box>
               <Stack direction="row" spacing={2} sx={{ mt: 1 }}>
                 <Button variant="outlined" onClick={() => { navigate('/login'); setMobileMenuOpen(false); }} fullWidth>
                   Login
