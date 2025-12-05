@@ -1,5 +1,7 @@
 # Hostinger VPS Deployment Guide for Protein Platform
 
+> **🌐 Production Site**: This platform is live at **https://emergentfolds.com**
+
 ## Prerequisites
 
 1. **Hostinger VPS** (minimum recommended: 2 vCPU, 4GB RAM, 40GB SSD)
@@ -47,8 +49,8 @@ scp -r /c/Users/diont/OneDrive/Desktop/Projects/PP root@YOUR_VPS_IP:/opt/
 ```bash
 cd /opt/PP
 
-# Set your domain and email
-export DOMAIN="yourdomain.com"
+# Set your domain and email (emergentfolds.com is the production domain)
+export DOMAIN="emergentfolds.com"
 export EMAIL="your-email@example.com"
 
 # Make script executable and run

@@ -2,6 +2,8 @@
 
 This guide will help you set up and run the Protein Prediction Platform web interface.
 
+> **🌐 Live Demo**: The platform is live at **https://emergentfolds.com** - you can try it out before setting up locally.
+
 ## Table of Contents
 
 - [Prerequisites](#prerequisites)

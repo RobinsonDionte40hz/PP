@@ -1,8 +1,8 @@
 """
 Prediction API endpoints
 """
-from fastapi import APIRouter, HTTPException, Query, Path, BackgroundTasks, Request
-from typing import Optional, List
+from fastapi import APIRouter, HTTPException, Query, Path, BackgroundTasks, Request, Depends
+from typing import Optional, List, Dict, Any
 from app.schemas.prediction import (
     PredictionCreateSchema,
     PredictionResponseSchema,
@@ -10,6 +10,7 @@ from app.schemas.prediction import (
 )
 from app.models.prediction import PredictionStatus
 from app.services.prediction_service import prediction_service
+from app.security import require_auth_with_session
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 import logging
@@ -24,6 +25,17 @@ limiter = Limiter(key_func=get_remote_address, enabled=not IS_TESTING)
 router = APIRouter()
 
 
+def get_user_id(user: Dict[str, Any]) -> str:
+    """Extract user_id from JWT token payload"""
+    user_id = user.get("sub") or user.get("key_id")
+    if not user_id:
+        raise HTTPException(
+            status_code=401,
+            detail="User ID not found in token"
+        )
+    return user_id
+
+
 @router.post(
     "",
     response_model=PredictionResponseSchema,
@@ -36,13 +48,17 @@ async def create_prediction(
     request: Request,
     data: PredictionCreateSchema,
     background_tasks: BackgroundTasks,
+    user: Dict[str, Any] = Depends(require_auth_with_session),
 ):
     """
     Create a new prediction job.
     
     The prediction will be queued and executed asynchronously.
     If Celery/Redis is not available, prediction is created in pending state.
+    
+    NOTE: Consider using POST /api/sessions/{session_id}/predictions for better organization.
     """
+    user_id = get_user_id(user)
     try:
         # Create prediction
         prediction = prediction_service.create_prediction(data)
@@ -90,7 +106,7 @@ async def create_prediction(
     "",
     response_model=PredictionListResponseSchema,
     summary="List predictions",
-    description="Get list of predictions with optional filtering"
+    description="Get list of predictions with optional filtering (filtered by authenticated user)"
 )
 @limiter.limit("30/minute")
 async def list_predictions(
@@ -110,12 +126,17 @@ async def list_predictions(
         le=100,
         description="Items per page"
     ),
+    user: Dict[str, Any] = Depends(require_auth_with_session),
 ):
     """
     List predictions with pagination and optional status filter.
+    
+    Only returns predictions belonging to sessions owned by the authenticated user.
     """
     try:
+        user_id = get_user_id(user)
         predictions, total = prediction_service.list_predictions(
+            user_id=user_id,
             status=status,
             page=page,
             page_size=page_size
@@ -140,12 +161,16 @@ async def list_predictions(
     description="Get detailed information about a specific prediction"
 )
 async def get_prediction(
-    prediction_id: str = Path(..., description="Prediction ID")
+    prediction_id: str = Path(..., description="Prediction ID"),
+    user: Dict[str, Any] = Depends(require_auth_with_session),
 ):
     """
     Get detailed information about a specific prediction.
+    
+    Only returns prediction if it belongs to a session owned by the authenticated user.
     """
-    prediction = prediction_service.get_prediction(prediction_id)
+    user_id = get_user_id(user)
+    prediction = prediction_service.get_prediction(prediction_id, user_id=user_id)
     
     if not prediction:
         raise HTTPException(status_code=404, detail="Prediction not found")
@@ -160,14 +185,17 @@ async def get_prediction(
     description="Delete a prediction and its associated data"
 )
 async def delete_prediction(
-    prediction_id: str = Path(..., description="Prediction ID")
+    prediction_id: str = Path(..., description="Prediction ID"),
+    user: Dict[str, Any] = Depends(require_auth_with_session),
 ):
     """
     Delete a prediction and all associated data.
     
+    Only allows deletion if prediction belongs to a session owned by the authenticated user.
     This cannot be undone.
     """
-    success = prediction_service.delete_prediction(prediction_id)
+    user_id = get_user_id(user)
+    success = prediction_service.delete_prediction(prediction_id, user_id=user_id)
     
     if not success:
         raise HTTPException(status_code=404, detail="Prediction not found")
@@ -184,14 +212,17 @@ async def delete_prediction(
     description="Pause a running prediction"
 )
 async def pause_prediction(
-    prediction_id: str = Path(..., description="Prediction ID")
+    prediction_id: str = Path(..., description="Prediction ID"),
+    user: Dict[str, Any] = Depends(require_auth_with_session),
 ):
     """
     Pause a running prediction.
     
+    Only allows pausing if prediction belongs to a session owned by the authenticated user.
     The prediction can be resumed later from the last checkpoint.
     """
-    prediction = prediction_service.pause_prediction(prediction_id)
+    user_id = get_user_id(user)
+    prediction = prediction_service.pause_prediction(prediction_id, user_id=user_id)
     
     if not prediction:
         raise HTTPException(
@@ -211,12 +242,16 @@ async def pause_prediction(
     description="Resume a paused prediction"
 )
 async def resume_prediction(
-    prediction_id: str = Path(..., description="Prediction ID")
+    prediction_id: str = Path(..., description="Prediction ID"),
+    user: Dict[str, Any] = Depends(require_auth_with_session),
 ):
     """
     Resume a paused prediction from the last checkpoint.
+    
+    Only allows resuming if prediction belongs to a session owned by the authenticated user.
     """
-    prediction = prediction_service.resume_prediction(prediction_id)
+    user_id = get_user_id(user)
+    prediction = prediction_service.resume_prediction(prediction_id, user_id=user_id)
     
     if not prediction:
         raise HTTPException(
@@ -236,14 +271,17 @@ async def resume_prediction(
     description="Stop a running or paused prediction"
 )
 async def stop_prediction(
-    prediction_id: str = Path(..., description="Prediction ID")
+    prediction_id: str = Path(..., description="Prediction ID"),
+    user: Dict[str, Any] = Depends(require_auth_with_session),
 ):
     """
     Stop a running or paused prediction.
     
+    Only allows stopping if prediction belongs to a session owned by the authenticated user.
     The prediction will be marked as stopped and cannot be resumed.
     """
-    prediction = prediction_service.stop_prediction(prediction_id)
+    user_id = get_user_id(user)
+    prediction = prediction_service.stop_prediction(prediction_id, user_id=user_id)
     
     if not prediction:
         raise HTTPException(
@@ -262,18 +300,21 @@ async def stop_prediction(
     description="Download the latest checkpoint file for a prediction"
 )
 async def get_checkpoint(
-    prediction_id: str = Path(..., description="Prediction ID")
+    prediction_id: str = Path(..., description="Prediction ID"),
+    user: Dict[str, Any] = Depends(require_auth_with_session),
 ):
     """
     Download the latest checkpoint file.
     
+    Only allows download if prediction belongs to a session owned by the authenticated user.
     Returns the checkpoint JSON file if available.
     """
     from pathlib import Path as FilePath
     from fastapi.responses import FileResponse
     import os
     
-    prediction = prediction_service.get_prediction(prediction_id)
+    user_id = get_user_id(user)
+    prediction = prediction_service.get_prediction(prediction_id, user_id=user_id)
     
     if not prediction:
         raise HTTPException(status_code=404, detail="Prediction not found")

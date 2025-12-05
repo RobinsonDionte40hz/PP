@@ -1,8 +1,17 @@
 # PP Platform - Quick Reference Card
 
-## 🚀 Three Ways to Use This Platform
+## 🚀 Four Ways to Use This Platform
 
-### 1. 🌐 Web Interface (RECOMMENDED for most users)
+### 0. 🌐 Live Demo (NO SETUP REQUIRED)
+**Try the platform instantly at https://emergentfolds.com**
+
+- Create an account and start predicting immediately
+- Full feature access: predictions, 3D visualization, real-time monitoring
+- No installation required
+
+---
+
+### 1. 🌐 Web Interface (RECOMMENDED for local development)
 **Interactive browser-based interface with real-time monitoring**
 
 ```bash

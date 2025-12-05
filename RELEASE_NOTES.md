@@ -2,7 +2,8 @@
 
 **Release Date**: November 24, 2025  
 **Status**: Production Ready  
-**Project**: EmergentFolds - Quantum-Enhanced Protein Structure Prediction
+**Project**: EmergentFolds - Quantum-Enhanced Protein Structure Prediction  
+**Live Site**: **https://emergentfolds.com**
 
 ---
 

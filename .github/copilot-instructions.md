@@ -4,6 +4,8 @@
 
 This project contains **three major systems**:
 
+**🌐 Live Production Site**: **https://emergentfolds.com**
+
 ### 0. Web Interface - `frontend/` & `backend/` Directories
 **Full-stack web application for interactive protein structure prediction** (✅ **PRODUCTION-READY v1.0.0**)
 
@@ -19,6 +21,7 @@ This project contains **three major systems**:
 - History browser with comparison tools
 - Comprehensive settings and configuration
 - Docker deployment (development + production)
+- **Live at https://emergentfolds.com**
 
 **Documentation**: See `docs/SETUP.md`, `docs/API.md`, `docs/USER_GUIDE.md`, `RELEASE_NOTES.md`
 

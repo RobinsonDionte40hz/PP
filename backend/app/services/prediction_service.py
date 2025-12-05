@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import Optional, List, Dict, Any
 from sqlalchemy.orm import Session
 from app.models.prediction import Prediction, PredictionStatus
+from app.models.work_session import WorkSession
 from app.schemas.prediction import PredictionCreateSchema, PredictionUpdateSchema
 from app.database import SessionLocal
 import logging
@@ -50,24 +51,49 @@ class PredictionService:
         finally:
             db.close()
     
-    def get_prediction(self, prediction_id: str) -> Optional[Prediction]:
-        """Get prediction by ID"""
+    def get_prediction(self, prediction_id: str, user_id: Optional[str] = None) -> Optional[Prediction]:
+        """Get prediction by ID, optionally filtered by user ownership"""
         db = self._get_db()
         try:
-            return db.query(Prediction).filter(Prediction.id == prediction_id).first()
+            query = db.query(Prediction).filter(Prediction.id == prediction_id)
+            
+            # If user_id provided, validate ownership through session
+            if user_id:
+                query = query.join(WorkSession, Prediction.session_id == WorkSession.id).filter(
+                    WorkSession.user_id == user_id
+                )
+            
+            return query.first()
         finally:
             db.close()
     
     def list_predictions(
         self,
+        user_id: Optional[str] = None,
         status: Optional[PredictionStatus] = None,
         page: int = 1,
         page_size: int = 20,
     ) -> tuple[List[Prediction], int]:
-        """List predictions with optional filtering and pagination"""
+        """List predictions with optional filtering and pagination
+        
+        Args:
+            user_id: Filter predictions to only those belonging to this user's sessions
+            status: Filter by prediction status
+            page: Page number (1-indexed)
+            page_size: Number of items per page
+            
+        Returns:
+            Tuple of (list of predictions, total count)
+        """
         db = self._get_db()
         try:
             query = db.query(Prediction)
+            
+            # Filter by user ownership through session join
+            if user_id:
+                query = query.join(WorkSession, Prediction.session_id == WorkSession.id).filter(
+                    WorkSession.user_id == user_id
+                )
             
             # Filter by status
             if status:
@@ -142,11 +168,19 @@ class PredictionService:
         finally:
             db.close()
     
-    def delete_prediction(self, prediction_id: str) -> bool:
-        """Delete prediction"""
+    def delete_prediction(self, prediction_id: str, user_id: Optional[str] = None) -> bool:
+        """Delete prediction, optionally validated by user ownership"""
         db = self._get_db()
         try:
-            prediction = db.query(Prediction).filter(Prediction.id == prediction_id).first()
+            query = db.query(Prediction).filter(Prediction.id == prediction_id)
+            
+            # If user_id provided, validate ownership through session
+            if user_id:
+                query = query.join(WorkSession, Prediction.session_id == WorkSession.id).filter(
+                    WorkSession.user_id == user_id
+                )
+            
+            prediction = query.first()
             if prediction:
                 db.delete(prediction)
                 db.commit()
@@ -156,11 +190,19 @@ class PredictionService:
         finally:
             db.close()
     
-    def pause_prediction(self, prediction_id: str) -> Optional[Prediction]:
-        """Pause a running prediction"""
+    def pause_prediction(self, prediction_id: str, user_id: Optional[str] = None) -> Optional[Prediction]:
+        """Pause a running prediction, optionally validated by user ownership"""
         db = self._get_db()
         try:
-            prediction = db.query(Prediction).filter(Prediction.id == prediction_id).first()
+            query = db.query(Prediction).filter(Prediction.id == prediction_id)
+            
+            # If user_id provided, validate ownership through session
+            if user_id:
+                query = query.join(WorkSession, Prediction.session_id == WorkSession.id).filter(
+                    WorkSession.user_id == user_id
+                )
+            
+            prediction = query.first()
             if not prediction:
                 return None
             
@@ -179,11 +221,19 @@ class PredictionService:
         finally:
             db.close()
     
-    def resume_prediction(self, prediction_id: str) -> Optional[Prediction]:
-        """Resume a paused prediction"""
+    def resume_prediction(self, prediction_id: str, user_id: Optional[str] = None) -> Optional[Prediction]:
+        """Resume a paused prediction, optionally validated by user ownership"""
         db = self._get_db()
         try:
-            prediction = db.query(Prediction).filter(Prediction.id == prediction_id).first()
+            query = db.query(Prediction).filter(Prediction.id == prediction_id)
+            
+            # If user_id provided, validate ownership through session
+            if user_id:
+                query = query.join(WorkSession, Prediction.session_id == WorkSession.id).filter(
+                    WorkSession.user_id == user_id
+                )
+            
+            prediction = query.first()
             if not prediction:
                 return None
             
@@ -202,11 +252,19 @@ class PredictionService:
         finally:
             db.close()
     
-    def stop_prediction(self, prediction_id: str) -> Optional[Prediction]:
-        """Stop a running or paused prediction"""
+    def stop_prediction(self, prediction_id: str, user_id: Optional[str] = None) -> Optional[Prediction]:
+        """Stop a running or paused prediction, optionally validated by user ownership"""
         db = self._get_db()
         try:
-            prediction = db.query(Prediction).filter(Prediction.id == prediction_id).first()
+            query = db.query(Prediction).filter(Prediction.id == prediction_id)
+            
+            # If user_id provided, validate ownership through session
+            if user_id:
+                query = query.join(WorkSession, Prediction.session_id == WorkSession.id).filter(
+                    WorkSession.user_id == user_id
+                )
+            
+            prediction = query.first()
             if not prediction:
                 return None
             

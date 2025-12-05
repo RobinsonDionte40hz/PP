@@ -11,7 +11,9 @@ This project contains two complementary protein structure prediction systems wit
 ### Full-Stack Application
 A comprehensive web interface for protein structure prediction with real-time monitoring.
 
-**Start the application**:
+**🌐 Live Demo**: **https://emergentfolds.com**
+
+**Start locally**:
 ```bash
 # All-in-one startup (Windows)
 START_ALL.bat
@@ -20,10 +22,15 @@ START_ALL.bat
 docker compose up -d
 ```
 
-**Access**:
+**Access (Local Development)**:
 - **Frontend UI**: http://localhost:3000
 - **Backend API**: http://localhost:8000
 - **API Docs**: http://localhost:8000/docs
+
+**Access (Production)**:
+- **Live Site**: https://emergentfolds.com
+- **API**: https://emergentfolds.com/api
+- **API Docs**: https://emergentfolds.com/api/docs
 
 **Features**:
 - 🎨 Interactive prediction submission with guided wizard
