@@ -36,6 +36,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
   const handleLogout = async () => {
     handleUserMenuClose();
     await logout();
+    navigate('/');
   };
 
   const handleSettings = () => {
