@@ -184,6 +184,9 @@ class ProteinAgent(IProteinAgent):
         self._max_snapshots = max_snapshots
         self._trajectory_snapshots: List[ConformationSnapshot] = []
         self._agent_id = f"agent_{id(self)}"  # Unique ID based on object identity
+        self._snapshot_interval = 100  # Only record every N iterations
+        self._last_snapshot_best_energy = float('inf')  # Track best energy at last snapshot
+        self._last_snapshot_best_rmsd = float('inf')  # Track best RMSD at last snapshot
 
         # Initialize current conformation
         if initial_conformation is None:
@@ -2089,11 +2092,34 @@ class ProteinAgent(IProteinAgent):
         """
         Capture current state as a ConformationSnapshot.
         
+        Only records snapshots when:
+        1. It's a milestone iteration (every snapshot_interval iterations)
+        2. A new best energy or RMSD is achieved
+        3. First or last iteration
+        
+        This dramatically reduces storage while preserving important data points.
+        
         Args:
             iteration: Current iteration number
         """
         if not self._enable_visualization:
             return
+        
+        # Check if we should record this snapshot
+        is_milestone = (iteration % self._snapshot_interval == 0) or (iteration <= 1)
+        is_new_best_energy = self._current_conformation.energy < self._last_snapshot_best_energy
+        current_rmsd = self._current_conformation.rmsd_to_native or float('inf')
+        is_new_best_rmsd = current_rmsd < self._last_snapshot_best_rmsd
+        
+        # Only capture if it's a milestone OR a new best
+        if not (is_milestone or is_new_best_energy or is_new_best_rmsd):
+            return
+        
+        # Update best tracking
+        if is_new_best_energy:
+            self._last_snapshot_best_energy = self._current_conformation.energy
+        if is_new_best_rmsd:
+            self._last_snapshot_best_rmsd = current_rmsd
         
         # Create snapshot
         snapshot = ConformationSnapshot(
@@ -2107,28 +2133,14 @@ class ProteinAgent(IProteinAgent):
         
         self._trajectory_snapshots.append(snapshot)
         
-        # Downsample if we exceed max_snapshots
+        # Simple cap on max snapshots (shouldn't hit this often with interval-based recording)
         if len(self._trajectory_snapshots) > self._max_snapshots:
-            # Use uniform sampling to maintain even distribution across iterations
-            # This ensures trajectory data spans the full prediction, not just start/end
-            target_count = int(self._max_snapshots * 0.8)  # Keep 80% of max
+            # Keep first, last, and evenly sample the rest
             n = len(self._trajectory_snapshots)
-            
-            # Calculate step size for uniform sampling
-            step = n / target_count
-            
-            # Always keep first and last snapshot
-            indices = set([0, n - 1])
-            
-            # Add uniformly distributed samples
-            for i in range(target_count - 2):
-                idx = int(i * step)
-                if idx < n:
-                    indices.add(idx)
-            
-            # Sort indices and build new list
-            sorted_indices = sorted(indices)
-            self._trajectory_snapshots = [self._trajectory_snapshots[i] for i in sorted_indices]
+            target = int(self._max_snapshots * 0.8)
+            step = n / target
+            indices = sorted(set([0, n-1] + [int(i * step) for i in range(target)]))
+            self._trajectory_snapshots = [self._trajectory_snapshots[i] for i in indices if i < n]
 
     def get_trajectory_snapshots(self) -> List[ConformationSnapshot]:
         """
