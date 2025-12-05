@@ -9,8 +9,7 @@ services:
       - backend
     environment:
       - REACT_APP_API_URL=http://backend:8000
-    volumes:
-      - ./frontend/build:/usr/share/nginx/html:ro
+    # Note: Removed volume mount - use built files from Docker image instead
 
   backend:
     build:
