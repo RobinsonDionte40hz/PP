@@ -342,7 +342,7 @@ const Register: React.FC = () => {
       >
         {mode === 'dark' ? <LightModeIcon /> : <DarkModeIcon />}
       </IconButton>
-      {/* Floating Particles - Hidden on mobile for better UX */}}
+      {/* Floating Particles - Hidden on mobile for better UX */}
       <Box
         sx={{
           position: 'absolute',
