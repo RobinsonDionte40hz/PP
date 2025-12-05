@@ -53,11 +53,12 @@ ESCAPE_COHERENCE_REDUCTION = 0.1
 USE_MOLECULAR_MECHANICS_ENERGY = True  # Use MolecularMechanicsEnergy calculator
 ENERGY_VALIDATION_THRESHOLD = 10000.0  # kcal/mol - warn if |energy| exceeds this
 
-# Move acceptance parameters
-INITIAL_TEMPERATURE = 300.0  # Kelvin - starting temperature for MC acceptance
-TEMPERATURE_DECAY_RATE = 0.9995  # Temperature decay per iteration (simulated annealing)
-MIN_TEMPERATURE = 50.0  # Minimum temperature (don't cool below this)
+# Move acceptance parameters (simulated annealing)
+INITIAL_TEMPERATURE = 1000.0  # Kelvin - starting temperature (hot for exploration)
+TEMPERATURE_DECAY_RATE = 0.998  # Temperature decay per iteration (faster annealing)
+MIN_TEMPERATURE = 100.0  # Minimum temperature (warmer to escape local minima)
 BOLTZMANN_CONSTANT = 0.001987  # kcal/(mol·K) - for MC acceptance probability
+# At 1000K with decay 0.998: reaches 500K at ~346 iters, 200K at ~805 iters, 100K at ~1151 iters
 
 # Performance targets
 TARGET_DECISION_LATENCY_MS = 2.0

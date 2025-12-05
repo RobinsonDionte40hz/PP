@@ -41,8 +41,8 @@ class DynamicParameterAdjuster:
     MIN_FREQUENCY = 3.0   # Hz
     MAX_FREQUENCY = 15.0  # Hz
     
-    MIN_TEMPERATURE = 100.0  # K
-    MAX_TEMPERATURE = 500.0  # K
+    MIN_TEMPERATURE = 100.0   # K
+    MAX_TEMPERATURE = 1200.0  # K (raised to support high-temp annealing)
     
     def __init__(self):
         """Initialize dynamic parameter adjuster."""

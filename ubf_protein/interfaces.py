@@ -92,6 +92,7 @@ class MoveType(Enum):
     DISULFIDE_BOND = "disulfide_bond"
     ENERGY_MINIMIZATION = "energy_minimization"
     LARGE_CONFORMATIONAL_JUMP = "large_jump"
+    PIVOT_ROTATION = "pivot_rotation"  # Rotates entire chain segment around pivot point
 
 class IMoveGenerator(ABC):
     """Interface for generating available conformational moves"""

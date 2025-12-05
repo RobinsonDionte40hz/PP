@@ -797,6 +797,9 @@ class QuantumRefinementEngine:
                     z - step_size * gz
                 ))
             
+            # Maintain bond lengths after gradient step (CA-CA should be ~3.8 Å)
+            new_coords = self._maintain_bond_lengths(new_coords, target_length=3.8, tolerance=0.3)
+            
             # Calculate new energy
             new_structure = self._create_conformation(
                 structure.sequence,

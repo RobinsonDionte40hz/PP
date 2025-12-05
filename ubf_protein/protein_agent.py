@@ -60,7 +60,7 @@ class ProteinAgent(IProteinAgent):
     """
 
     # Bond length validation constants (from StructuralValidation)
-    MIN_BOND_LENGTH = 1.0  # Å - minimum CA-CA distance
+    MIN_BOND_LENGTH = 2.5  # Å - minimum CA-CA distance (shorter than native ~3.8 but avoids clashes)
     MAX_BOND_LENGTH = 5.0  # Å - maximum CA-CA distance
 
     def __init__(self,
@@ -587,9 +587,10 @@ class ProteinAgent(IProteinAgent):
             self._consciousness._coordinates.frequency = new_frequency
             self._consciousness._coordinates.coherence = new_coherence
 
-            # Boost temperature temporarily to enable uphill moves (escape)
-            temp_boost = 1.5  # 50% temperature increase
+            # Boost temperature significantly to escape local minimum (reheat)
+            temp_boost = 2.0  # 100% temperature increase (double)
             self._temperature = min(INITIAL_TEMPERATURE, self._temperature * temp_boost)
+            logger.debug(f"Reheating temperature to {self._temperature:.1f}K to escape local minimum")
             
             # Track escape attempt
             self._stuck_in_minima_count += 1
@@ -658,12 +659,14 @@ class ProteinAgent(IProteinAgent):
             self._memories_created += 1
             logger.info(f"Successful escape at iteration {self._iterations_completed}! Energy: {previous_energy:.2f} -> {outcome.new_conformation.energy:.2f}")
 
-        # Update best metrics
-        if outcome.new_conformation.energy < self._best_energy:
+        # Update best metrics (only if conformation is valid - no severe clashes)
+        conformation_valid = not self._has_severe_clashes(list(outcome.new_conformation.atom_coordinates))
+        
+        if outcome.new_conformation.energy < self._best_energy and conformation_valid:
             self._best_energy = outcome.new_conformation.energy
             self._best_conformation = outcome.new_conformation  # Update best structure
         if (outcome.new_conformation.rmsd_to_native and
-            outcome.new_conformation.rmsd_to_native < self._best_rmsd):
+            outcome.new_conformation.rmsd_to_native < self._best_rmsd and conformation_valid):
             self._best_rmsd = outcome.new_conformation.rmsd_to_native
             self._best_conformation = outcome.new_conformation  # Update best structure
             # Track RMSD improvement for learning calculation
@@ -1230,12 +1233,19 @@ class ProteinAgent(IProteinAgent):
             # Small local adjustments to minimize energy
             new_coords = self._apply_energy_minimization(new_coords, target_residues)
 
+        elif move_type == "pivot_rotation":
+            # Rotate entire chain segment around pivot point - enables topology changes
+            new_coords = self._apply_pivot_rotation(new_coords, target_residues)
+
         else:
             # Default: small backbone rotation
             new_coords = self._apply_backbone_rotation(new_coords, target_residues)
 
         # CRITICAL: Maintain proper bond lengths after move application
         new_coords = self._maintain_bond_lengths(new_coords)
+        
+        # CRITICAL: Resolve any steric clashes
+        new_coords = self._resolve_steric_clashes(new_coords)
         
         return new_coords
 
@@ -1496,6 +1506,141 @@ class ProteinAgent(IProteinAgent):
 
         return new_coords
 
+    def _apply_pivot_rotation(self, coords: List[Tuple[float, float, float]],
+                              target_residues: List[int]) -> List[Tuple[float, float, float]]:
+        """
+        Apply pivot rotation to change chain topology.
+        
+        This is a key move for escaping local minima - it rotates an entire
+        segment of the chain around a pivot point, enabling the chain to
+        fold back on itself and form long-range contacts.
+        
+        Args:
+            coords: Current CA coordinates
+            target_residues: Residues to rotate (either N-terminal or C-terminal segment)
+            
+        Returns:
+            New coordinates with rotated segment (or original if clash detected)
+        """
+        new_coords = list(coords)
+        
+        if len(target_residues) < 3:
+            return new_coords
+            
+        # Determine pivot point (boundary between fixed and rotating segments)
+        target_set = set(target_residues)
+        all_indices = set(range(len(coords)))
+        fixed_set = all_indices - target_set
+        
+        if not fixed_set:
+            return new_coords
+            
+        # Find pivot point - the boundary between segments
+        min_target = min(target_residues)
+        max_target = max(target_residues)
+        
+        if min_target == 0:
+            # Rotating N-terminal segment, pivot is at max_target
+            pivot_idx = max_target
+        else:
+            # Rotating C-terminal segment, pivot is at min_target - 1
+            pivot_idx = min_target - 1
+            
+        if pivot_idx < 0 or pivot_idx >= len(coords):
+            return new_coords
+            
+        pivot_point = coords[pivot_idx]
+        
+        # Generate random rotation axis and angle
+        # Use moderate angles (5-30°) to balance topology change vs geometry preservation
+        angle_degrees = random.uniform(5, 30) * random.choice([-1, 1])
+        angle_rad = math.radians(angle_degrees)
+        
+        # Random rotation axis (unit vector)
+        theta = random.uniform(0, 2 * math.pi)
+        phi = random.uniform(0, math.pi)
+        axis = (
+            math.sin(phi) * math.cos(theta),
+            math.sin(phi) * math.sin(theta),
+            math.cos(phi)
+        )
+        
+        # Rodrigues' rotation formula
+        cos_a = math.cos(angle_rad)
+        sin_a = math.sin(angle_rad)
+        
+        # Calculate proposed new coordinates
+        proposed_coords = list(new_coords)
+        
+        for idx in target_residues:
+            if idx >= len(coords):
+                continue
+                
+            # Translate to pivot origin
+            x = coords[idx][0] - pivot_point[0]
+            y = coords[idx][1] - pivot_point[1]
+            z = coords[idx][2] - pivot_point[2]
+            
+            # Apply rotation using Rodrigues' formula
+            # v_rot = v*cos(a) + (k x v)*sin(a) + k*(k.v)*(1-cos(a))
+            kx, ky, kz = axis
+            
+            # k x v (cross product)
+            cross_x = ky * z - kz * y
+            cross_y = kz * x - kx * z
+            cross_z = kx * y - ky * x
+            
+            # k . v (dot product)
+            dot = kx * x + ky * y + kz * z
+            
+            # Rodrigues' formula
+            new_x = x * cos_a + cross_x * sin_a + kx * dot * (1 - cos_a)
+            new_y = y * cos_a + cross_y * sin_a + ky * dot * (1 - cos_a)
+            new_z = z * cos_a + cross_z * sin_a + kz * dot * (1 - cos_a)
+            
+            # Translate back
+            proposed_coords[idx] = (
+                new_x + pivot_point[0],
+                new_y + pivot_point[1],
+                new_z + pivot_point[2]
+            )
+        
+        # Check for steric clashes between rotated and fixed segments
+        min_safe_distance = 2.5  # Minimum CA-CA distance to avoid severe clashes
+        has_clash = False
+        
+        for rot_idx in target_residues:
+            if rot_idx >= len(proposed_coords):
+                continue
+            rot_coord = proposed_coords[rot_idx]
+            
+            for fixed_idx in fixed_set:
+                if fixed_idx >= len(proposed_coords):
+                    continue
+                # Skip adjacent residues (they should be close)
+                if abs(rot_idx - fixed_idx) <= 1:
+                    continue
+                    
+                fixed_coord = proposed_coords[fixed_idx]
+                dist = math.sqrt(
+                    (rot_coord[0] - fixed_coord[0])**2 +
+                    (rot_coord[1] - fixed_coord[1])**2 +
+                    (rot_coord[2] - fixed_coord[2])**2
+                )
+                
+                if dist < min_safe_distance:
+                    has_clash = True
+                    break
+            
+            if has_clash:
+                break
+        
+        # Only apply rotation if no severe clashes
+        if has_clash:
+            return new_coords  # Return original coordinates
+        
+        return proposed_coords
+
     def _apply_energy_minimization(self, coords: List[Tuple[float, float, float]],
                                   target_residues: List[int]) -> List[Tuple[float, float, float]]:
         """
@@ -1579,6 +1724,100 @@ class ProteinAgent(IProteinAgent):
                 break
         
         return new_coords
+
+    def _resolve_steric_clashes(self, coords: List[Tuple[float, float, float]]) -> List[Tuple[float, float, float]]:
+        """
+        Resolve steric clashes between non-adjacent atoms.
+        
+        Uses iterative repulsion to push clashing atoms apart while maintaining
+        bond lengths with adjacent residues.
+        """
+        new_coords = list(coords)
+        min_distance = 2.5  # Minimum allowed CA-CA distance for non-bonded atoms
+        max_iterations = 10
+        
+        for iteration in range(max_iterations):
+            clashes_found = False
+            
+            for i in range(len(new_coords)):
+                for j in range(i + 2, len(new_coords)):  # Skip adjacent (i+1)
+                    p1 = new_coords[i]
+                    p2 = new_coords[j]
+                    
+                    dist = self._distance(p1, p2)
+                    
+                    if dist < min_distance:
+                        clashes_found = True
+                        
+                        # Push atoms apart along their connecting vector
+                        if dist < 0.1:
+                            # Too close - use random direction
+                            direction = (
+                                random.uniform(-1, 1),
+                                random.uniform(-1, 1),
+                                random.uniform(-1, 1)
+                            )
+                        else:
+                            direction = (
+                                (p2[0] - p1[0]) / dist,
+                                (p2[1] - p1[1]) / dist,
+                                (p2[2] - p1[2]) / dist
+                            )
+                        
+                        # Calculate how much to push apart
+                        push = (min_distance - dist) * 0.5
+                        
+                        # Move both atoms away from each other
+                        new_coords[i] = (
+                            p1[0] - direction[0] * push,
+                            p1[1] - direction[1] * push,
+                            p1[2] - direction[2] * push
+                        )
+                        new_coords[j] = (
+                            p2[0] + direction[0] * push,
+                            p2[1] + direction[1] * push,
+                            p2[2] + direction[2] * push
+                        )
+            
+            # Re-fix bond lengths after clash resolution
+            new_coords = self._maintain_bond_lengths(new_coords)
+            
+            if not clashes_found:
+                break
+        
+        return new_coords
+
+    def _has_severe_clashes(self, coords: List[Tuple[float, float, float]], 
+                            threshold: float = 2.0,
+                            min_bond: float = 3.0,
+                            max_bond: float = 4.5) -> bool:
+        """
+        Check if coordinates have severe steric clashes OR invalid bond lengths.
+        
+        Args:
+            coords: List of CA coordinates
+            threshold: Minimum distance in Angstroms for non-adjacent atoms (default 2.0A)
+            min_bond: Minimum acceptable CA-CA bond length (default 3.0A)
+            max_bond: Maximum acceptable CA-CA bond length (default 4.5A)
+            
+        Returns:
+            True if severe clashes exist or bond lengths are invalid
+        """
+        n = len(coords)
+        
+        # Check bond lengths between adjacent residues
+        for i in range(n - 1):
+            bond_dist = math.sqrt(sum((a - b) ** 2 for a, b in zip(coords[i], coords[i+1])))
+            if bond_dist < min_bond or bond_dist > max_bond:
+                return True  # Invalid bond length
+        
+        # Check for clashes between non-adjacent residues
+        for i in range(n):
+            for j in range(i + 2, n):
+                dist = math.sqrt(sum((a - b) ** 2 for a, b in zip(coords[i], coords[j])))
+                if dist < threshold:
+                    return True
+        return False
 
     # Vector math utilities
     def _distance(self, p1: Tuple[float, float, float], p2: Tuple[float, float, float]) -> float:

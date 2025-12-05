@@ -63,7 +63,8 @@ class MaplessMoveGenerator(IMoveGenerator):
             MoveType.SHEET_FORMATION,
             MoveType.TURN_FORMATION,
             MoveType.HYDROPHOBIC_COLLAPSE,
-            MoveType.ENERGY_MINIMIZATION
+            MoveType.ENERGY_MINIMIZATION,
+            MoveType.PIVOT_ROTATION  # New: enables chain topology changes
         ]
 
     def generate_moves(self, current_conformation: Conformation) -> List[ConformationalMove]:
@@ -111,6 +112,9 @@ class MaplessMoveGenerator(IMoveGenerator):
             return capabilities.get('can_hydrophobic_collapse', False)
         elif move_type == MoveType.LARGE_CONFORMATIONAL_JUMP:
             return capabilities.get('can_large_rotation', False)
+        elif move_type == MoveType.PIVOT_ROTATION:
+            # Pivot moves need at least 10 residues to be meaningful
+            return len(conformation.sequence) >= 10
 
         # Default: most moves are feasible with some restrictions
         return len(conformation.sequence) > 3  # Need minimum size
@@ -142,6 +146,19 @@ class MaplessMoveGenerator(IMoveGenerator):
                 return None
             start_idx = random.randint(0, n_residues - 4)
             target_residues = list(range(start_idx, start_idx + 4))
+        elif move_type == MoveType.PIVOT_ROTATION:
+            # Pivot move: rotate all residues after a pivot point
+            # Choose pivot point in middle 60% of chain (avoid termini)
+            pivot_start = max(5, n_residues // 5)
+            pivot_end = min(n_residues - 5, 4 * n_residues // 5)
+            if pivot_end <= pivot_start:
+                return None
+            pivot_idx = random.randint(pivot_start, pivot_end)
+            # Target residues are all residues after the pivot (or before, randomly)
+            if random.random() < 0.5:
+                target_residues = list(range(pivot_idx, n_residues))  # C-terminal segment
+            else:
+                target_residues = list(range(0, pivot_idx))  # N-terminal segment
         else:
             # Random subset of residues
             n_targets = min(5, max(1, n_residues // 4))
@@ -189,6 +206,8 @@ class MaplessMoveGenerator(IMoveGenerator):
             base_change = -20.0  # Hydrophobic collapse very stabilizing
         elif move_type == MoveType.ENERGY_MINIMIZATION:
             base_change = -5.0  # Small improvement
+        elif move_type == MoveType.PIVOT_ROTATION:
+            base_change = random.uniform(-30.0, 10.0)  # Large potential change (can be good or bad)
         else:
             base_change = random.uniform(-5.0, 5.0)  # Random small change
 
@@ -198,7 +217,9 @@ class MaplessMoveGenerator(IMoveGenerator):
 
     def _estimate_rmsd_change(self, move_type: MoveType, n_residues: int) -> float:
         """Estimate RMSD change for a move (simplified)."""
-        if move_type in [MoveType.LARGE_CONFORMATIONAL_JUMP, MoveType.HELIX_FORMATION]:
+        if move_type == MoveType.PIVOT_ROTATION:
+            return random.uniform(3.0, 10.0)  # Very large changes - can drastically alter topology
+        elif move_type in [MoveType.LARGE_CONFORMATIONAL_JUMP, MoveType.HELIX_FORMATION]:
             return random.uniform(2.0, 5.0)  # Large changes
         elif move_type in [MoveType.SHEET_FORMATION, MoveType.HYDROPHOBIC_COLLAPSE]:
             return random.uniform(1.0, 3.0)  # Medium changes
@@ -328,10 +349,10 @@ class CapabilityBasedMoveEvaluator(IMoveEvaluator):
             0.2 * goal_alignment
         )
         
-        # Bias toward hydrophobic collapse when RMSD is HIGH (>20Å)
-        # Below 20Å, we need diverse moves for refinement
+        # Bias toward specific moves based on RMSD
         if current_rmsd is not None:
             if move.move_type == MoveType.HYDROPHOBIC_COLLAPSE:
+                # Collapse is critical for initial compaction (>20Å)
                 if current_rmsd > 30.0:
                     total_weight *= 4.0  # 4x weight for collapse moves
                 elif current_rmsd > 25.0:
@@ -339,6 +360,18 @@ class CapabilityBasedMoveEvaluator(IMoveEvaluator):
                 elif current_rmsd > 20.0:
                     total_weight *= 2.0  # 2x weight
                 # Below 20Å: no special bias - let other moves compete
+                
+            elif move.move_type == MoveType.PIVOT_ROTATION:
+                # Pivot moves are critical for topology changes at all RMSD levels
+                # They enable the chain to fold back on itself for long-range contacts
+                if current_rmsd > 25.0:
+                    total_weight *= 3.0  # 3x weight - need big topology changes
+                elif current_rmsd > 15.0:
+                    total_weight *= 2.5  # 2.5x weight - still need topology exploration
+                elif current_rmsd > 10.0:
+                    total_weight *= 2.0  # 2x weight - refinement with occasional large moves
+                else:
+                    total_weight *= 1.5  # 1.5x weight - keep some exploration even at low RMSD
 
         return total_weight
 
