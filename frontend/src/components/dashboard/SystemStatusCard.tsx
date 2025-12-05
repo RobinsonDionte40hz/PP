@@ -143,12 +143,12 @@ const SystemStatusCard: React.FC<SystemStatusCardProps> = ({ stats }) => {
                     Success Rate
                   </Typography>
                   <Typography variant="caption" fontWeight="bold">
-                    {stats.successRate.toFixed(1)}%
+                    {!isNaN(stats.successRate) ? `${stats.successRate.toFixed(1)}%` : 'N/A'}
                   </Typography>
                 </Box>
                 <LinearProgress
                   variant="determinate"
-                  value={stats.successRate}
+                  value={!isNaN(stats.successRate) ? stats.successRate : 0}
                   sx={{
                     height: 8,
                     borderRadius: 4,
@@ -178,7 +178,7 @@ const SystemStatusCard: React.FC<SystemStatusCardProps> = ({ stats }) => {
                 <TrendingIcon sx={{ color: theme.palette.primary.main }} />
                 <Box>
                   <Typography variant="body2" fontWeight="bold">
-                    {stats.avgRMSD.toFixed(2)} Å
+                    {stats.avgRMSD > 0 && !isNaN(stats.avgRMSD) ? `${stats.avgRMSD.toFixed(2)} Å` : 'N/A'}
                   </Typography>
                   <Typography variant="caption" color="text.secondary">
                     Avg. RMSD

@@ -39,16 +39,17 @@ const Dashboard: React.FC = () => {
       const completed = allPredictions.filter(p => p.status === 'completed').length;
       const failed = allPredictions.filter(p => p.status === 'failed').length;
       
-      // Calculate average RMSD for completed predictions
+      // Calculate average RMSD for completed predictions (handle null/undefined values)
       const completedWithRMSD = allPredictions.filter(
-        p => p.status === 'completed' && p.best_rmsd
+        p => p.status === 'completed' && p.best_rmsd !== null && p.best_rmsd !== undefined
       );
       const avgRMSD = completedWithRMSD.length > 0
         ? completedWithRMSD.reduce((sum, p) => sum + (p.best_rmsd || 0), 0) / completedWithRMSD.length
         : 0;
 
-      // Calculate success rate (completed vs failed)
-      const successRate = total > 0 ? (completed / (completed + failed)) * 100 : 0;
+      // Calculate success rate (completed vs failed) - handle division by zero
+      const completedAndFailed = completed + failed;
+      const successRate = completedAndFailed > 0 ? (completed / completedAndFailed) * 100 : 100;
 
       return {
         total,
