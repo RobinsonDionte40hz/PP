@@ -37,6 +37,7 @@ import {
   Legend,
   Cell,
 } from 'recharts';
+import api from '../../services/api';
 
 interface TrajectoryTabProps {
   predictionId: string;
@@ -62,11 +63,8 @@ const TrajectoryTab: React.FC<TrajectoryTabProps> = ({ predictionId }) => {
   const { data: trajectory, isLoading, error } = useQuery({
     queryKey: ['trajectory', predictionId],
     queryFn: async () => {
-      const response = await fetch(`/api/results/${predictionId}/trajectory`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch trajectory data');
-      }
-      const data = await response.json();
+      const response = await api.get(`/results/${predictionId}/trajectory`);
+      const data = response.data;
       
       // Transform backend data to frontend format
       if (!data.trajectory || data.trajectory.length === 0) {

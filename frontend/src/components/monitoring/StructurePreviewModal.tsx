@@ -25,6 +25,7 @@ import {
 } from '@mui/icons-material';
 import { useQuery } from '@tanstack/react-query';
 import { ProteinViewer } from '../visualization/ProteinViewer';
+import api from '../../services/api';
 
 interface StructurePreviewModalProps {
   open: boolean;
@@ -50,19 +51,19 @@ const StructurePreviewModal: React.FC<StructurePreviewModalProps> = ({
   const { data: structure, isLoading, error, refetch } = useQuery({
     queryKey: ['live-structure', predictionId],
     queryFn: async () => {
-      // First try to get the structure from the results endpoint
-      const response = await fetch(`/api/results/${predictionId}/structure`);
-      
-      if (!response.ok) {
-        // Structure might not be available yet if prediction is still running
-        if (response.status === 404) {
-          throw new Error('Structure not available yet. The prediction may still be running.');
+      // Use axios with responseType: 'text' to get raw PDB content
+      const response = await api.get(`/results/${predictionId}/structure`, {
+        responseType: 'text',
+        headers: {
+          'Accept': 'chemical/x-pdb, text/plain, */*'
         }
-        throw new Error('Failed to fetch structure');
-      }
+      });
       
-      // The endpoint returns the PDB file content directly
-      const pdbContent = await response.text();
+      const pdbContent = response.data;
+      
+      if (!pdbContent || typeof pdbContent !== 'string' || pdbContent.length < 10) {
+        throw new Error('Invalid PDB data received');
+      }
       
       return {
         pdb_content: pdbContent,
@@ -70,7 +71,7 @@ const StructurePreviewModal: React.FC<StructurePreviewModalProps> = ({
       };
     },
     enabled: open && !!predictionId,
-    refetchInterval: false, // Don't auto-refetch
+    refetchInterval: false,
     retry: 1,
   });
 
