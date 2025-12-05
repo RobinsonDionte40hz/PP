@@ -178,7 +178,7 @@ const AdvancedTab: React.FC<AdvancedTabProps> = ({ settings, onChange }) => {
               API Endpoint:
             </Typography>
             <Typography variant="body2" fontFamily="monospace">
-              {import.meta.env.VITE_API_URL || 'http://localhost:8000'}
+              {import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}
             </Typography>
           </Box>
           <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -186,7 +186,7 @@ const AdvancedTab: React.FC<AdvancedTabProps> = ({ settings, onChange }) => {
               WebSocket Endpoint:
             </Typography>
             <Typography variant="body2" fontFamily="monospace">
-              {import.meta.env.VITE_WS_URL || 'ws://localhost:8000'}
+              {import.meta.env.VITE_WS_BASE_URL || 'ws://localhost:8000'}
             </Typography>
           </Box>
           <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>

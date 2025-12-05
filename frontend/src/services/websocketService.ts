@@ -1,7 +1,7 @@
 import { io, Socket } from 'socket.io-client';
 import type { WSMessage } from '../types/api';
 
-const WS_BASE_URL = import.meta.env.VITE_WS_URL || import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const WS_BASE_URL = import.meta.env.VITE_WS_BASE_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
 class WebSocketService {
   private socket: Socket | null = null;
