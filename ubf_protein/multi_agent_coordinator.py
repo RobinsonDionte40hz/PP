@@ -485,11 +485,20 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
                     
                     # Update best conformation tracking (thread-safe)
                     with update_lock:
-                        # Track best energy
+                        # Track best energy and always keep best energy conformation
                         if energy < self._best_energy:
                             self._best_energy = energy
+                            # Find agent with this energy and store conformation
+                            for agent in self._agents:
+                                best_conf = agent.get_best_conformation()
+                                if abs(best_conf.energy - energy) < 0.01:
+                                    # Always update best conformation when energy improves
+                                    # This ensures we have a conformation even without native structure
+                                    if self._best_conformation is None or energy < self._best_conformation.energy:
+                                        self._best_conformation = best_conf
+                                    break
                         
-                        # Update best conformation by RMSD (primary metric)
+                        # Update best conformation by RMSD (if native structure available)
                         # Only update if this is actually a better RMSD
                         if rmsd < self._best_rmsd and rmsd < float('inf'):
                             self._best_rmsd = rmsd
@@ -1076,7 +1085,26 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
             Tuple of (best_conformation, best_energy, best_rmsd)
         """
         if self._best_conformation is None:
-            raise ValueError("No exploration has been performed yet")
+            # Fallback: try to get best conformation from agents
+            if self._agents:
+                best_agent_conf = None
+                best_agent_energy = float('inf')
+                for agent in self._agents:
+                    try:
+                        conf = agent.get_best_conformation()
+                        if conf and conf.energy < best_agent_energy:
+                            best_agent_conf = conf
+                            best_agent_energy = conf.energy
+                    except Exception:
+                        pass
+                if best_agent_conf:
+                    self._best_conformation = best_agent_conf
+                    self._best_energy = best_agent_energy
+                    self._best_rmsd = best_agent_conf.rmsd_to_native or float('inf')
+            
+            # If still None, raise error
+            if self._best_conformation is None:
+                raise ValueError("No exploration has been performed yet")
 
         return (self._best_conformation, self._best_energy, self._best_rmsd)
 
