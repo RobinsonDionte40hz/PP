@@ -801,10 +801,13 @@ class PredictionRunner:
         try:
             trajectory_data = []
             agents = self.coordinator.get_agents()
+            logger.info(f"Saving trajectory: {len(agents)} agents")
             
+            total_snapshots = 0
             for agent in agents:
                 agent_id = agent.get_agent_id()
                 snapshots = agent.get_trajectory_snapshots()
+                total_snapshots += len(snapshots)
                 
                 for snapshot in snapshots:
                     trajectory_data.append({
@@ -817,6 +820,7 @@ class PredictionRunner:
                         'timestamp': snapshot.timestamp
                     })
             
+            logger.info(f"Collected {total_snapshots} snapshots from {len(agents)} agents")
             trajectory_data.sort(key=lambda x: (x['iteration'], x['agent_id']))
             
             with open(output_file, 'w') as f:
@@ -827,10 +831,10 @@ class PredictionRunner:
                     'trajectory': trajectory_data
                 }, f, indent=2)
             
-            logger.info(f"Saved trajectory to {output_file}")
+            logger.info(f"Saved trajectory to {output_file} ({len(trajectory_data)} points)")
             
         except Exception as e:
-            logger.warning(f"Failed to save trajectory: {e}")
+            logger.error(f"Failed to save trajectory: {e}", exc_info=True)
 
 
 # Convenience function for simple usage

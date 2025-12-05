@@ -48,6 +48,7 @@ services:
       - BACKEND_URL=http://backend:8000
     volumes:
       - ./backend:/app
+      - ./ubf_protein:/ubf_protein
       - ./checkpoints:/app/checkpoints
       - ./visualization_output:/app/visualization_output
       - ./pdb_cache:/app/pdb_cache
