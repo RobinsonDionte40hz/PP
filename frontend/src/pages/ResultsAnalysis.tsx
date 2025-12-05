@@ -168,7 +168,7 @@ const PastResultsList: React.FC = () => {
           comparison = (a.final_energy || 0) - (b.final_energy || 0);
           break;
         case 'rmsd':
-          comparison = (a.final_rmsd || 0) - (b.final_rmsd || 0);
+          comparison = (a.best_rmsd || 0) - (b.best_rmsd || 0);
           break;
         case 'iterations':
           comparison = (a.total_iterations || 0) - (b.total_iterations || 0);
@@ -282,7 +282,7 @@ const PastResultsList: React.FC = () => {
       </Box>
 
       {/* Filters */}
-      <HistoryFilters filters={filters} onChange={handleFilterChange} />
+      <HistoryFilters filters={filters} onFilterChange={handleFilterChange} />
 
       {/* Results */}
       {viewMode === 'card' ? (
