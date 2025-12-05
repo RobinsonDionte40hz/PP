@@ -159,7 +159,7 @@ const GeometricAnalysisTab: React.FC<GeometricAnalysisTabProps> = ({ predictionI
   ];
 
   // Phi angle distribution
-  const phiAngleDistribution = geometricData?.phiAngles.reduce((acc, angle) => {
+  const phiAngleDistribution = geometricData?.phiAngles.reduce((acc: Record<string, number>, angle: { category: string }) => {
     const category = angle.category;
     acc[category] = (acc[category] || 0) + 1;
     return acc;
@@ -341,7 +341,7 @@ const GeometricAnalysisTab: React.FC<GeometricAnalysisTabProps> = ({ predictionI
                   THz Spectral Peaks
                 </Typography>
                 <Box display="flex" gap={1} flexWrap="wrap">
-                  {geometricData.qcppMetrics.thzPeaks.map((peak, idx) => (
+                  {geometricData.qcppMetrics.thzPeaks.map((peak: number, idx: number) => (
                     <Chip
                       key={idx}
                       label={`${peak.toFixed(2)} THz`}
@@ -375,7 +375,7 @@ const GeometricAnalysisTab: React.FC<GeometricAnalysisTabProps> = ({ predictionI
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {geometricData.phiAngles.map((angle, idx) => (
+                  {geometricData.phiAngles.map((angle: { residue: string; angle: number; deviation: number; category: string }, idx: number) => (
                     <TableRow key={idx} hover>
                       <TableCell>{angle.residue}</TableCell>
                       <TableCell align="right">{angle.angle.toFixed(2)}°</TableCell>

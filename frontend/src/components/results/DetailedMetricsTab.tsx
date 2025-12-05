@@ -15,8 +15,6 @@ import {
   ToggleButton,
   ToggleButtonGroup,
   Divider,
-  CircularProgress,
-  Alert,
 } from '@mui/material';
 import {
   ShowChart,
@@ -64,7 +62,7 @@ const DetailedMetricsTab: React.FC<DetailedMetricsTabProps> = ({ prediction }) =
   const qcpScore = metrics.qcp_score ?? null;
 
   // Fetch trajectory data for convergence charts
-  const { data: trajectoryData, isLoading: trajectoryLoading } = useQuery({
+  const { data: trajectoryData } = useQuery({
     queryKey: ['trajectory', prediction.id],
     queryFn: async () => {
       const response = await fetch(`/api/results/${prediction.id}/trajectory`);
@@ -80,11 +78,11 @@ const DetailedMetricsTab: React.FC<DetailedMetricsTabProps> = ({ prediction }) =
       // Fallback: generate basic line from initial to final
       const iterations = prediction.total_iterations || 1000;
       const initialEnergy = metrics.initial_energy ?? 0;
-      const finalEnergy = bestEnergy ?? initialEnergy;
+      const initialRmsd = 15; // Default initial RMSD estimate
       
       return [
-        { iteration: 0, energy: initialEnergy, rmsd: metrics.initial_rmsd ?? 15 },
-        { iteration: iterations, energy: finalEnergy, rmsd: bestRMSD ?? 10 },
+        { iteration: 0, energy: initialEnergy, rmsd: initialRmsd },
+        { iteration: iterations, energy: bestEnergy ?? initialEnergy, rmsd: bestRMSD ?? 10 },
       ];
     }
     
@@ -99,7 +97,7 @@ const DetailedMetricsTab: React.FC<DetailedMetricsTabProps> = ({ prediction }) =
         aggressiveness: point.aggressiveness,
         consistency: point.consistency,
       }));
-  }, [trajectoryData, prediction.total_iterations, metrics.initial_energy, metrics.initial_rmsd, bestEnergy, bestRMSD]);
+  }, [trajectoryData, prediction.total_iterations, metrics.initial_energy, bestEnergy, bestRMSD]);
 
   // Quality metrics with actual data
   const qualityMetrics = [
@@ -142,9 +140,11 @@ const DetailedMetricsTab: React.FC<DetailedMetricsTabProps> = ({ prediction }) =
   ];
 
   // Memory/QCPP statistics from actual metrics
-  const qcppTotalAnalyses = metrics.qcpp_total_analyses ?? null;
-  const qcppCacheHitRate = metrics.qcpp_cache_hit_rate ?? null;
-  const qcppAvgTime = metrics.qcpp_avg_time_ms ?? null;
+  // Use type assertion for extended metrics that may come from backend
+  const extendedMetrics = metrics as Record<string, unknown>;
+  const qcppTotalAnalyses = (extendedMetrics.qcpp_total_analyses as number) ?? null;
+  const qcppCacheHitRate = (extendedMetrics.qcpp_cache_hit_rate as number) ?? null;
+  const qcppAvgTime = (extendedMetrics.qcpp_avg_time_ms as number) ?? null;
   
   const memoryStats = [
     { metric: 'QCPP Analyses', value: qcppTotalAnalyses !== null ? qcppTotalAnalyses.toLocaleString() : 'N/A', description: 'Total quantum analyses' },
