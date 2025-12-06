@@ -114,7 +114,7 @@ const HistoryCardView: React.FC<HistoryCardViewProps> = ({
 
             {/* Metrics */}
             <Stack spacing={1} sx={{ mt: 2 }}>
-              {prediction.best_energy !== undefined && (
+              {prediction.best_energy !== undefined && prediction.best_energy !== null && (
                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                   <Typography variant="body2" color="text.secondary">
                     Energy:

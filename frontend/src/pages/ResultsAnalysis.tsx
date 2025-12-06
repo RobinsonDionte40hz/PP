@@ -319,10 +319,17 @@ const ResultsAnalysis: React.FC = () => {
     return <PastResultsList />;
   }
 
+  // If no valid id provided, redirect to history
+  if (!id || id === 'undefined') {
+    navigate('/dashboard/history');
+    return null;
+  }
+
   // Fetch prediction results
   const { data: prediction, isLoading, error } = useQuery({
     queryKey: ['prediction', id],
-    queryFn: () => predictionService.getPrediction(id!),
+    queryFn: () => predictionService.getPrediction(id),
+    enabled: !!id && id !== 'undefined',
     refetchInterval: (query) => {
       const data = query.state.data;
       return data?.status === 'running' || data?.status === 'pending' ? 5000 : false;

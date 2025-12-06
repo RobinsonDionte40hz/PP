@@ -154,7 +154,7 @@ const HistoryTableView: React.FC<HistoryTableViewProps> = ({
                   </Typography>
                 </TableCell>
                 <TableCell>
-                  {prediction.best_energy !== undefined ? (
+                  {prediction.best_energy !== undefined && prediction.best_energy !== null ? (
                     <Typography variant="body2">
                       {prediction.best_energy.toFixed(2)}
                     </Typography>
