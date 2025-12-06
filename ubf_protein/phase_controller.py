@@ -81,27 +81,27 @@ class PhaseControllerConfig:
     """Configuration for phase transitions.
     
     Note: iterations_in_phase counts update_metrics() calls, not raw iterations.
-    If HierarchicalFoldingManager uses structure_update_frequency=5, then
-    200 raw iterations = 40 update calls.
+    If HierarchicalFoldingManager uses structure_update_frequency=2, then
+    200 raw iterations = 100 update calls.
     """
     
     # Phase 1 → Phase 2 (Free → Local Anchoring)
     # Transition when secondary structure is detected
-    min_structured_pct_for_anchoring: float = 15.0  # % helix+sheet to start anchoring
-    min_iterations_free: int = 20  # Min update calls in free phase (was 50)
+    min_structured_pct_for_anchoring: float = 5.0   # % helix+sheet to start anchoring (was 15)
+    min_iterations_free: int = 10  # Min update calls in free phase (was 20)
     
     # Phase 2 → Phase 3 (Local Anchoring → Tertiary Packing)
     # Transition when enough residues are anchored
-    min_anchoring_pct_for_packing: float = 30.0  # % anchored to start packing
-    min_medium_anchored_pct: float = 15.0  # % at medium+ strength
-    min_iterations_anchoring: int = 40  # Min update calls in anchoring phase (was 100)
+    min_anchoring_pct_for_packing: float = 15.0  # % anchored to start packing (was 30)
+    min_medium_anchored_pct: float = 8.0  # % at medium+ strength (was 15)
+    min_iterations_anchoring: int = 20  # Min update calls in anchoring phase (was 40)
     
     # Phase 3 → Phase 4 (Tertiary Packing → Refinement)
     # Transition when improvements plateau
-    min_anchoring_pct_for_refinement: float = 50.0  # % anchored to enter refinement
-    energy_plateau_threshold: float = 0.5  # kcal/mol improvement threshold
-    energy_plateau_iterations: int = 20  # Iterations without improvement (was 50)
-    min_iterations_packing: int = 40  # Min update calls in packing phase (was 100)
+    min_anchoring_pct_for_refinement: float = 30.0  # % anchored to enter refinement (was 50)
+    energy_plateau_threshold: float = 1.0  # kcal/mol improvement threshold (was 0.5)
+    energy_plateau_iterations: int = 15  # Iterations without improvement (was 20)
+    min_iterations_packing: int = 20  # Min update calls in packing phase (was 40)
     
     # Refinement settings
     refinement_move_scale: float = 0.2  # Scale factor for move magnitudes

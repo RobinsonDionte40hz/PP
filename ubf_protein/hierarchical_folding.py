@@ -52,14 +52,14 @@ class HierarchicalFoldingConfig:
     # Phase control speed
     fast_phases: bool = False
     
-    # Secondary structure detection
-    helix_phi_range: Tuple[float, float] = (-80.0, -40.0)
-    helix_psi_range: Tuple[float, float] = (-60.0, -20.0)
-    sheet_phi_range: Tuple[float, float] = (-150.0, -100.0)
-    sheet_psi_range: Tuple[float, float] = (100.0, 170.0)
+    # Secondary structure detection (widened ranges for earlier detection)
+    helix_phi_range: Tuple[float, float] = (-100.0, -30.0)  # Was (-80, -40) - wider
+    helix_psi_range: Tuple[float, float] = (-70.0, -10.0)   # Was (-60, -20) - wider
+    sheet_phi_range: Tuple[float, float] = (-170.0, -80.0)  # Was (-150, -100) - wider
+    sheet_psi_range: Tuple[float, float] = (80.0, 180.0)    # Was (100, 170) - wider
     
-    # Update frequency
-    structure_update_frequency: int = 5  # Update every N iterations
+    # Update frequency (more frequent updates for faster response)
+    structure_update_frequency: int = 2  # Update every N iterations (was 5)
 
 
 class HierarchicalFoldingManager:
@@ -221,7 +221,44 @@ class HierarchicalFoldingManager:
         Returns:
             Tuple of (ss_string, helix_percentage, sheet_percentage)
         """
-        # Try to use existing secondary structure if available
+        # ALWAYS use phi/psi based detection for more accurate structure assignment
+        # The secondary_structure field is often not updated during exploration
+        if hasattr(conformation, 'phi_angles') and hasattr(conformation, 'psi_angles'):
+            phi_angles = conformation.phi_angles
+            psi_angles = conformation.psi_angles
+            
+            if phi_angles and psi_angles:
+                ss_chars = []
+                helix_count = 0
+                sheet_count = 0
+                
+                for i in range(min(len(phi_angles), len(psi_angles))):
+                    phi = phi_angles[i]
+                    psi = psi_angles[i]
+                    
+                    # Check helix region
+                    if (self.config.helix_phi_range[0] <= phi <= self.config.helix_phi_range[1] and
+                        self.config.helix_psi_range[0] <= psi <= self.config.helix_psi_range[1]):
+                        ss_chars.append('H')
+                        helix_count += 1
+                    # Check sheet region
+                    elif (self.config.sheet_phi_range[0] <= phi <= self.config.sheet_phi_range[1] and
+                          self.config.sheet_psi_range[0] <= psi <= self.config.sheet_psi_range[1]):
+                        ss_chars.append('E')
+                        sheet_count += 1
+                    else:
+                        ss_chars.append('C')
+                
+                # Pad if needed
+                while len(ss_chars) < self.sequence_length:
+                    ss_chars.append('C')
+                
+                ss_string = ''.join(ss_chars[:self.sequence_length])
+                total = self.sequence_length if self.sequence_length > 0 else 1
+                
+                return ss_string, (helix_count / total) * 100, (sheet_count / total) * 100
+        
+        # Fall back to existing secondary structure if phi/psi not available
         if hasattr(conformation, 'secondary_structure') and conformation.secondary_structure:
             ss_list = conformation.secondary_structure
             if isinstance(ss_list, str):
@@ -235,45 +272,8 @@ class HierarchicalFoldingManager:
             
             return ss_string, (helix_count / total) * 100, (sheet_count / total) * 100
         
-        # Fall back to phi/psi based detection
-        if not hasattr(conformation, 'phi_angles') or not hasattr(conformation, 'psi_angles'):
-            return 'C' * self.sequence_length, 0.0, 0.0
-        
-        phi_angles = conformation.phi_angles
-        psi_angles = conformation.psi_angles
-        
-        if not phi_angles or not psi_angles:
-            return 'C' * self.sequence_length, 0.0, 0.0
-        
-        ss_chars = []
-        helix_count = 0
-        sheet_count = 0
-        
-        for i in range(min(len(phi_angles), len(psi_angles))):
-            phi = phi_angles[i]
-            psi = psi_angles[i]
-            
-            # Check helix region
-            if (self.config.helix_phi_range[0] <= phi <= self.config.helix_phi_range[1] and
-                self.config.helix_psi_range[0] <= psi <= self.config.helix_psi_range[1]):
-                ss_chars.append('H')
-                helix_count += 1
-            # Check sheet region
-            elif (self.config.sheet_phi_range[0] <= phi <= self.config.sheet_phi_range[1] and
-                  self.config.sheet_psi_range[0] <= psi <= self.config.sheet_psi_range[1]):
-                ss_chars.append('E')
-                sheet_count += 1
-            else:
-                ss_chars.append('C')
-        
-        # Pad if needed
-        while len(ss_chars) < self.sequence_length:
-            ss_chars.append('C')
-        
-        ss_string = ''.join(ss_chars[:self.sequence_length])
-        total = self.sequence_length if self.sequence_length > 0 else 1
-        
-        return ss_string, (helix_count / total) * 100, (sheet_count / total) * 100
+        # Nothing available, return all coil
+        return 'C' * self.sequence_length, 0.0, 0.0
     
     def _on_phase_transition(
         self,

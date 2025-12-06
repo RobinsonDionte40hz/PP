@@ -1035,12 +1035,42 @@ class ProteinAgent(IProteinAgent):
             return self._current_conformation  # Return unchanged conformation
 
         # Update phi/psi angles for target residues (moderate changes)
+        # Apply soft bias toward favorable Ramachandran regions
         new_phi = list(self._current_conformation.phi_angles)
         new_psi = list(self._current_conformation.psi_angles)
+        
+        # Target regions (alpha-helix and beta-sheet centers)
+        helix_phi, helix_psi = -60.0, -45.0
+        sheet_phi, sheet_psi = -135.0, 135.0
+        
         for i in move.target_residues:
             if i < len(new_phi):
-                new_phi[i] += random.uniform(-15, 15)  # ±15° change
-                new_psi[i] += random.uniform(-15, 15)
+                # Random angle change with soft bias toward favorable regions
+                delta_phi = random.uniform(-15, 15)
+                delta_psi = random.uniform(-15, 15)
+                
+                # Add gentle bias toward helix region (stronger bias = 0.3, weaker = 0.1)
+                # This helps keep angles in detectable secondary structure ranges
+                bias_strength = 0.15
+                helix_pull_phi = (helix_phi - new_phi[i]) * bias_strength
+                helix_pull_psi = (helix_psi - new_psi[i]) * bias_strength
+                
+                # Clamp the pull to not overwhelm random exploration
+                helix_pull_phi = max(-5, min(5, helix_pull_phi))
+                helix_pull_psi = max(-5, min(5, helix_pull_psi))
+                
+                new_phi[i] += delta_phi + helix_pull_phi
+                new_psi[i] += delta_psi + helix_pull_psi
+                
+                # Wrap angles to stay in valid range [-180, 180]
+                while new_phi[i] > 180:
+                    new_phi[i] -= 360
+                while new_phi[i] < -180:
+                    new_phi[i] += 360
+                while new_psi[i] > 180:
+                    new_psi[i] -= 360
+                while new_psi[i] < -180:
+                    new_psi[i] += 360
 
         # Create new conformation with preliminary energy
         new_conformation = Conformation(

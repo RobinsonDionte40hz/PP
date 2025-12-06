@@ -89,17 +89,17 @@ class ResidueAnchorState:
 class AnchorManagerConfig:
     """Configuration for the anchor manager."""
     
-    # Confidence thresholds for anchoring
-    soft_anchor_confidence: float = 0.5      # Start soft anchoring
-    medium_anchor_confidence: float = 0.7    # Upgrade to medium
-    hard_anchor_confidence: float = 0.85     # Upgrade to hard
-    locked_anchor_confidence: float = 0.95   # Lock the residue
+    # Confidence thresholds for anchoring (lowered for faster engagement)
+    soft_anchor_confidence: float = 0.4      # Start soft anchoring
+    medium_anchor_confidence: float = 0.6    # Upgrade to medium
+    hard_anchor_confidence: float = 0.75     # Upgrade to hard
+    locked_anchor_confidence: float = 0.90   # Lock the residue
     
-    # Observation requirements
-    min_observations_soft: int = 30          # Iterations before soft anchor
-    min_observations_medium: int = 60        # Iterations before medium anchor
-    min_observations_hard: int = 100         # Iterations before hard anchor
-    min_observations_locked: int = 150       # Iterations before locking
+    # Observation requirements (reduced for earlier triggering)
+    min_observations_soft: int = 10          # Iterations before soft anchor
+    min_observations_medium: int = 20        # Iterations before medium anchor
+    min_observations_hard: int = 40          # Iterations before hard anchor
+    min_observations_locked: int = 80        # Iterations before locking
     
     # Regression handling
     regression_penalty: float = 0.3          # Confidence drop on state change

@@ -1215,6 +1215,93 @@ class QuantumRefinementEngine:
     # Helper Methods
     # ========================================================================
     
+    def _maintain_bond_lengths(
+        self,
+        coords: List[Tuple[float, float, float]],
+        target_length: float = 3.8,
+        tolerance: float = 0.3
+    ) -> List[Tuple[float, float, float]]:
+        """
+        Ensure CA-CA bond lengths are maintained at target distance.
+        
+        Uses iterative relaxation to fix bond lengths while minimizing
+        overall coordinate movement. This is critical for maintaining
+        valid protein geometry during refinement.
+        
+        Args:
+            coords: List of (x, y, z) coordinate tuples
+            target_length: Target CA-CA distance in Å (default: 3.8)
+            tolerance: Acceptable deviation in Å (default: 0.3)
+        
+        Returns:
+            Corrected coordinates with proper bond lengths
+        """
+        import random
+        
+        new_coords = list(coords)
+        max_iterations = 10  # Multiple passes to relax constraints
+        
+        for iteration in range(max_iterations):
+            max_deviation = 0.0
+            
+            for i in range(len(new_coords) - 1):
+                p1 = new_coords[i]
+                p2 = new_coords[i + 1]
+
+                # Calculate current distance
+                dx = p2[0] - p1[0]
+                dy = p2[1] - p1[1]
+                dz = p2[2] - p1[2]
+                current_dist = math.sqrt(dx*dx + dy*dy + dz*dz)
+                
+                # Track maximum deviation
+                deviation = abs(current_dist - target_length)
+                max_deviation = max(max_deviation, deviation)
+
+                if deviation > tolerance * 0.5:  # If deviation significant
+                    # Protect against zero-length vectors
+                    if current_dist < 0.01:
+                        # Points are essentially identical - move second one away
+                        direction = (
+                            random.uniform(-1, 1),
+                            random.uniform(-1, 1),
+                            random.uniform(-1, 1)
+                        )
+                        mag = math.sqrt(direction[0]**2 + direction[1]**2 + direction[2]**2)
+                        if mag > 0:
+                            direction = (direction[0]/mag, direction[1]/mag, direction[2]/mag)
+                        else:
+                            direction = (1.0, 0.0, 0.0)
+                        new_coords[i + 1] = (
+                            p1[0] + direction[0] * target_length,
+                            p1[1] + direction[1] * target_length,
+                            p1[2] + direction[2] * target_length
+                        )
+                    else:
+                        # Normalize direction vector
+                        direction = (dx/current_dist, dy/current_dist, dz/current_dist)
+                        
+                        # Calculate how much to move each point (50/50 split)
+                        correction = (target_length - current_dist) * 0.5
+                        
+                        # Move first point back, second point forward
+                        new_coords[i] = (
+                            p1[0] - direction[0] * correction * 0.5,
+                            p1[1] - direction[1] * correction * 0.5,
+                            p1[2] - direction[2] * correction * 0.5
+                        )
+                        new_coords[i + 1] = (
+                            p2[0] + direction[0] * correction * 0.5,
+                            p2[1] + direction[1] * correction * 0.5,
+                            p2[2] + direction[2] * correction * 0.5
+                        )
+            
+            # Converged if all deviations are small
+            if max_deviation < tolerance * 0.5:
+                break
+        
+        return new_coords
+    
     def _create_conformation(
         self,
         sequence: str,
