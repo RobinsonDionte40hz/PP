@@ -614,8 +614,22 @@ class QuantumRefinementEngine:
             logger.warning("Final structure has questionable geometry - attempting recovery")
             # Fallback to pre-optimization structure
             refined_structure = current_structure
+            # If that's also bad, fall back to original coarse structure
+            if not self.validate_geometry(refined_structure, "strict"):
+                logger.warning("Pre-optimization structure also invalid - falling back to original coarse structure")
+                refined_structure = coarse_structure
         
         final_energy = self.energy_calculator.calculate(refined_structure)
+        # If energy is a penalty (1000), try to calculate from a valid structure
+        if final_energy >= 900:  # 1000 is the penalty value
+            logger.warning(f"Refined structure energy {final_energy:.2f} is a penalty - structure has invalid geometry")
+            # Try original coarse structure
+            fallback_energy = self.energy_calculator.calculate(coarse_structure)
+            if fallback_energy < 900:
+                logger.info(f"Using coarse structure energy {fallback_energy:.2f} instead")
+                final_energy = fallback_energy
+                refined_structure = coarse_structure
+        
         if not self.validate_energy(final_energy):
             logger.warning(f"Final energy {final_energy:.2f} kcal/mol is unusually high")
         

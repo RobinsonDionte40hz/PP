@@ -364,10 +364,22 @@ class PredictionRunner:
             raise RuntimeError("Coordinator not initialized")
         best_conf, best_energy, best_rmsd = self.coordinator.get_best_conformation()
         
-        # Use refined results if available
+        # Use refined results if available AND valid
+        # Note: energy=1000 is a penalty for invalid geometry, don't use it
         if refinement_result:
-            final_rmsd = refinement_result.final_rmsd
-            final_energy = refinement_result.energy
+            # Only use refinement RMSD if it improved (refinement can sometimes make things worse)
+            if refinement_result.final_rmsd < best_rmsd:
+                final_rmsd = refinement_result.final_rmsd
+            else:
+                final_rmsd = best_rmsd
+                logger.warning(f"Refinement RMSD ({refinement_result.final_rmsd:.2f}Å) worse than exploration ({best_rmsd:.2f}Å), using exploration result")
+            
+            # Only use refinement energy if it's valid (not a penalty)
+            if refinement_result.energy < 900:  # 1000 is the penalty value
+                final_energy = refinement_result.energy
+            else:
+                final_energy = best_energy
+                logger.warning(f"Refinement energy ({refinement_result.energy:.2f}) is a penalty value, using exploration energy ({best_energy:.2f})")
         else:
             final_rmsd = best_rmsd
             final_energy = best_energy
