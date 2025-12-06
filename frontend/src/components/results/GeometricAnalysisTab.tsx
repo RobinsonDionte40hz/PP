@@ -48,7 +48,7 @@ interface GeometricAnalysisTabProps {
 interface GeometricPattern {
   name: string;
   score: number;
-  count: number;
+  count: number | null;  // null for similarity scores that don't have counts
   percentage: number;
   icon: React.ReactNode;
   color: string;
@@ -83,31 +83,34 @@ const GeometricAnalysisTab: React.FC<GeometricAnalysisTabProps> = ({ predictionI
       const metadata = geo.metadata || {};
       
       // Transform backend data to frontend format
-      // Backend returns: platonic_similarities.icosahedron (0-1 similarity)
-      // Frontend displays as percentage
+      // Backend returns: platonic_similarities.icosahedron (0-1 similarity score)
+      // These are similarity scores, not instance counts
+      // The phi_pattern_count is the number of golden ratio patterns found
       return {
         patterns: [
           { 
             name: 'Icosahedron', 
             score: platonic.icosahedron || 0, 
-            count: geo.phi_pattern_count || 0, 
+            // Similarity scores don't have counts - they measure geometric alignment
+            count: null,  
             percentage: (platonic.icosahedron || 0) * 100
           },
           { 
             name: 'Dodecahedron', 
             score: platonic.dodecahedron || 0, 
-            count: geo.phi_pattern_count || 0, 
+            count: null, 
             percentage: (platonic.dodecahedron || 0) * 100
           },
           { 
             name: 'Octahedron', 
             score: platonic.octahedron || 0, 
-            count: geo.phi_pattern_count || 0, 
+            count: null, 
             percentage: (platonic.octahedron || 0) * 100
           },
           { 
             name: 'Golden Ratio (φ)', 
             score: (geo.golden_ratio_percentage || 0) / 100, 
+            // Only φ patterns have actual instance counts
             count: geo.phi_pattern_count || 0, 
             percentage: geo.golden_ratio_percentage || 0 
           },
@@ -231,7 +234,7 @@ const GeometricAnalysisTab: React.FC<GeometricAnalysisTabProps> = ({ predictionI
               Geometric Pattern Recognition
             </Typography>
             <Typography variant="caption" color="text.secondary" display="block" mb={3}>
-              Presence of Platonic solid geometries in protein structure
+              Similarity to Platonic solid geometries and golden ratio (φ) patterns in structure
             </Typography>
 
             <Stack spacing={3}>
@@ -242,13 +245,15 @@ const GeometricAnalysisTab: React.FC<GeometricAnalysisTabProps> = ({ predictionI
                     <Typography variant="body2" flex={1}>
                       {pattern.name}
                     </Typography>
-                    <Chip
-                      label={`${pattern.count} instances`}
-                      size="small"
-                      variant="outlined"
-                    />
+                    {pattern.count !== null && (
+                      <Chip
+                        label={`${pattern.count} patterns`}
+                        size="small"
+                        variant="outlined"
+                      />
+                    )}
                     <Typography variant="body2" fontWeight="bold" sx={{ minWidth: 60 }}>
-                      {(pattern.score * 100).toFixed(1)}%
+                      {pattern.percentage.toFixed(1)}%
                     </Typography>
                   </Box>
                   <LinearProgress
@@ -480,10 +485,9 @@ const GeometricAnalysisTab: React.FC<GeometricAnalysisTabProps> = ({ predictionI
                 <TableHead>
                   <TableRow>
                     <TableCell><strong>Pattern</strong></TableCell>
-                    <TableCell align="right"><strong>Score</strong></TableCell>
-                    <TableCell align="right"><strong>Instances</strong></TableCell>
-                    <TableCell align="right"><strong>Coverage</strong></TableCell>
-                    <TableCell><strong>Quality</strong></TableCell>
+                    <TableCell align="right"><strong>Similarity</strong></TableCell>
+                    <TableCell align="right"><strong>Patterns Found</strong></TableCell>
+                    <TableCell><strong>Alignment</strong></TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -496,10 +500,11 @@ const GeometricAnalysisTab: React.FC<GeometricAnalysisTabProps> = ({ predictionI
                         </Box>
                       </TableCell>
                       <TableCell align="right">
-                        {(pattern.score * 100).toFixed(1)}%
+                        {pattern.percentage.toFixed(1)}%
                       </TableCell>
-                      <TableCell align="right">{pattern.count}</TableCell>
-                      <TableCell align="right">{pattern.percentage.toFixed(1)}%</TableCell>
+                      <TableCell align="right">
+                        {pattern.count !== null ? pattern.count : '—'}
+                      </TableCell>
                       <TableCell>
                         <Chip
                           label={pattern.score > 0.7 ? 'High' : pattern.score > 0.5 ? 'Medium' : 'Low'}
