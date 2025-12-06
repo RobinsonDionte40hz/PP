@@ -118,10 +118,10 @@ const GeometricAnalysisTab: React.FC<GeometricAnalysisTabProps> = ({ predictionI
         // phi_angles may not be available in current implementation
         phiAngles: geo.phi_angles || [],
         symmetry: {
-          overall: symmetry.rotational || 0,
-          local: symmetry.local || 0,
-          global: symmetry.radius_of_gyration || 0,
-          asphericity: symmetry.asphericity || 0,
+          rotational: symmetry.rotational || 0,  // 0-1 score
+          local: symmetry.local || 0,            // 0-1 score
+          radiusOfGyration: symmetry.radius_of_gyration || 0,  // Ångströms (physical value)
+          asphericity: symmetry.asphericity || 0,  // 0-1 score
         },
         metadata: {
           numResidues: metadata.num_residues || 0,
@@ -162,15 +162,15 @@ const GeometricAnalysisTab: React.FC<GeometricAnalysisTabProps> = ({ predictionI
     },
     {
       metric: 'Symmetry',
-      score: (geometricData?.symmetry?.overall || 0) * 100,
+      score: (geometricData?.symmetry?.rotational || 0) * 100,
     },
     {
-      metric: 'QCP',
-      score: ((geometricData?.qcppMetrics?.avgQCP || 0) / 10) * 100,
+      metric: 'Golden φ',
+      score: geometricData?.patterns[3]?.percentage || 0,
     },
     {
-      metric: 'Coherence',
-      score: (geometricData?.qcppMetrics?.fieldCoherence || 0) * 100,
+      metric: 'Asphericity',
+      score: (1 - (geometricData?.symmetry?.asphericity || 0)) * 100, // Invert: low asphericity = more spherical = better
     },
   ];
 
@@ -425,15 +425,15 @@ const GeometricAnalysisTab: React.FC<GeometricAnalysisTabProps> = ({ predictionI
               <Box>
                 <Box display="flex" justifyContent="space-between" mb={1}>
                   <Typography variant="body2" color="text.secondary">
-                    Overall Symmetry
+                    Rotational Symmetry
                   </Typography>
                   <Typography variant="body2" fontWeight="bold">
-                    {(geometricData.symmetry.overall * 100).toFixed(1)}%
+                    {(geometricData.symmetry.rotational * 100).toFixed(1)}%
                   </Typography>
                 </Box>
                 <LinearProgress
                   variant="determinate"
-                  value={geometricData.symmetry.overall * 100}
+                  value={geometricData.symmetry.rotational * 100}
                   sx={{ height: 8, borderRadius: 4 }}
                 />
               </Box>
@@ -458,17 +458,28 @@ const GeometricAnalysisTab: React.FC<GeometricAnalysisTabProps> = ({ predictionI
               <Box>
                 <Box display="flex" justifyContent="space-between" mb={1}>
                   <Typography variant="body2" color="text.secondary">
-                    Global Symmetry
+                    Radius of Gyration
                   </Typography>
                   <Typography variant="body2" fontWeight="bold">
-                    {(geometricData.symmetry.global * 100).toFixed(1)}%
+                    {geometricData.symmetry.radiusOfGyration.toFixed(1)} Å
+                  </Typography>
+                </Box>
+              </Box>
+
+              <Box>
+                <Box display="flex" justifyContent="space-between" mb={1}>
+                  <Typography variant="body2" color="text.secondary">
+                    Asphericity
+                  </Typography>
+                  <Typography variant="body2" fontWeight="bold">
+                    {(geometricData.symmetry.asphericity * 100).toFixed(1)}%
                   </Typography>
                 </Box>
                 <LinearProgress
                   variant="determinate"
-                  value={geometricData.symmetry.global * 100}
+                  value={geometricData.symmetry.asphericity * 100}
                   sx={{ height: 8, borderRadius: 4 }}
-                  color="success"
+                  color="info"
                 />
               </Box>
             </Stack>
