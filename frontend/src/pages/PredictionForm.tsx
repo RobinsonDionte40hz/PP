@@ -33,6 +33,7 @@ interface FormData {
   enable_mediators?: boolean;
   mediator_count?: number;
   enable_refinement?: boolean;
+  enable_hierarchical_folding?: boolean;
 }
 
 const PredictionForm: React.FC = () => {
@@ -50,6 +51,7 @@ const PredictionForm: React.FC = () => {
     enable_mediators: false,
     mediator_count: 3,
     enable_refinement: false,
+    enable_hierarchical_folding: false,
   });
 
   const createPredictionMutation = useMutation({
@@ -76,6 +78,7 @@ const PredictionForm: React.FC = () => {
           enable_mediators: formData.enable_mediators || false,
           mediator_count: formData.mediator_count || 3,
           enable_refinement: formData.enable_refinement || false,
+          enable_hierarchical_folding: formData.enable_hierarchical_folding || false,
         },
       };
       createPredictionMutation.mutate(predictionData);

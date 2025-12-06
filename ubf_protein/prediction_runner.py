@@ -347,10 +347,13 @@ class PredictionRunner:
         
         # Step 5: Apply quantum refinement (if enabled)
         refinement_result = None
+        logger.info(f"Refinement check: enable_refinement={self.config.enable_refinement}, native_structure={self.native_structure is not None}")
         if self.config.enable_refinement and self.native_structure:
             self._emit_progress(progress_callback, 100, self.config.iterations, "refinement", 
                               "Applying quantum refinement...")
             refinement_result = self._run_refinement(exploration_results)
+        elif self.config.enable_refinement and not self.native_structure:
+            logger.warning("Refinement enabled but no native structure loaded - skipping refinement")
         
         # Step 6: Calculate final metrics
         self._emit_progress(progress_callback, 100, self.config.iterations, "analysis", 
@@ -550,8 +553,10 @@ class PredictionRunner:
     def _load_native_structure(self):
         """Load native structure for RMSD validation."""
         if not self.config.native_pdb and not self.config.pdb_file_path:
-            logger.info("No native structure specified")
+            logger.info("No native structure specified - skipping native structure loading")
             return
+        
+        logger.info(f"Attempting to load native structure: pdb={self.config.native_pdb}, file={self.config.pdb_file_path}")
         
         try:
             loader = NativeStructureLoader(cache_dir="./pdb_cache")
@@ -566,11 +571,17 @@ class PredictionRunner:
                     self.config.native_pdb, ca_only=True
                 )
                 logger.info(f"Loaded native from PDB: {self.config.native_pdb}")
+            else:
+                logger.warning("No valid native structure path or PDB ID")
             
-            self.rmsd_calculator = RMSDCalculator(align_structures=True)
+            if self.native_structure:
+                logger.info(f"Native structure loaded successfully: {self.native_structure.pdb_id}, {len(self.native_structure.ca_coords)} CA atoms")
+                self.rmsd_calculator = RMSDCalculator(align_structures=True)
+            else:
+                logger.warning("Native structure loading returned None")
             
         except Exception as e:
-            logger.warning(f"Failed to load native structure: {e}")
+            logger.error(f"Failed to load native structure: {e}", exc_info=True)
     
     def _init_coordinator(self):
         """Initialize multi-agent coordinator."""

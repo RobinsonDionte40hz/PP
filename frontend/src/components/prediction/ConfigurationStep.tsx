@@ -30,6 +30,7 @@ interface ConfigurationStepProps {
     enable_mediators?: boolean;
     mediator_count?: number;
     enable_refinement?: boolean;
+    enable_hierarchical_folding?: boolean;
   };
   onChange: (updates: Partial<ConfigurationStepProps['formData']>) => void;
 }
@@ -257,6 +258,27 @@ const ConfigurationStep: React.FC<ConfigurationStepProps> = ({ formData, onChang
                   <Switch
                     checked={formData.enable_refinement || false}
                     onChange={(e) => onChange({ enable_refinement: e.target.checked })}
+                  />
+                }
+                label=""
+              />
+            </Box>
+          </FormControl>
+
+          {/* Hierarchical Folding */}
+          <FormControl>
+            <Box display="flex" alignItems="center" justifyContent="space-between">
+              <Box>
+                <FormLabel>Hierarchical Folding</FormLabel>
+                <Typography variant="caption" color="text.secondary" display="block">
+                  Progressive search confinement - anchors stable secondary structure to reduce search space
+                </Typography>
+              </Box>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={formData.enable_hierarchical_folding || false}
+                    onChange={(e) => onChange({ enable_hierarchical_folding: e.target.checked })}
                   />
                 }
                 label=""

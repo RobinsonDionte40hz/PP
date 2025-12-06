@@ -16,6 +16,7 @@ export interface PredictionConfiguration {
   enable_mediators?: boolean;
   mediator_count?: number;
   enable_refinement?: boolean;
+  enable_hierarchical_folding?: boolean;
 }
 
 export interface PredictionCreate {
