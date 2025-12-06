@@ -338,6 +338,13 @@ const LiveMonitoring: React.FC = () => {
     ? (prediction.current_iteration / prediction.total_iterations) * 100
     : 0;
 
+  // For real-time display, prefer WebSocket data over database data
+  const currentIteration = latestProgress?.iteration ?? prediction.current_iteration;
+  const totalIterations = latestProgress?.total_iterations ?? prediction.total_iterations;
+  const displayProgress = totalIterations > 0 
+    ? (currentIteration / totalIterations) * 100 
+    : progress;
+
   return (
     <Box sx={{ p: 3 }}>
       {/* Header */}
@@ -438,12 +445,12 @@ const LiveMonitoring: React.FC = () => {
             Progress
           </Typography>
           <Typography variant="h6" color="primary" fontWeight="bold">
-            {progress.toFixed(1)}%
+            {displayProgress.toFixed(1)}%
           </Typography>
         </Box>
         <LinearProgress
           variant="determinate"
-          value={progress}
+          value={displayProgress}
           sx={{
             height: 12,
             borderRadius: 6,
@@ -455,8 +462,8 @@ const LiveMonitoring: React.FC = () => {
           }}
         />
         <Typography variant="caption" color="text.secondary">
-          Iteration {prediction.current_iteration.toLocaleString()} of{' '}
-          {prediction.total_iterations.toLocaleString()}
+          Iteration {currentIteration.toLocaleString()} of{' '}
+          {totalIterations.toLocaleString()}
         </Typography>
       </Paper>
 

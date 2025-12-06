@@ -184,6 +184,9 @@ class PredictionService:
             if data.current_iteration is not None:
                 prediction.current_iteration = data.current_iteration
             
+            if data.total_iterations is not None:
+                prediction.total_iterations = data.total_iterations
+            
             if data.progress_percentage is not None:
                 prediction.progress_percentage = data.progress_percentage
             

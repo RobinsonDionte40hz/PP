@@ -177,9 +177,10 @@ const SummaryTab: React.FC<SummaryTabProps> = ({ prediction }) => {
   ];
 
   // Configuration summary
+  const actualIterations = prediction.total_iterations || prediction.configuration?.iterations || 1000;
   const configSummary = [
     { label: 'Agents', value: prediction.configuration?.agents || 10 },
-    { label: 'Iterations', value: prediction.total_iterations || 1000 },
+    { label: 'Iterations', value: actualIterations },
     { label: 'Diversity', value: (prediction.configuration?.diversity || 'balanced').charAt(0).toUpperCase() + (prediction.configuration?.diversity || 'balanced').slice(1) },
     { label: 'QCPP Config', value: prediction.configuration?.qcpp_config ? prediction.configuration.qcpp_config.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : 'None' },
     { label: 'Native PDB', value: prediction.configuration?.native_pdb || 'None' },
@@ -187,8 +188,8 @@ const SummaryTab: React.FC<SummaryTabProps> = ({ prediction }) => {
   ];
 
   // Calculate completion percentage
-  const completionPercentage = prediction.current_iteration && prediction.total_iterations
-    ? Math.round((prediction.current_iteration / prediction.total_iterations) * 100)
+  const completionPercentage = prediction.current_iteration && actualIterations
+    ? Math.round((prediction.current_iteration / actualIterations) * 100)
     : 100;
 
   return (

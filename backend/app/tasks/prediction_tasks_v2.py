@@ -118,11 +118,13 @@ def create_websocket_progress_callback(prediction_id: str, total_iterations: int
             if update.secondary_structure:
                 metrics_update["secondary_structure"] = update.secondary_structure
             
-            # Update database
+            # Update database with current progress AND total iterations
+            # This ensures the frontend always knows the actual total iterations
             prediction_service.update_prediction(
                 prediction_id,
                 PredictionUpdateSchema(
                     current_iteration=update.iteration,
+                    total_iterations=update.total_iterations,  # Update total too
                     progress_percentage=update.progress_percentage,
                     metrics=sanitize_metrics(metrics_update)
                 )

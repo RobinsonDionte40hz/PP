@@ -80,6 +80,7 @@ const GeometricAnalysisTab: React.FC<GeometricAnalysisTabProps> = ({ predictionI
       // Extract platonic similarities (nested structure from backend)
       const platonic = geo.platonic_similarities || {};
       const symmetry = geo.symmetry_metrics || {};
+      const metadata = geo.metadata || {};
       
       // Transform backend data to frontend format
       // Backend returns: platonic_similarities.icosahedron (0-1 similarity)
@@ -111,11 +112,17 @@ const GeometricAnalysisTab: React.FC<GeometricAnalysisTabProps> = ({ predictionI
             percentage: geo.golden_ratio_percentage || 0 
           },
         ],
+        // phi_angles may not be available in current implementation
         phiAngles: geo.phi_angles || [],
         symmetry: {
           overall: symmetry.rotational || 0,
           local: symmetry.local || 0,
           global: symmetry.radius_of_gyration || 0,
+          asphericity: symmetry.asphericity || 0,
+        },
+        metadata: {
+          numResidues: metadata.num_residues || 0,
+          timestamp: metadata.timestamp || 0,
         },
         qcppMetrics: {
           avgQCP: qcpp.qcp_score || 0,

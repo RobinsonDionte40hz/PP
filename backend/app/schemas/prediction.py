@@ -140,6 +140,7 @@ class PredictionUpdateSchema(BaseModel):
     status: Optional[PredictionStatus] = None
     task_id: Optional[str] = None
     current_iteration: Optional[int] = None
+    total_iterations: Optional[int] = None  # Track actual iterations being run
     progress_percentage: Optional[float] = None
     metrics: Optional[Dict[str, Any]] = None
     error_message: Optional[str] = None
