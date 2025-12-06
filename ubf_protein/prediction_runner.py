@@ -97,6 +97,10 @@ class PredictionConfig:
     mediator_count: int = 2
     target_geometry: str = "none"  # 'none', 'octahedron', 'icosahedron', 'dodecahedron', etc.
     
+    # Hierarchical Folding (progressive search confinement)
+    enable_hierarchical_folding: bool = False
+    hierarchical_aggressive: bool = False  # Use aggressive anchoring if True
+    
     # Checkpointing
     enable_checkpointing: bool = True
     checkpoint_dir: Optional[str] = None
@@ -573,6 +577,7 @@ class PredictionRunner:
             mediator_count=self.config.mediator_count,
             enable_checkpointing=self.config.enable_checkpointing,
             checkpoint_dir=checkpoint_dir,
+            enable_hierarchical_folding=self.config.enable_hierarchical_folding,
         )
         
         # Initialize agents
@@ -582,6 +587,14 @@ class PredictionRunner:
             native_structure=self.native_structure
         )
         logger.info(f"Initialized {self.config.agents} agents ({self.config.diversity} diversity)")
+        
+        # Initialize hierarchical folding if enabled
+        if self.config.enable_hierarchical_folding:
+            try:
+                self.coordinator.initialize_hierarchical_folding()
+                logger.info("Initialized hierarchical folding (progressive search confinement)")
+            except Exception as e:
+                logger.warning(f"Failed to initialize hierarchical folding: {e}")
         
         # Initialize mediators if enabled
         if self.config.enable_mediators:

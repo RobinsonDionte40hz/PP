@@ -638,6 +638,127 @@ class MediatorAgent:
         print(f"  Folding observations: {stats['folding_observations']}")
         
         print("=" * 70 + "\n")
+    
+    # ========================================================================
+    # Anchoring Recommendation System (Task: Hierarchical Folding Integration)
+    # ========================================================================
+    
+    def get_anchoring_recommendations(
+        self,
+        conformation: 'Conformation',
+        geometric_scores: Optional['GeometricRelationshipScores'] = None
+    ) -> List[Dict]:
+        """
+        Generate anchoring recommendations based on detected stable patterns.
+        
+        This method analyzes detected folding patterns and geometric scores
+        to recommend which residue regions should be anchored.
+        
+        Args:
+            conformation: Current conformation to analyze
+            geometric_scores: Optional geometric analysis results
+        
+        Returns:
+            List of anchoring recommendation dictionaries with:
+            - 'residue_range': (start, end) tuple
+            - 'structure_type': 'helix', 'sheet', or 'turn'
+            - 'confidence': 0.0-1.0 confidence in the recommendation
+            - 'reason': Human-readable explanation
+        
+        Example:
+            >>> recommendations = mediator.get_anchoring_recommendations(conf)
+            >>> for rec in recommendations:
+            ...     if rec['confidence'] > 0.7:
+            ...         anchor_manager.anchor_region(rec['residue_range'])
+        """
+        recommendations = []
+        
+        # Analyze folding patterns for stable secondary structure
+        for pattern in self.folding_patterns:
+            if pattern.significance in [PatternSignificance.MEDIUM, PatternSignificance.HIGH]:
+                confidence = pattern.stability_score
+                
+                # Boost confidence for repeatedly observed patterns
+                if pattern.occurrence_count >= 5:
+                    confidence = min(1.0, confidence + 0.2)
+                elif pattern.occurrence_count >= 10:
+                    confidence = min(1.0, confidence + 0.3)
+                
+                # High significance patterns get extra boost
+                if pattern.significance == PatternSignificance.HIGH:
+                    confidence = min(1.0, confidence + 0.1)
+                
+                recommendations.append({
+                    'residue_range': (pattern.start_residue, pattern.end_residue),
+                    'structure_type': pattern.pattern_type,
+                    'confidence': confidence,
+                    'reason': (
+                        f"Stable {pattern.pattern_type} detected ({pattern.occurrence_count} "
+                        f"observations, stability={pattern.stability_score:.2f})"
+                    )
+                })
+        
+        # Analyze geometric patterns for ordered regions
+        if geometric_scores is not None:
+            # High local symmetry suggests stable secondary structure
+            if geometric_scores.local_symmetry > 70:
+                # This indicates regular backbone geometry
+                recommendations.append({
+                    'residue_range': (0, geometric_scores.num_residues - 1),
+                    'structure_type': 'ordered',
+                    'confidence': geometric_scores.local_symmetry / 100.0,
+                    'reason': (
+                        f"High local symmetry ({geometric_scores.local_symmetry:.1f}%) "
+                        f"indicates stable backbone geometry"
+                    )
+                })
+            
+            # High phi patterns suggest stable folding
+            if geometric_scores.phi_angle_patterns > 30:
+                recommendations.append({
+                    'residue_range': (0, geometric_scores.num_residues - 1),
+                    'structure_type': 'phi_stable',
+                    'confidence': geometric_scores.phi_angle_patterns / 100.0 * 0.8,
+                    'reason': (
+                        f"Strong phi angle patterns ({geometric_scores.phi_angle_patterns:.1f}%) "
+                        f"suggest stable backbone configuration"
+                    )
+                })
+        
+        # Sort by confidence (highest first)
+        recommendations.sort(key=lambda x: x['confidence'], reverse=True)
+        
+        return recommendations
+    
+    def get_stable_regions(
+        self,
+        min_confidence: float = 0.6,
+        min_observations: int = 5
+    ) -> List[Tuple[int, int, str]]:
+        """
+        Get residue regions that show stable secondary structure.
+        
+        This is a simplified interface for the anchoring system.
+        
+        Args:
+            min_confidence: Minimum confidence threshold
+            min_observations: Minimum observation count
+        
+        Returns:
+            List of (start_residue, end_residue, structure_type) tuples
+        """
+        stable_regions = []
+        
+        for pattern in self.folding_patterns:
+            if (pattern.stability_score >= min_confidence and 
+                pattern.occurrence_count >= min_observations):
+                stable_regions.append((
+                    pattern.start_residue,
+                    pattern.end_residue,
+                    pattern.pattern_type
+                ))
+        
+        return stable_regions
 
 
 # ============================================================================

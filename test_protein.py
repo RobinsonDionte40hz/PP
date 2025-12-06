@@ -543,7 +543,8 @@ def save_conformation_as_pdb(sequence: str, coordinates: list, energy: float,
 def run_protein_test(sequence: str, pdb_file: Optional[Path] = None, pdb_id: Optional[str] = None, 
                      custom_agents: Optional[int] = None, custom_iterations: Optional[int] = None,
                      target_geometry: str = 'none', enable_mediators: bool = False, 
-                     mediator_count: int = 2, enable_refinement: bool = False):
+                     mediator_count: int = 2, enable_refinement: bool = False,
+                     enable_hierarchical: bool = False):
     """Run complete protein test with QCPP-UBF integration."""
     
     print("\n" + "="*70)
@@ -575,6 +576,10 @@ def run_protein_test(sequence: str, pdb_file: Optional[Path] = None, pdb_id: Opt
         print(f"  - ⚛️ Quantum Refinement: ENABLED (two-stage optimization)")
     else:
         print(f"  - Quantum Refinement: Disabled")
+    if enable_hierarchical:
+        print(f"  - 🔗 Hierarchical Folding: ENABLED (progressive search confinement)")
+    else:
+        print(f"  - Hierarchical Folding: Disabled")
     
     # Load experimental data if available
     exp_data = None
@@ -613,7 +618,8 @@ def run_protein_test(sequence: str, pdb_file: Optional[Path] = None, pdb_id: Opt
         target_geometry=target_geometry,
         enable_mediators=enable_mediators,
         mediator_count=mediator_count,
-        enable_quantum_refinement=enable_refinement
+        enable_quantum_refinement=enable_refinement,
+        enable_hierarchical_folding=enable_hierarchical
     )
     
     coordinator.initialize_agents(
@@ -626,6 +632,14 @@ def run_protein_test(sequence: str, pdb_file: Optional[Path] = None, pdb_id: Opt
     if enable_mediators:
         coordinator.initialize_mediators()
         print(f"✓ {mediator_count} Mediator agents initialized (pattern detection active)")
+    
+    # Initialize Hierarchical Folding if enabled
+    if enable_hierarchical:
+        try:
+            coordinator.initialize_hierarchical_folding()
+            print(f"✓ Hierarchical folding initialized (anchoring + phase control)")
+        except Exception as e:
+            print(f"⚠️ Could not initialize hierarchical folding: {e}")
     
     # Step 3: Run exploration
     print(f"\n[3/5] Running parallel exploration...")
@@ -996,6 +1010,67 @@ def run_protein_test(sequence: str, pdb_file: Optional[Path] = None, pdb_id: Opt
             # Mediators not enabled or error occurred
             print(f"⚠️  Could not retrieve Mediator statistics: {e}")
     
+    # Get Hierarchical Folding statistics if enabled
+    hierarchical_stats = None
+    if enable_hierarchical:
+        try:
+            hierarchical_stats = coordinator.get_hierarchical_folding_statistics()
+            print(f"\n🔗 HIERARCHICAL FOLDING ANALYSIS:")
+            
+            # Phase information
+            if 'phase' in hierarchical_stats:
+                phase_info = hierarchical_stats['phase']
+                current_phase = phase_info.get('current_phase', 'unknown')
+                iterations_in_phase = phase_info.get('iterations_in_phase', 0)
+                print(f"  - Current Phase: {current_phase.upper()}")
+                print(f"  - Iterations in Phase: {iterations_in_phase}")
+                
+                # Phase metrics
+                if 'metrics' in phase_info:
+                    metrics = phase_info['metrics']
+                    print(f"  - Move Scale: {phase_info.get('move_scale', 1.0):.2f}")
+                    print(f"  - Energy Stable Iterations: {metrics.get('energy_stable_iterations', 0)}")
+            
+            # Anchoring information
+            if 'anchoring' in hierarchical_stats:
+                anchor_info = hierarchical_stats['anchoring']
+                anchor_pct = anchor_info.get('anchoring_percentage', 0.0)
+                print(f"  - Residues Anchored: {anchor_pct:.1f}%")
+                
+                # Anchor distribution
+                if 'anchor_distribution' in anchor_info:
+                    dist = anchor_info['anchor_distribution']
+                    soft = dist.get('soft', 0)
+                    medium = dist.get('medium', 0)
+                    hard = dist.get('hard', 0)
+                    locked = dist.get('locked', 0)
+                    
+                    if soft + medium + hard + locked > 0:
+                        print(f"    • Soft: {soft}, Medium: {medium}, Hard: {hard}, Locked: {locked}")
+                
+                # Anchored segments
+                if 'anchored_segments' in anchor_info and anchor_info['anchored_segments']:
+                    print(f"  - Anchored Segments:")
+                    for seg in anchor_info['anchored_segments'][:5]:  # Show first 5
+                        print(f"    • Residues {seg['start']}-{seg['end']} ({seg['length']} res): {seg['state']}")
+                
+                # Statistics
+                if 'statistics' in anchor_info:
+                    stats = anchor_info['statistics']
+                    print(f"  - Constraint Rate: {stats.get('constraint_rate', 0.0):.1f}%")
+                    print(f"  - Anchor Promotions: {stats.get('anchor_promotions', 0)}")
+                    
+            # Interpretation
+            if hierarchical_stats.get('anchoring', {}).get('anchoring_percentage', 0) > 30:
+                print(f"  ✨ SIGNIFICANT anchoring achieved - search space reduced!")
+            elif hierarchical_stats.get('anchoring', {}).get('anchoring_percentage', 0) > 10:
+                print(f"  ⚡ Moderate anchoring - some structure stabilized")
+            else:
+                print(f"  📊 Limited anchoring - more iterations may help")
+                
+        except (ValueError, AttributeError) as e:
+            print(f"⚠️  Could not retrieve Hierarchical Folding statistics: {e}")
+    
     print(f"\n" + "="*70)
     
     # Overall assessment
@@ -1123,6 +1198,7 @@ Examples:
   python test_protein.py --pdb 1UBQ --agents 30        # Custom agent count
   python test_protein.py --pdb 1UBQ --enable-mediators # Enable pattern detection
   python test_protein.py --pdb 1UBQ --enable-refinement # Enable quantum refinement
+  python test_protein.py --pdb 1UBQ --enable-hierarchical # Enable hierarchical folding
   python test_protein.py --pdb 1UBQ --enable-mediators --mediator-count 5  # 5 Mediators
         """
     )
@@ -1141,6 +1217,8 @@ Examples:
                         help='Number of Mediator Agents to deploy (default: 2, only used if --enable-mediators is set)')
     parser.add_argument('--enable-refinement', action='store_true',
                         help='Enable quantum refinement for two-stage optimization (coarse → refined)')
+    parser.add_argument('--enable-hierarchical', action='store_true',
+                        help='Enable hierarchical folding with progressive search confinement (anchoring + phase control)')
     parser.add_argument('--list', action='store_true', help='List available test proteins')
     parser.add_argument('--quick', action='store_true', help='Quick test on Villin (35 residues)')
     
@@ -1203,7 +1281,8 @@ Examples:
             target_geometry=args.target_geometry,
             enable_mediators=args.enable_mediators,
             mediator_count=args.mediator_count,
-            enable_refinement=args.enable_refinement
+            enable_refinement=args.enable_refinement,
+            enable_hierarchical=args.enable_hierarchical
         )
     
     # Test with custom sequence
@@ -1218,7 +1297,8 @@ Examples:
             target_geometry=args.target_geometry,
             enable_mediators=args.enable_mediators,
             mediator_count=args.mediator_count,
-            enable_refinement=args.enable_refinement
+            enable_refinement=args.enable_refinement,
+            enable_hierarchical=args.enable_hierarchical
         )
 
 

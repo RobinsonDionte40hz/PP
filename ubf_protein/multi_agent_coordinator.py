@@ -65,7 +65,9 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
                  mediator_config: Optional[Any] = None,
                  enable_quantum_refinement: bool = False,
                  refinement_rmsd_threshold: float = 5.0,
-                 refinement_config: Optional[Any] = None):
+                 refinement_config: Optional[Any] = None,
+                 enable_hierarchical_folding: bool = False,
+                 hierarchical_config: Optional[Any] = None):
         """
         Initialize multi-agent coordinator with protein sequence.
 
@@ -85,6 +87,8 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
             enable_quantum_refinement: Whether to enable automatic quantum refinement for coarse structures (default: False)
             refinement_rmsd_threshold: RMSD threshold to trigger refinement in Ångströms (default: 5.0Å)
             refinement_config: Optional RefinementConfig instance for customization (uses default if None)
+            enable_hierarchical_folding: Whether to enable hierarchical folding with anchoring (default: False)
+            hierarchical_config: Optional HierarchicalFoldingConfig instance (uses default if None)
         """
         self._protein_sequence = protein_sequence
         self._agents: List[IProteinAgent] = []
@@ -96,6 +100,11 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
         self._mediator_config = mediator_config
         self._mediators: List[Any] = []  # List of MediatorAgent instances
         self._geometric_analyzer: Optional[Any] = None  # GeometricAttractorAnalyzer instance
+        
+        # Hierarchical Folding configuration (NEW: Progressive confinement)
+        self._enable_hierarchical_folding = enable_hierarchical_folding
+        self._hierarchical_config = hierarchical_config
+        self._hierarchical_manager: Optional[Any] = None  # HierarchicalFoldingManager instance
         
         # Geometric targeting (NEW: Prescriptive targeting support)
         self._target_geometry = target_geometry
@@ -257,6 +266,75 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
                 self._agents.append(agent)
 
         return self._agents
+    
+    def initialize_hierarchical_folding(self) -> 'Any':
+        """
+        Initialize Hierarchical Folding Manager for progressive search confinement.
+        
+        Creates a HierarchicalFoldingManager that coordinates:
+        - ResidueAnchorManager: Tracks and locks stable secondary structure
+        - PhaseController: Manages exploration phase transitions
+        
+        This enables the system to progressively constrain the search space
+        as stable structure is detected, mimicking real protein folding.
+        
+        Returns:
+            Initialized HierarchicalFoldingManager
+        
+        Raises:
+            ValueError: If hierarchical folding is disabled
+        
+        Example:
+            >>> coordinator = MultiAgentCoordinator(
+            ...     protein_sequence="ACDEFGH",
+            ...     enable_hierarchical_folding=True
+            ... )
+            >>> hf_manager = coordinator.initialize_hierarchical_folding()
+            >>> print(f"Phase: {hf_manager.get_current_phase()}")
+        """
+        if not self._enable_hierarchical_folding:
+            raise ValueError(
+                "Hierarchical folding is not enabled. "
+                "Set enable_hierarchical_folding=True in constructor."
+            )
+        
+        try:
+            from .hierarchical_folding import (
+                HierarchicalFoldingManager, 
+                HierarchicalFoldingConfig,
+                create_hierarchical_folding_manager
+            )
+        except ImportError as e:
+            raise ValueError(f"Cannot import HierarchicalFoldingManager: {e}")
+        
+        sequence_length = len(self._protein_sequence)
+        
+        if self._hierarchical_config is not None:
+            self._hierarchical_manager = HierarchicalFoldingManager(
+                sequence_length=sequence_length,
+                config=self._hierarchical_config
+            )
+        else:
+            # Use factory with reasonable defaults
+            self._hierarchical_manager = create_hierarchical_folding_manager(
+                sequence_length=sequence_length,
+                enable_anchoring=True,
+                enable_phases=True,
+                aggressive=False,
+                fast=False
+            )
+        
+        logger.info(
+            f"Initialized HierarchicalFoldingManager for {sequence_length} residues "
+            f"(anchoring={self._hierarchical_manager.config.enable_anchoring}, "
+            f"phases={self._hierarchical_manager.config.enable_phase_control})"
+        )
+        
+        return self._hierarchical_manager
+    
+    def get_hierarchical_manager(self) -> Optional['Any']:
+        """Get the hierarchical folding manager if initialized."""
+        return self._hierarchical_manager
 
     def initialize_mediators(self) -> List[Any]:
         """
@@ -578,6 +656,31 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
                     except Exception as e:
                         # Log but don't crash - mediator cycle is non-critical
                         logger.warning(f"Mediator cycle failed at iteration {self._total_iterations}: {e}")
+            
+            # Hierarchical Folding: Update anchoring and phase control
+            if self._enable_hierarchical_folding and self._hierarchical_manager is not None:
+                try:
+                    if self._best_conformation is not None:
+                        # Update the hierarchical folding manager with current state
+                        self._hierarchical_manager.update(
+                            iteration=self._total_iterations,
+                            conformation=self._best_conformation,
+                            energy=self._best_energy,
+                            rmsd=self._best_rmsd if self._best_rmsd < float('inf') else None
+                        )
+                        
+                        # Log phase transitions and anchoring progress periodically
+                        if (iteration + 1) % 50 == 0:
+                            phase = self._hierarchical_manager.get_current_phase()
+                            anchor_pct = self._hierarchical_manager.get_anchoring_percentage()
+                            logger.info(
+                                f"Hierarchical Folding @ iter {self._total_iterations}: "
+                                f"phase={phase.value if phase else 'N/A'}, "
+                                f"anchored={anchor_pct:.1f}%"
+                            )
+                except Exception as e:
+                    # Log but don't crash - hierarchical folding is non-critical
+                    logger.warning(f"Hierarchical folding update failed at iteration {self._total_iterations}: {e}")
             
             # Task 9: Record integrated trajectory point if QCPP enabled
             # Only record every N iterations to avoid performance bottleneck
@@ -1384,6 +1487,48 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
             }
         
         return total_stats
+    
+    def get_hierarchical_folding_statistics(self) -> Dict[str, Any]:
+        """
+        Get statistics from the Hierarchical Folding Manager.
+        
+        Returns comprehensive metrics about the hierarchical folding progress including:
+        - Current exploration phase
+        - Anchoring percentage and distribution
+        - Phase transition history
+        - Move constraint statistics
+        
+        Returns:
+            Dictionary with hierarchical folding statistics
+        
+        Raises:
+            ValueError: If hierarchical folding is not enabled
+        
+        Example:
+            >>> coordinator = MultiAgentCoordinator(
+            ...     protein_sequence="ACDEFGH",
+            ...     enable_hierarchical_folding=True
+            ... )
+            >>> coordinator.initialize_hierarchical_folding()
+            >>> coordinator.initialize_agents(count=10)
+            >>> coordinator.run_parallel_exploration(iterations=200)
+            >>> 
+            >>> stats = coordinator.get_hierarchical_folding_statistics()
+            >>> print(f"Phase: {stats['current_phase']}")
+            >>> print(f"Anchored: {stats['anchoring_percentage']:.1f}%")
+        """
+        if not self._enable_hierarchical_folding:
+            raise ValueError("Hierarchical folding is not enabled. Cannot get statistics.")
+        
+        if self._hierarchical_manager is None:
+            return {
+                'enabled': False,
+                'initialized': False,
+                'current_phase': None,
+                'anchoring_percentage': 0.0,
+            }
+        
+        return self._hierarchical_manager.get_summary()
     
     def export_best_conformation_coordinates(self) -> Optional[List[Tuple[float, float, float]]]:
         """
