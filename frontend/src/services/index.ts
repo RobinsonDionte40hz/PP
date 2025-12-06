@@ -4,3 +4,4 @@ export { predictionService } from './predictionService';
 export { campaignService } from './campaignService';
 export { resultService } from './resultService';
 export { websocketService } from './websocketService';
+export { screeningService } from './screeningService';

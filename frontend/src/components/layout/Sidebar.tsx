@@ -15,6 +15,7 @@ import AddCircleIcon from '@mui/icons-material/AddCircle';
 import MonitorHeartIcon from '@mui/icons-material/MonitorHeart';
 import HistoryIcon from '@mui/icons-material/History';
 import CampaignIcon from '@mui/icons-material/Campaign';
+import ScienceIcon from '@mui/icons-material/Science';
 import SettingsIcon from '@mui/icons-material/Settings';
 
 interface SidebarProps {
@@ -38,6 +39,7 @@ const mainNavItems: NavItem[] = [
 ];
 
 const secondaryNavItems: NavItem[] = [
+  { text: 'Aggregation Screening', icon: <ScienceIcon />, path: '/dashboard/screening' },
   { text: 'Campaign Management', icon: <CampaignIcon />, path: '/dashboard/campaigns' },
 ];
 

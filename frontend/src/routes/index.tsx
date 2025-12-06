@@ -19,6 +19,7 @@ const HistoryBrowser = lazy(() => import('../pages/HistoryBrowser'));
 const Settings = lazy(() => import('../pages/Settings'));
 const Login = lazy(() => import('../pages/Login'));
 const Register = lazy(() => import('../pages/Register'));
+const AggregationScreening = lazy(() => import('../pages/AggregationScreening'));
 
 // Suspense wrapper for lazy-loaded components
 const withSuspense = (Component: React.LazyExoticComponent<React.ComponentType<any>>) => (
@@ -113,6 +114,10 @@ export const router = createBrowserRouter([
           {
             path: 'campaigns',
             element: withSuspense(CampaignManagement),
+          },
+          {
+            path: 'screening',
+            element: withSuspense(AggregationScreening),
           },
           {
             path: 'visualization',
