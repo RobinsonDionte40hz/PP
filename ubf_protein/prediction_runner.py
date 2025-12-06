@@ -192,6 +192,9 @@ class PredictionResults:
     # Mediator statistics
     mediator_stats: Optional[Dict[str, Any]] = None
     
+    # Hierarchical folding statistics
+    hierarchical_folding_stats: Optional[Dict[str, Any]] = None
+    
     # Best conformation data
     best_conformation_coords: Optional[List[Tuple[float, float, float]]] = None
     
@@ -394,6 +397,14 @@ class PredictionRunner:
             except Exception as e:
                 logger.warning(f"Could not get mediator stats: {e}")
         
+        # Step 10: Get hierarchical folding statistics
+        hierarchical_stats = None
+        if self.config.enable_hierarchical_folding:
+            try:
+                hierarchical_stats = self.coordinator.get_hierarchical_folding_statistics()
+            except Exception as e:
+                logger.warning(f"Could not get hierarchical folding stats: {e}")
+        
         # Calculate additional metrics
         total_conformations = self.config.agents * self.config.iterations
         throughput = total_conformations / exploration_time if exploration_time > 0 else 0
@@ -468,6 +479,9 @@ class PredictionRunner:
             
             # Mediator
             mediator_stats=mediator_stats,
+            
+            # Hierarchical folding
+            hierarchical_folding_stats=hierarchical_stats,
             
             # Best conformation
             best_conformation_coords=list(best_conf.atom_coordinates) if best_conf else None,

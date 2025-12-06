@@ -247,10 +247,12 @@ def run_prediction_v2(self, prediction_id: str):
             output_dir=str(prediction_dir),
             save_pdb=True,
             save_trajectory=True,
+            enable_hierarchical_folding=config.get('enable_hierarchical_folding', False),
         )
         
         logger.info(f"Running prediction: seq_len={len(sequence)}, "
-                   f"agents={pred_config.agents}, iter={pred_config.iterations}")
+                   f"agents={pred_config.agents}, iter={pred_config.iterations}, "
+                   f"hierarchical={pred_config.enable_hierarchical_folding}")
         
         # Create progress callback for WebSocket updates
         progress_callback = create_websocket_progress_callback(
@@ -287,6 +289,8 @@ def run_prediction_v2(self, prediction_id: str):
             "qcp_score": results.qcp_score,
             "refinement_applied": results.refinement_applied,
             "refinement_improvement_percent": results.refinement_improvement_percent,
+            "hierarchical_folding_enabled": config.get('enable_hierarchical_folding', False),
+            "hierarchical_folding_stats": results.hierarchical_folding_stats,
         })
         
         # Update prediction as completed

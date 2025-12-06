@@ -20,6 +20,7 @@ class PredictionConfigurationSchema(BaseModel):
     enable_mediators: bool = Field(default=False, description="Enable mediator agents for pattern detection")
     mediator_count: int = Field(default=3, ge=1, le=10, description="Number of mediator agents")
     enable_refinement: bool = Field(default=False, description="Enable quantum refinement post-processing")
+    enable_hierarchical_folding: bool = Field(default=False, description="Enable hierarchical folding with progressive search confinement")
     
     @field_validator("diversity")
     @classmethod
