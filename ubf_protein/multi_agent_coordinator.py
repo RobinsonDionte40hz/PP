@@ -948,6 +948,9 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
             "triggering quantum refinement"
         )
         
+        # Save pre-refinement best energy in case refinement produces invalid energy
+        pre_refinement_energy = self._best_energy
+        
         try:
             refinement_result = self._refinement_engine.refine_structure_quantum(
                 coarse_structure=exploration_results.best_conformation,
@@ -964,7 +967,13 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
             # Update best conformation with refined structure
             self._best_conformation = refinement_result.refined_structure
             self._best_rmsd = refinement_result.final_rmsd
-            self._best_energy = refinement_result.energy
+            
+            # Only update energy if it's valid (negative for folded protein)
+            if refinement_result.energy < 0 and refinement_result.energy > -10000:
+                self._best_energy = refinement_result.energy
+            else:
+                logger.warning(f"Refinement energy {refinement_result.energy:.2f} is invalid, keeping pre-refinement energy {pre_refinement_energy:.2f}")
+                # Keep pre-refinement energy
             
         except Exception as e:
             logger.error(f"Quantum refinement failed: {e}")

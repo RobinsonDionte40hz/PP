@@ -364,25 +364,52 @@ class PredictionRunner:
             raise RuntimeError("Coordinator not initialized")
         best_conf, best_energy, best_rmsd = self.coordinator.get_best_conformation()
         
+        # Get energy from hierarchical folding if available (most reliable source)
+        hierarchical_energy = None
+        if self.coordinator and hasattr(self.coordinator, '_hierarchical_controller'):
+            hc = self.coordinator._hierarchical_controller
+            if hc and hasattr(hc, 'get_current_metrics'):
+                hc_metrics = hc.get_current_metrics()
+                if hc_metrics and 'best_energy' in hc_metrics:
+                    hierarchical_energy = hc_metrics['best_energy']
+                    logger.info(f"Hierarchical controller best energy: {hierarchical_energy:.2f}")
+        
+        # Helper to check if energy is valid (should be negative for folded protein)
+        def is_valid_energy(e: float) -> bool:
+            return e is not None and e < 0 and e > -10000  # Reasonable range: -10000 to 0
+        
         # Use refined results if available AND valid
-        # Note: energy=1000 is a penalty for invalid geometry, don't use it
         if refinement_result:
-            # Only use refinement RMSD if it improved (refinement can sometimes make things worse)
+            # Only use refinement RMSD if it improved
             if refinement_result.final_rmsd < best_rmsd:
                 final_rmsd = refinement_result.final_rmsd
             else:
                 final_rmsd = best_rmsd
                 logger.warning(f"Refinement RMSD ({refinement_result.final_rmsd:.2f}Å) worse than exploration ({best_rmsd:.2f}Å), using exploration result")
             
-            # Only use refinement energy if it's valid (not a penalty)
-            if refinement_result.energy < 900:  # 1000 is the penalty value
+            # Only use refinement energy if it's valid
+            if is_valid_energy(refinement_result.energy):
                 final_energy = refinement_result.energy
+            elif is_valid_energy(best_energy):
+                final_energy = best_energy
+                logger.warning(f"Refinement energy ({refinement_result.energy:.2f}) invalid, using exploration energy ({best_energy:.2f})")
+            elif is_valid_energy(hierarchical_energy):
+                final_energy = hierarchical_energy
+                logger.warning(f"Using hierarchical controller energy ({hierarchical_energy:.2f}) as fallback")
             else:
                 final_energy = best_energy
-                logger.warning(f"Refinement energy ({refinement_result.energy:.2f}) is a penalty value, using exploration energy ({best_energy:.2f})")
+                logger.error(f"All energy sources invalid! refinement={refinement_result.energy}, exploration={best_energy}, hierarchical={hierarchical_energy}")
         else:
             final_rmsd = best_rmsd
-            final_energy = best_energy
+            # Use best valid energy source
+            if is_valid_energy(best_energy):
+                final_energy = best_energy
+            elif is_valid_energy(hierarchical_energy):
+                final_energy = hierarchical_energy
+                logger.warning(f"Using hierarchical controller energy ({hierarchical_energy:.2f}) as fallback")
+            else:
+                final_energy = best_energy
+                logger.error(f"No valid energy source! exploration={best_energy}, hierarchical={hierarchical_energy}")
         
         # Calculate real RMSD if native structure available
         rmsd_result = None
