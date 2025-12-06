@@ -349,17 +349,19 @@ class PredictionRunner:
         refinement_result = None
         logger.info(f"Refinement check: enable_refinement={self.config.enable_refinement}, native_structure={self.native_structure is not None}")
         if self.config.enable_refinement and self.native_structure:
-            self._emit_progress(progress_callback, 100, self.config.iterations, "refinement", 
+            self._emit_progress(progress_callback, 100, self.config.iterations or 0, "refinement", 
                               "Applying quantum refinement...")
             refinement_result = self._run_refinement(exploration_results)
         elif self.config.enable_refinement and not self.native_structure:
             logger.warning("Refinement enabled but no native structure loaded - skipping refinement")
         
         # Step 6: Calculate final metrics
-        self._emit_progress(progress_callback, 100, self.config.iterations, "analysis", 
+        self._emit_progress(progress_callback, 100, self.config.iterations or 0, "analysis", 
                           "Calculating structural metrics...")
         
         # Get best conformation
+        if not self.coordinator:
+            raise RuntimeError("Coordinator not initialized")
         best_conf, best_energy, best_rmsd = self.coordinator.get_best_conformation()
         
         # Use refined results if available
@@ -385,7 +387,7 @@ class PredictionRunner:
                 rmsd_method = "kabsch"
         
         # Step 7: Geometric analysis
-        self._emit_progress(progress_callback, 100, self.config.iterations, "analysis", 
+        self._emit_progress(progress_callback, 100, self.config.iterations or 0, "analysis", 
                           "Running geometric attractor analysis...")
         geometric_results = self._run_geometric_analysis(best_conf)
         
@@ -394,7 +396,7 @@ class PredictionRunner:
         
         # Step 9: Get mediator statistics
         mediator_stats = None
-        if self.config.enable_mediators:
+        if self.config.enable_mediators and self.coordinator:
             try:
                 mediator_stats = self.coordinator.get_mediator_statistics()
             except Exception as e:
@@ -402,14 +404,14 @@ class PredictionRunner:
         
         # Step 10: Get hierarchical folding statistics
         hierarchical_stats = None
-        if self.config.enable_hierarchical_folding:
+        if self.config.enable_hierarchical_folding and self.coordinator:
             try:
                 hierarchical_stats = self.coordinator.get_hierarchical_folding_statistics()
             except Exception as e:
                 logger.warning(f"Could not get hierarchical folding stats: {e}")
         
         # Calculate additional metrics
-        total_conformations = self.config.agents * self.config.iterations
+        total_conformations = (self.config.agents or 0) * (self.config.iterations or 0)
         throughput = total_conformations / exploration_time if exploration_time > 0 else 0
         
         # Energy metrics
@@ -503,7 +505,7 @@ class PredictionRunner:
         if self.config.output_dir:
             self._save_outputs(results, best_conf)
         
-        self._emit_progress(progress_callback, 100, self.config.iterations, "complete", 
+        self._emit_progress(progress_callback, 100, self.config.iterations or 0, "complete", 
                           f"Prediction complete! RMSD: {final_rmsd:.2f}Å" if final_rmsd else "Prediction complete!")
         
         logger.info(f"Prediction {self.prediction_id} complete in {total_time:.1f}s")
@@ -518,7 +520,7 @@ class PredictionRunner:
             try:
                 update = ProgressUpdate(
                     iteration=iteration,
-                    total_iterations=self.config.iterations,
+                    total_iterations=self.config.iterations or 0,
                     progress_percentage=progress_pct,
                     current_energy=0.0,
                     current_rmsd=None,
@@ -619,17 +621,18 @@ class PredictionRunner:
             enable_mediators=self.config.enable_mediators,
             mediator_count=self.config.mediator_count,
             enable_checkpointing=self.config.enable_checkpointing,
-            checkpoint_dir=checkpoint_dir,
+            checkpoint_dir=checkpoint_dir or "./checkpoints",
             enable_hierarchical_folding=self.config.enable_hierarchical_folding,
         )
         
         # Initialize agents
+        agent_count = self.config.agents or 10  # Default to 10 agents
         self.coordinator.initialize_agents(
-            count=self.config.agents,
+            count=agent_count,
             diversity_profile=self.config.diversity,
             native_structure=self.native_structure
         )
-        logger.info(f"Initialized {self.config.agents} agents ({self.config.diversity} diversity)")
+        logger.info(f"Initialized {agent_count} agents ({self.config.diversity} diversity)")
         
         # Initialize hierarchical folding if enabled
         if self.config.enable_hierarchical_folding:
@@ -652,19 +655,23 @@ class PredictionRunner:
         start_time = time.time()
         
         chunk_size = 50
-        total_chunks = (self.config.iterations + chunk_size - 1) // chunk_size
+        iterations = self.config.iterations or 100  # Default to 100 iterations
+        total_chunks = (iterations + chunk_size - 1) // chunk_size
         
         results = None
         
+        if not self.coordinator:
+            raise RuntimeError("Coordinator not initialized")
+        
         for chunk_idx in range(total_chunks):
-            chunk_iterations = min(chunk_size, self.config.iterations - (chunk_idx * chunk_size))
+            chunk_iterations = min(chunk_size, iterations - (chunk_idx * chunk_size))
             
             # Run chunk
             results = self.coordinator.run_parallel_exploration(chunk_iterations)
             
             # Calculate progress
-            completed = min((chunk_idx + 1) * chunk_size, self.config.iterations)
-            progress = (completed / self.config.iterations) * 100
+            completed = min((chunk_idx + 1) * chunk_size, iterations)
+            progress = (completed / iterations) * 100
             
             # Get current metrics
             best_conf, best_energy, best_rmsd = self.coordinator.get_best_conformation()
@@ -674,7 +681,7 @@ class PredictionRunner:
             avg_aggressiveness = None
             avg_consistency = None
             try:
-                agents = self.coordinator.get_agents()
+                agents = self.coordinator.get_agents() if self.coordinator else []
                 if agents:
                     avg_aggressiveness = sum(
                         a.get_consciousness_state().get_frequency() for a in agents
@@ -690,7 +697,7 @@ class PredictionRunner:
                 try:
                     update = ProgressUpdate(
                         iteration=completed,
-                        total_iterations=self.config.iterations,
+                        total_iterations=iterations,
                         progress_percentage=progress,
                         current_energy=best_energy,
                         current_rmsd=best_rmsd if best_rmsd != float('inf') else None,
@@ -716,20 +723,37 @@ class PredictionRunner:
         """Run quantum refinement on best conformation."""
         try:
             from .quantum_refinement_engine import QuantumRefinementEngine
+            from .energy_function import MolecularMechanicsEnergy
+            
+            if not self.coordinator:
+                logger.warning("Coordinator not initialized for refinement")
+                return None
             
             best_conf, _, _ = self.coordinator.get_best_conformation()
             if not best_conf:
                 logger.warning("No best conformation for refinement")
                 return None
             
+            if not self.qcpp_adapter:
+                logger.warning("QCPP adapter not available for refinement")
+                return None
+            
+            if not self.rmsd_calculator:
+                logger.warning("RMSD calculator not available for refinement")
+                return None
+            
+            # Create energy calculator for refinement
+            energy_calculator = MolecularMechanicsEnergy(self.config.sequence)
+            
+            # Create refinement engine with required dependencies
             engine = QuantumRefinementEngine(
-                protein_sequence=self.config.sequence,
-                qcpp_integration=self.qcpp_adapter,
-                target_geometry=self.config.target_geometry
+                qcpp_adapter=self.qcpp_adapter,
+                energy_calculator=energy_calculator,
+                rmsd_calculator=self.rmsd_calculator
             )
             
             result = engine.refine_structure_quantum(
-                best_conf,
+                coarse_structure=best_conf,
                 native_structure=self.native_structure,
                 max_iterations=150
             )
@@ -741,6 +765,8 @@ class PredictionRunner:
             
         except Exception as e:
             logger.warning(f"Quantum refinement failed: {e}")
+            import traceback
+            logger.debug(traceback.format_exc())
             return None
     
     def _calculate_rmsd(self, conformation: Any) -> Optional[Any]:
@@ -802,6 +828,9 @@ class PredictionRunner:
     
     def _save_outputs(self, results: PredictionResults, conformation: Any):
         """Save prediction outputs to disk."""
+        if not self.config.output_dir:
+            logger.warning("No output directory configured")
+            return
         output_dir = Path(self.config.output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
         
@@ -858,6 +887,9 @@ class PredictionRunner:
         """Save exploration trajectory."""
         try:
             trajectory_data = []
+            if not self.coordinator:
+                logger.warning("Coordinator not available for trajectory save")
+                return
             agents = self.coordinator.get_agents()
             logger.info(f"Saving trajectory: {len(agents)} agents")
             
@@ -866,8 +898,10 @@ class PredictionRunner:
             best_idx = -1
             
             for agent in agents:
-                agent_id = agent.get_agent_id()
-                snapshots = agent.get_trajectory_snapshots()
+                # Use getattr for interface compatibility (avoid Pylance errors)
+                agent_id = getattr(agent, 'get_agent_id', lambda: str(id(agent)))()
+                get_snapshots = getattr(agent, 'get_trajectory_snapshots', lambda: [])
+                snapshots = get_snapshots()
                 total_snapshots += len(snapshots)
                 
                 for snapshot in snapshots:

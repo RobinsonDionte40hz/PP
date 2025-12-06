@@ -1,35 +1,27 @@
 #!/usr/bin/env python3
 """
-Universal Protein Test - PRIMARY MODULE for Protein Structure Prediction
+Universal Protein Test - CLI for Protein Structure Prediction
 
-QUANTUM REFINEMENT ENGINE + REAL RMSD CALCULATIONS
-
-This is the PRIMARY testing module for the UBF protein prediction system.
-It integrates QCPP (Quantum Coherence) with UBF (Multi-Agent Exploration)
-and validates results using the Quantum Refinement Engine with real RMSD
-calculations via CA-only native structure alignment.
+Uses PredictionRunner as the SINGLE SOURCE OF TRUTH for predictions.
+This ensures CLI tests use the exact same code path as the web interface.
 
 Key Features:
-  - Quantum Refinement Engine (quantum_refinement_engine.py) - Two-stage optimization
-  - Real RMSD calculations with Kabsch alignment (FIXED CA-only extraction)
+  - Uses PredictionRunner (same as website backend)
+  - Quantum Refinement Engine (two-stage optimization)
+  - Real RMSD calculations with Kabsch alignment
   - QCPP-UBF integration for quantum-guided exploration
-  - Multi-agent coordination with consciousness-inspired parameters
   - Geometric attractor analysis (golden ratio patterns)
   - Mediator agents for pattern detection and information relay
 
 Usage:
-  python test_protein.py --pdb 1UBQ                    # Test Ubiquitin with quantum refinement
+  python test_protein.py --pdb 1UBQ                    # Test Ubiquitin
   python test_protein.py --pdb 1CRN --enable-refinement # Explicit quantum refinement
   python test_protein.py --sequence ACDEFGHIKL          # Test custom sequence
   python test_protein.py --list                         # Show available proteins
   python test_protein.py --quick                        # Quick test on small protein
 
-For systematic testing across multiple proteins, use:
-  python systematic_protein_testing.py --start 0 --count 10
-
 Performance Notes:
   - THz recording is DISABLED by default in main exploration (saves ~0.75s)
-  - THz is only ENABLED for quantum refinement and determinism tests
   - Quantum refinement adds ~20-40s for comprehensive validation
   - Real RMSD requires native PDB structure for comparison
 """
@@ -44,37 +36,25 @@ from pathlib import Path
 from datetime import datetime
 from typing import Optional
 
-# Add ubf_protein to path
-sys.path.insert(0, str(Path(__file__).parent.parent / "ubf_protein"))
+# Add project root to path
+sys.path.insert(0, str(Path(__file__).parent))
 
-# Import components
-from src.protein_predictor import QuantumCoherenceProteinPredictor
-from ubf_protein.qcpp_integration import QCPPIntegrationAdapter
-from ubf_protein.multi_agent_coordinator import MultiAgentCoordinator
-from ubf_protein.geometric_attractor import GeometricAttractorAnalyzer
-from ubf_protein.rmsd_calculator import RMSDCalculator, NativeStructureLoader
+# Import unified PredictionRunner - THE SINGLE SOURCE OF TRUTH
+from ubf_protein.prediction_runner import (
+    PredictionRunner,
+    PredictionConfig,
+    PredictionResults,
+    ProgressUpdate,
+    get_optimal_settings,
+    get_quick_test_settings
+)
+
+# Import utilities for PDB handling
 from Bio.PDB.PDBParser import PDBParser
 from Bio.PDB.Polypeptide import aa3, aa1
 
 # Create amino acid mapping dictionary
 AA1_TO_AA3 = dict(zip(aa1, aa3))
-
-# Import geometric attractor analysis
-try:
-    # Import the analysis components from test_geometric_attractors.py
-    import importlib.util
-    spec = importlib.util.spec_from_file_location("geometric_attractors", "test_geometric_attractors.py")
-    geometric_module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(geometric_module)
-    
-    GoldenRatioAnalyzer = geometric_module.GoldenRatioAnalyzer
-    SymmetryAnalyzer = geometric_module.SymmetryAnalyzer
-    QCPPComponentAnalyzer = geometric_module.QCPPComponentAnalyzer
-    ProteinStructure = geometric_module.ProteinStructure
-    GEOMETRIC_ANALYSIS_AVAILABLE = True
-except Exception as e:
-    print(f"⚠️  Geometric attractor analysis not available: {e}")
-    GEOMETRIC_ANALYSIS_AVAILABLE = False
 
 
 def discover_pdb_files() -> dict:
@@ -123,13 +103,11 @@ KNOWN_PROTEINS = {
     "1VII": {"name": "Villin", "residues": 35, "description": "Actin-binding protein headpiece"},
     "2MR9": {"name": "BBL", "residues": 47, "description": "Three-helix bundle protein"},
     "5HLQ": {"name": "Myoglobin", "residues": 153, "description": "Oxygen storage protein"},
-    # New large proteins (>100 residues) - Expected EXCELLENT results
     "1MBN": {"name": "Myoglobin", "residues": 153, "description": "Oxygen storage protein"},
     "2LZM": {"name": "Lysozyme T4", "residues": 164, "description": "T4 phage lysozyme variant"},
     "1AKI": {"name": "Ribonuclease A", "residues": 124, "description": "RNA degradation enzyme"},
     "3CLN": {"name": "Calmodulin", "residues": 148, "description": "Calcium-binding protein"},
     "1HEN": {"name": "Hen Egg Lysozyme", "residues": 129, "description": "Classic test protein"},
-    # QCPP cached proteins
     "1TIM": {"name": "Triose Phosphate Isomerase", "residues": 247, "description": "Glycolysis enzyme"},
     "1PRN": {"name": "Proteinase A", "residues": 290, "description": "Serine protease"},
     "3SSI": {"name": "SSI Inhibitor", "residues": 113, "description": "Protease inhibitor"},
@@ -186,38 +164,6 @@ def load_sequence_from_pdb(pdb_file: Path) -> str:
     return sequence
 
 
-def get_optimal_settings(sequence_length: int) -> dict:
-    """Get optimal agent count and iterations based on protein size."""
-    if sequence_length < 50:
-        # Small proteins: More iterations per agent, fewer agents
-        return {"agents": 15, "iterations": 300, "category": "small"}
-    elif sequence_length < 100:
-        # Medium proteins: Validated optimal settings
-        return {"agents": 20, "iterations": 200, "category": "medium"}
-    elif sequence_length < 150:
-        # Large proteins: More agents for diversity
-        return {"agents": 30, "iterations": 250, "category": "large"}
-    else:
-        # Very large: Maximum resources
-        return {"agents": 50, "iterations": 300, "category": "very_large"}
-
-
-def get_quick_test_settings(sequence_length: int) -> dict:
-    """Get fast test settings for quick validation (10x fewer iterations)."""
-    if sequence_length < 50:
-        # Small proteins: Quick test with fewer iterations
-        return {"agents": 10, "iterations": 50, "category": "small"}
-    elif sequence_length < 100:
-        # Medium proteins
-        return {"agents": 10, "iterations": 40, "category": "medium"}
-    elif sequence_length < 150:
-        # Large proteins
-        return {"agents": 15, "iterations": 40, "category": "large"}
-    else:
-        # Very large
-        return {"agents": 20, "iterations": 50, "category": "very_large"}
-
-
 def load_experimental_data(pdb_id: str) -> Optional[dict]:
     """Load experimental data if available."""
     exp_file = Path("data/experimental_stability.csv")
@@ -239,319 +185,66 @@ def load_experimental_data(pdb_id: str) -> Optional[dict]:
         return None
 
 
-def analyze_geometric_attractors_v2(best_conformation: dict, sequence: str) -> Optional[dict]:
-    """
-    Analyze protein conformation for geometric patterns using GeometricAttractorAnalyzer.
+def create_cli_progress_callback():
+    """Create a progress callback for CLI output."""
+    last_update_time = [time.time()]
     
-    This is the new Task 4 implementation that replaces the old analyze_geometric_attractors.
-    Uses the GeometricAttractorAnalyzer from ubf_protein/geometric_attractor.py.
-    
-    Args:
-        best_conformation: Best conformation from exploration (dict with 'atom_coordinates')
-        sequence: Amino acid sequence string
-    
-    Returns:
-        Dictionary with geometric analysis results, or None if analysis fails
-    """
-    try:
-        print(f"\n{'='*70}")
-        print("GEOMETRIC ATTRACTOR ANALYSIS V2")
-        print(f"{'='*70}")
-        print(f"Analyzing best conformation for geometric patterns...")
-        print(f"  Sequence length: {len(sequence)} residues")
+    def callback(update: ProgressUpdate):
+        # Only print every 2 seconds to avoid spam
+        current_time = time.time()
+        if current_time - last_update_time[0] < 2.0 and update.progress_percentage < 100:
+            return
+        last_update_time[0] = current_time
         
-        # Initialize analyzer with default configuration
-        analyzer = GeometricAttractorAnalyzer(
-            cache_size=1000,
-            cache_ttl=3600.0,
-            phi_tolerance=0.05,
-            neighbor_window=10
-        )
+        # Format progress bar
+        bar_width = 30
+        filled = int(bar_width * update.progress_percentage / 100)
+        bar = '█' * filled + '░' * (bar_width - filled)
         
-        # Extract coordinates from best_conformation
-        # The conformation should have 'atom_coordinates' key with list of (x,y,z) tuples
-        if not best_conformation or 'atom_coordinates' not in best_conformation:
-            print("⚠️  Best conformation is missing or has no coordinates")
-            return None
+        # Build status line
+        status = f"\r[{bar}] {update.progress_percentage:5.1f}%"
         
-        coordinates = best_conformation['atom_coordinates']
+        if update.stage == "exploration":
+            status += f" | Energy: {update.best_energy:8.1f}"
+            if update.best_rmsd is not None and update.best_rmsd != float('inf'):
+                status += f" | RMSD: {update.best_rmsd:5.2f}Å"
+            status += f" | Conf: {update.conformations_explored:,}"
+        elif update.stage == "refinement":
+            status += " | 🔬 Quantum Refinement..."
+        elif update.stage == "analysis":
+            status += " | 📊 Analyzing..."
+        elif update.stage == "complete":
+            status += " | ✅ Complete!"
         
-        # Create conformation dict for analyzer
-        conformation_data = {
-            'coordinates': coordinates
-        }
-        
-        # Run geometric analysis
-        start_time = time.time()
-        result = analyzer.analyze_conformation(conformation_data, sequence=sequence)
-        analysis_time = time.time() - start_time
-        
-        # Print results
-        print(f"\n✓ Geometric analysis complete (took {analysis_time*1000:.1f}ms):")
-        print(f"\n🌟 Golden Ratio (φ) Patterns:")
-        print(f"  - Percentage: {result.golden_ratio_percentage:.1f}%")
-        print(f"  - Pattern Count: {result.phi_pattern_count}")
-        
-        print(f"\n📐 Platonic Solid Similarities:")
-        print(f"  - Tetrahedron: {result.tetrahedron_similarity:.3f}")
-        print(f"  - Cube: {result.cube_similarity:.3f}")
-        print(f"  - Octahedron: {result.octahedron_similarity:.3f}")
-        print(f"  - Dodecahedron (φ-based): {result.dodecahedron_similarity:.3f}")
-        print(f"  - Icosahedron (φ-based): {result.icosahedron_similarity:.3f}")
-        
-        print(f"\n🔷 Symmetry Metrics:")
-        print(f"  - Rotational Symmetry: {result.rotational_symmetry:.3f}")
-        print(f"  - Local Symmetry: {result.local_symmetry:.3f}")
-        print(f"  - Radius of Gyration: {result.radius_of_gyration:.2f} Å")
-        print(f"  - Asphericity: {result.asphericity:.3f}")
-        
-        # Interpret findings
-        print(f"\n💡 Interpretation:")
-        if result.golden_ratio_percentage > 15:
-            print(f"  ✨ HIGH φ content detected! Structure may leverage geometric optimization.")
-        elif result.golden_ratio_percentage > 10:
-            print(f"  ⚡ Moderate φ content. Some geometric patterns present.")
+        if update.message and update.stage in ["initialization", "complete"]:
+            print(f"\n{update.message}")
         else:
-            print(f"  📊 Low φ content. Limited geometric patterns.")
+            print(status, end='', flush=True)
         
-        # Check for φ-containing Platonic solid similarity
-        max_phi_solid = max(result.dodecahedron_similarity, result.icosahedron_similarity)
-        if max_phi_solid > 0.6:
-            solid_name = "dodecahedron" if result.dodecahedron_similarity > result.icosahedron_similarity else "icosahedron"
-            print(f"  🌟 Strong similarity to {solid_name} (φ-containing Platonic solid)!")
-            print(f"     This supports the geometric attractor hypothesis.")
-        
-        # Get cache statistics
-        cache_stats = analyzer.get_cache_stats()
-        print(f"\n📊 Cache Statistics:")
-        print(f"  - Hit Rate: {cache_stats['hit_rate']*100:.1f}%")
-        print(f"  - Cache Size: {cache_stats['size']}/{cache_stats['max_size']}")
-        
-        print(f"{'='*70}")
-        
-        # Return results as dictionary
-        return result.to_dict()
-        
-    except Exception as e:
-        print(f"⚠️  Could not complete geometric analysis: {e}")
-        import traceback
-        traceback.print_exc()
-        return None
-
-
-def analyze_geometric_attractors(pdb_file: Path, sequence: str, qcp_values: Optional[list], 
-                                 estimated_rmsd: float, best_energy: float) -> Optional[dict]:
-    """Analyze protein structure for golden ratio patterns, symmetry, and QCPP components."""
+        if update.progress_percentage >= 100:
+            print()  # New line at end
     
-    if not GEOMETRIC_ANALYSIS_AVAILABLE:
-        print("⚠️  Geometric analysis module not loaded")
-        return None
-    
-    try:
-        print(f"Analyzing geometric attractors (golden ratio, symmetry, Platonic solids)...")
-        print(f"  PDB file: {pdb_file}")
-        print(f"  Sequence length: {len(sequence)} residues")
-        
-        # Create protein structure object
-        protein_struct = ProteinStructure(
-            name=pdb_file.stem,
-            pdb_file=pdb_file,
-            sequence=sequence,
-            num_residues=len(sequence),
-            rmsd=estimated_rmsd,
-            energy=best_energy,
-            qcp_values=qcp_values
-        )
-        
-        # Run analyses
-        golden_analyzer = GoldenRatioAnalyzer()
-        symmetry_analyzer = SymmetryAnalyzer()
-        qcpp_analyzer = QCPPComponentAnalyzer()
-        
-        golden_results = golden_analyzer.analyze_structure(protein_struct)
-        symmetry_results = symmetry_analyzer.analyze_structure(protein_struct)
-        qcpp_results = qcpp_analyzer.analyze_structure(protein_struct)
-        
-        # Print summary
-        print(f"✓ Geometric analysis complete:")
-        print(f"  🌟 Golden Ratio (φ) Patterns: {golden_results.golden_ratio_percentage:.1f}% "
-              f"({golden_results.golden_ratios}/{golden_results.total_ratios} distance ratios)")
-        print(f"  🔷 Rotational Symmetry: {symmetry_results.rotational_symmetry:.3f}")
-        print(f"  🔶 Local Symmetry: {symmetry_results.local_symmetry:.3f}")
-        print(f"  📐 Platonic Solid Similarities:")
-        print(f"     - Icosahedron (φ-based): {symmetry_results.icosahedron_similarity:.3f}")
-        print(f"     - Dodecahedron (φ-based): {symmetry_results.dodecahedron_similarity:.3f}")
-        print(f"     - Octahedron: {symmetry_results.octahedron_similarity:.3f}")
-        
-        # Interpret findings
-        if golden_results.golden_ratio_percentage > 15:
-            print(f"  ✨ HIGH φ content detected! Structure may leverage geometric optimization.")
-        elif golden_results.golden_ratio_percentage > 10:
-            print(f"  ⚡ Moderate φ content. Some geometric patterns present.")
-        
-        if symmetry_results.icosahedron_similarity > 0.6 or symmetry_results.dodecahedron_similarity > 0.6:
-            print(f"  🌟 Strong similarity to φ-containing Platonic solids!")
-            print(f"     This supports the geometric attractor hypothesis.")
-        
-        return {
-            'golden_ratio': {
-                'percentage': golden_results.golden_ratio_percentage,
-                'total_patterns': golden_results.golden_ratios,
-                'total_ratios_analyzed': golden_results.total_ratios
-            },
-            'symmetry': {
-                'rotational': symmetry_results.rotational_symmetry,
-                'local': symmetry_results.local_symmetry,
-                'radius_of_gyration': symmetry_results.radius_of_gyration,
-                'asphericity': symmetry_results.asphericity
-            },
-            'platonic_similarity': {
-                'tetrahedron': symmetry_results.tetrahedron_similarity,
-                'cube': symmetry_results.cube_similarity,
-                'octahedron': symmetry_results.octahedron_similarity,
-                'dodecahedron': symmetry_results.dodecahedron_similarity,
-                'icosahedron': symmetry_results.icosahedron_similarity
-            },
-            'qcpp_components': {
-                'golden_correlation': qcpp_results.golden_correlation,
-                'doubling_correlation': qcpp_results.doubling_correlation
-            }
-        }
-        
-    except Exception as e:
-        print(f"⚠️  Could not complete geometric analysis: {e}")
-        return None
-
-
-def analyze_thz_determinism(sequence: str, num_trials: int = 10, 
-                           iterations_per_trial: int = 100) -> Optional[dict]:
-    """Test folding determinism using THz signature clustering."""
-    
-    try:
-        print(f"\n[BONUS] Testing THz determinism with {num_trials} trials...")
-        
-        # Import determinism testing
-        from ubf_protein.protein_agent import ProteinAgent
-        from ubf_protein.signature_analysis import create_determinism_tester
-        
-        # Run multiple trials
-        all_frequencies = []
-        all_intensities = []
-        trial_energies = []
-        
-        for trial_num in range(num_trials):
-            # Create agent with unique behavior and THz recording ENABLED
-            agent = ProteinAgent(
-                protein_sequence=sequence,
-                initial_frequency=9.0,
-                initial_coherence=0.6,
-                enable_visualization=False,
-                enable_thz_recording=True  # ← ENABLE for determinism test
-            )
-            
-            # Run exploration
-            for _ in range(iterations_per_trial):
-                try:
-                    agent.explore_step()
-                except:
-                    break
-            
-            # Get THz signatures
-            thz_history = agent.get_thz_signature_history()
-            metrics = agent.get_exploration_metrics()
-            trial_energies.append(metrics['best_energy'])
-            
-            # Collect signatures
-            for spectrum in thz_history:
-                all_frequencies.append(spectrum.frequencies)
-                all_intensities.append(spectrum.intensities)
-        
-        if len(all_frequencies) < 2:
-            print(f"  ⚠️  Not enough signatures collected ({len(all_frequencies)})")
-            return None
-        
-        # Analyze determinism
-        tester = create_determinism_tester(similarity_threshold=0.7)
-        score = tester.calculate_determinism_score(all_frequencies, all_intensities)
-        
-        print(f"✓ THz determinism analysis complete:")
-        print(f"  🎵 Signatures collected: {len(all_frequencies)}")
-        print(f"  📊 Clusters found: {score.n_clusters}")
-        print(f"  🎯 Convergence: {score.convergence_ratio:.1%} in largest cluster")
-        print(f"  🔬 Determinism score: {score.determinism_score:.3f}")
-        print(f"  💡 {score.interpret()}")
-        
-        return {
-            'total_signatures': len(all_frequencies),
-            'num_trials': num_trials,
-            'num_clusters': score.n_clusters,
-            'largest_cluster_size': score.largest_cluster_size,
-            'convergence_ratio': score.convergence_ratio,
-            'determinism_score': score.determinism_score,
-            'interpretation': score.interpret(),
-            'avg_trial_energy': sum(trial_energies) / len(trial_energies)
-        }
-        
-    except Exception as e:
-        print(f"⚠️  Could not complete THz determinism test: {e}")
-        import traceback
-        traceback.print_exc()
-        return None
-
-
-def save_conformation_as_pdb(sequence: str, coordinates: list, energy: float, 
-                              output_file: Path, pdb_id: Optional[str] = None):
-    """
-    Save a conformation to PDB format.
-    
-    Args:
-        sequence: Amino acid sequence (1-letter codes)
-        coordinates: List of (x, y, z) tuples for CA atoms
-        energy: Conformation energy in kcal/mol
-        output_file: Path to save PDB file
-        pdb_id: Optional PDB identifier
-    """
-    with open(output_file, 'w') as f:
-        # Header
-        f.write("HEADER    PROTEIN STRUCTURE PREDICTION\n")
-        if pdb_id:
-            f.write(f"TITLE     UBF-QCPP PREDICTION FOR {pdb_id.upper()}\n")
-        else:
-            f.write(f"TITLE     UBF-QCPP PREDICTION\n")
-        f.write(f"REMARK    SEQUENCE: {sequence}\n")
-        f.write(f"REMARK    ENERGY: {energy:.2f} kcal/mol\n")
-        f.write(f"REMARK    METHOD: UBF with QCPP integration\n")
-        f.write(f"REMARK    DATE: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-        f.write("\n")
-        
-        # Write atoms (CA only for simplicity)
-        for i, (aa_letter, coord) in enumerate(zip(sequence, coordinates), 1):
-            x, y, z = coord
-            # Convert to 3-letter code
-            aa_3letter = AA1_TO_AA3.get(aa_letter, 'UNK')
-            
-            # PDB ATOM format:
-            # ATOM  serial name altLoc resName chainID resSeq iCode   x       y       z     occ   temp element
-            f.write(f"ATOM  {i:5d}  CA  {aa_3letter:3s} A{i:4d}    "
-                   f"{x:8.3f}{y:8.3f}{z:8.3f}  1.00  0.00           C\n")
-        
-        f.write("END\n")
-    
-    print(f"✓ Structure saved to: {output_file}")
+    return callback
 
 
 def run_protein_test(sequence: str, pdb_file: Optional[Path] = None, pdb_id: Optional[str] = None, 
                      custom_agents: Optional[int] = None, custom_iterations: Optional[int] = None,
                      target_geometry: str = 'none', enable_mediators: bool = False, 
                      mediator_count: int = 2, enable_refinement: bool = False,
-                     enable_hierarchical: bool = False):
-    """Run complete protein test with QCPP-UBF integration."""
+                     enable_hierarchical: bool = False) -> dict:
+    """
+    Run complete protein test using unified PredictionRunner.
+    
+    This function uses the SAME code path as the website backend,
+    ensuring consistent results between CLI and web interface.
+    """
     
     print("\n" + "="*70)
     print("QCPP-UBF PROTEIN STRUCTURE PREDICTION")
+    print("Using PredictionRunner (production code path)")
     print("="*70)
     
-    # Get optimal settings
+    # Get optimal settings for display
     settings = get_optimal_settings(len(sequence))
     num_agents = custom_agents or settings['agents']
     iterations = custom_iterations or settings['iterations']
@@ -559,27 +252,19 @@ def run_protein_test(sequence: str, pdb_file: Optional[Path] = None, pdb_id: Opt
     print(f"\n📊 Test Configuration:")
     print(f"  - Sequence Length: {len(sequence)} residues")
     print(f"  - Protein Category: {settings['category']}")
-    print(f"  - Agents: {num_agents} (optimal for this size)")
+    print(f"  - Agents: {num_agents}")
     print(f"  - Iterations: {iterations} per agent")
     print(f"  - Total Conformations: {num_agents * iterations:,}")
     if pdb_id:
         print(f"  - PDB ID: {pdb_id.upper()}")
     if target_geometry != 'none':
-        print(f"  - 🎯 Geometric Target: {target_geometry.capitalize()} (active guidance enabled)")
-    else:
-        print(f"  - Geometric Target: None (post-analysis only)")
+        print(f"  - 🎯 Geometric Target: {target_geometry.capitalize()}")
     if enable_mediators:
-        print(f"  - 🔍 Mediator Agents: {mediator_count} agents (pattern detection enabled)")
-    else:
-        print(f"  - Mediator Agents: Disabled")
+        print(f"  - 🔍 Mediator Agents: {mediator_count} agents")
     if enable_refinement:
-        print(f"  - ⚛️ Quantum Refinement: ENABLED (two-stage optimization)")
-    else:
-        print(f"  - Quantum Refinement: Disabled")
+        print(f"  - ⚛️ Quantum Refinement: ENABLED")
     if enable_hierarchical:
-        print(f"  - 🔗 Hierarchical Folding: ENABLED (progressive search confinement)")
-    else:
-        print(f"  - Hierarchical Folding: Disabled")
+        print(f"  - 🔗 Hierarchical Folding: ENABLED")
     
     # Load experimental data if available
     exp_data = None
@@ -590,566 +275,276 @@ def run_protein_test(sequence: str, pdb_file: Optional[Path] = None, pdb_id: Opt
             print(f"  - Melting Temperature: {exp_data['temperature']:.1f} °C")
             print(f"  - ΔG Unfolding: {exp_data['deltaG']:.2f} kcal/mol")
     
-    # Step 1: Initialize QCPP
-    print(f"\n[1/5] Initializing QCPP predictor...")
-    qcpp_predictor = QuantumCoherenceProteinPredictor()
-    
-    # Use large cache + infrequent analysis for performance
-    cache_size = 10000  # Large cache to maximize hits
-    qcpp_adapter = QCPPIntegrationAdapter(
-        qcpp_predictor, 
-        cache_size,
-        target_geometry=target_geometry  # NEW: Pass geometric target
-    )
-    
-    # QCPP analysis frequency: 20 = analyze every 20th iteration (20x speedup)
-    # This balances physics guidance with performance
-    qcpp_freq = 20
-    print(f"✓ QCPP initialized (cache={cache_size}, analyzing every {qcpp_freq} iterations)")
-    if target_geometry != 'none':
-        print(f"  🎯 Geometric targeting active: {target_geometry}")
-    
-    # Step 2: Create coordinator
-    print(f"\n[2/5] Creating multi-agent coordinator...")
-    coordinator = MultiAgentCoordinator(
-        protein_sequence=sequence,
-        qcpp_integration=qcpp_adapter,
-        qcpp_analysis_frequency=qcpp_freq,
-        target_geometry=target_geometry,
+    # Create PredictionConfig - THE KEY CHANGE
+    config = PredictionConfig(
+        sequence=sequence,
+        native_pdb=pdb_id,
+        pdb_file_path=str(pdb_file) if pdb_file else None,
+        agents=num_agents,
+        iterations=iterations,
+        diversity="balanced",
+        qcpp_config="default",
+        qcpp_frequency=20,
+        cache_size=10000,
+        enable_refinement=enable_refinement,
         enable_mediators=enable_mediators,
         mediator_count=mediator_count,
-        enable_quantum_refinement=enable_refinement,
-        enable_hierarchical_folding=enable_hierarchical
+        target_geometry=target_geometry,
+        enable_hierarchical_folding=enable_hierarchical,
+        enable_checkpointing=False,  # Disable for CLI tests
+        output_dir=None,  # We'll handle output manually
+        save_pdb=False,
+        save_trajectory=False
     )
     
-    coordinator.initialize_agents(
-        count=num_agents,
-        diversity_profile="balanced"
-    )
-    print(f"✓ {num_agents} agents initialized (balanced diversity)")
-    
-    # Initialize Mediators if enabled
-    if enable_mediators:
-        coordinator.initialize_mediators()
-        print(f"✓ {mediator_count} Mediator agents initialized (pattern detection active)")
-    
-    # Initialize Hierarchical Folding if enabled
-    if enable_hierarchical:
-        try:
-            coordinator.initialize_hierarchical_folding()
-            print(f"✓ Hierarchical folding initialized (anchoring + phase control)")
-        except Exception as e:
-            print(f"⚠️ Could not initialize hierarchical folding: {e}")
-    
-    # Step 3: Run exploration
-    print(f"\n[3/5] Running parallel exploration...")
-    print(f"  Estimated time: ~{(num_agents * iterations) / 350 / 60:.1f} minutes")
-    
+    print(f"\n🚀 Starting prediction (PredictionRunner)...")
     start_time = time.time()
     
-    # Load native structure if available for refinement
-    native_structure = None
-    if enable_refinement and pdb_file:
-        try:
-            loader = NativeStructureLoader(cache_dir="./pdb_cache")
-            if Path(pdb_file).exists():
-                native_structure = loader.load_from_file(str(pdb_file), ca_only=True)
-                print(f"  ✓ Loaded native structure for refinement: {native_structure.pdb_id}")
-            elif pdb_id:
-                native_structure = loader.load_from_pdb_id(pdb_id, ca_only=True)
-                print(f"  ✓ Loaded native structure for refinement: {pdb_id}")
-        except Exception as e:
-            print(f"  ⚠️ Could not load native structure for refinement: {e}")
-            print(f"  ⚠️ Refinement will be skipped")
+    # Create runner and execute - SAME AS WEBSITE
+    runner = PredictionRunner(config)
+    results = runner.run(progress_callback=create_cli_progress_callback())
     
-    # Use refinement workflow if enabled, otherwise standard exploration
-    if enable_refinement:
-        print(f"  ⚛️ Two-stage quantum refinement enabled")
-        exploration_results, refinement_result = coordinator.run_parallel_exploration_with_refinement(
-            iterations=iterations,
-            native_structure=native_structure
-        )
-        results = exploration_results
-    else:
-        results = coordinator.run_parallel_exploration(iterations=iterations)
-        refinement_result = None
+    total_time = time.time() - start_time
     
-    exploration_time = time.time() - start_time
+    # Print comprehensive results
+    print_results_summary(results, exp_data, pdb_id)
     
-    total_conformations = num_agents * iterations
-    throughput = total_conformations / exploration_time
+    # Save results to organized directory
+    output = save_results(results, pdb_id, exp_data, config)
     
-    print(f"✓ Exploration complete!")
-    print(f"  Time: {exploration_time:.1f}s")
-    print(f"  Throughput: {throughput:.1f} conf/s")
-    print(f"  Best Energy: {results.best_energy:.2f} kcal/mol")
+    return output
+
+
+def print_results_summary(results: PredictionResults, exp_data: Optional[dict], pdb_id: Optional[str]):
+    """Print comprehensive results summary."""
     
-    # Export best conformation to PDB
-    if results.best_conformation:
-        pred_structures_dir = Path("results/predicted_structures")
-        pred_structures_dir.mkdir(parents=True, exist_ok=True)
-        
-        pdb_filename = f"{pdb_id or 'custom'}_predicted.pdb"
-        if target_geometry != 'none':
-            pdb_filename = f"{pdb_id or 'custom'}_predicted_{target_geometry}.pdb"
-        
-        pdb_output_path = pred_structures_dir / pdb_filename
-        
-        save_conformation_as_pdb(
-            sequence=sequence,
-            coordinates=results.best_conformation.atom_coordinates,
-            energy=results.best_energy,
-            output_file=pdb_output_path,
-            pdb_id=pdb_id
-        )
-    
-    # Step 4: Calculate RMSD (real calculation if native structure available)
-    print(f"\n[4/5] Calculating structural metrics...")
-    estimated_rmsd = None
-    rmsd_quality = "N/A"
-    rmsd_result = None
-    
-    if pdb_file and results.best_conformation:
-        try:
-            # Load native structure
-            loader = NativeStructureLoader(cache_dir="./pdb_cache")
-            if Path(pdb_file).exists():
-                native_structure = loader.load_from_file(str(pdb_file), ca_only=True)
-            else:
-                # Try loading by PDB ID
-                native_structure = loader.load_from_pdb_id(pdb_id, ca_only=True)
-            
-            # Get predicted CA coordinates from best conformation
-            predicted_coords = results.best_conformation.atom_coordinates
-            
-            # Ensure both have same length
-            if len(predicted_coords) == len(native_structure.ca_coords):
-                # Calculate real RMSD with Kabsch alignment
-                calculator = RMSDCalculator(align_structures=True)
-                rmsd_result = calculator.calculate_rmsd(
-                    predicted_coords=predicted_coords,
-                    native_coords=native_structure.ca_coords,
-                    calculate_metrics=True
-                )
-                
-                estimated_rmsd = rmsd_result.rmsd
-                
-                # Quality assessment based on real RMSD
-                if estimated_rmsd < 2.0:
-                    rmsd_quality = "EXCELLENT"
-                elif estimated_rmsd < 4.0:
-                    rmsd_quality = "GOOD"
-                elif estimated_rmsd < 6.0:
-                    rmsd_quality = "FAIR"
-                else:
-                    rmsd_quality = "NEEDS IMPROVEMENT"
-                
-                print(f"✓ Real RMSD: {estimated_rmsd:.2f} Å ({rmsd_quality})")
-                print(f"  GDT-TS: {rmsd_result.gdt_ts:.1f}")
-                print(f"  TM-score: {rmsd_result.tm_score:.3f}")
-            else:
-                print(f"⚠️  Length mismatch: predicted={len(predicted_coords)}, native={len(native_structure.ca_coords)}")
-                # Fall back to energy-based estimate
-                normalized_energy = (results.best_energy + 200) / -200
-                normalized_energy = max(0, min(1, normalized_energy))
-                estimated_rmsd = 10.0 - (normalized_energy * 7.0)
-                estimated_rmsd = max(0.5, estimated_rmsd)
-                rmsd_quality = "ESTIMATED"
-                print(f"✓ Estimated RMSD: {estimated_rmsd:.2f} Å ({rmsd_quality})")
-        except Exception as e:
-            print(f"⚠️  RMSD calculation failed: {e}")
-            # Fall back to energy-based estimate
-            normalized_energy = (results.best_energy + 200) / -200
-            normalized_energy = max(0, min(1, normalized_energy))
-            estimated_rmsd = 10.0 - (normalized_energy * 7.0)
-            estimated_rmsd = max(0.5, estimated_rmsd)
-            rmsd_quality = "ESTIMATED"
-            print(f"✓ Estimated RMSD: {estimated_rmsd:.2f} Å ({rmsd_quality})")
-    else:
-        # No native structure available - use energy-based estimate
-        normalized_energy = (results.best_energy + 200) / -200
-        normalized_energy = max(0, min(1, normalized_energy))
-        estimated_rmsd = 10.0 - (normalized_energy * 7.0)
-        estimated_rmsd = max(0.5, estimated_rmsd)
-        
-        if estimated_rmsd < 6.0:
-            rmsd_quality = "ESTIMATED-GOOD"
-        elif estimated_rmsd < 8.0:
-            rmsd_quality = "ESTIMATED-FAIR"
-        else:
-            rmsd_quality = "ESTIMATED-POOR"
-        
-        print(f"✓ Estimated RMSD: {estimated_rmsd:.2f} Å ({rmsd_quality})")
-    
-    # Step 5: Calculate RMSE if experimental data available
-    rmse_results = None
-    qcp_values_native = None
-    if pdb_file and exp_data:
-        print(f"\n[5/5] Calculating prediction accuracy (RMSE)...")
-        
-        # Calculate QCPP prediction on native structure
-        qcpp_native = QuantumCoherenceProteinPredictor()
-        qcpp_native.load_protein(str(pdb_file), chain_id='A')
-        qcp_df = qcpp_native.calculate_qcp()
-        
-        if qcp_df is not None and len(qcp_df) > 0:
-            qcp_values_native = qcp_df['qcp'].to_numpy().tolist()
-            avg_qcp = float(np.mean(qcp_values_native))
-            stability_score = avg_qcp / 5.0
-            
-            # Use validated scaling
-            predicted_temp = 50.0 + (stability_score * 40.0)
-            predicted_dg = stability_score * 8.0
-            
-            temp_rmse = abs(predicted_temp - exp_data['temperature'])
-            dg_rmse = abs(predicted_dg - exp_data['deltaG'])
-            
-            temp_percent = (temp_rmse / 43.0) * 100  # 43°C range in dataset
-            dg_percent = (dg_rmse / 5.8) * 100  # 5.8 kcal/mol range
-            
-            if temp_percent < 20 and dg_percent < 20:
-                rmse_quality = "GOOD"
-            elif temp_percent < 30 and dg_percent < 30:
-                rmse_quality = "FAIR"
-            else:
-                rmse_quality = "NEEDS IMPROVEMENT"
-            
-            rmse_results = {
-                'temperature_rmse': temp_rmse,
-                'dg_rmse': dg_rmse,
-                'quality': rmse_quality
-            }
-            
-            print(f"✓ RMSE calculated:")
-            print(f"  Temperature: {temp_rmse:.2f} °C ({temp_percent:.1f}% of range)")
-            print(f"  ΔG: {dg_rmse:.2f} kcal/mol ({dg_percent:.1f}% of range)")
-            print(f"  Quality: {rmse_quality}")
-        else:
-            print(f"⚠️  Could not calculate QCPP prediction")
-    else:
-        print(f"\n[5/5] Skipping RMSE (no experimental data available)")
-    
-    # Bonus: Geometric Attractor Analysis V2 (New - analyzes best conformation directly)
-    geometric_results = None
-    if results.best_conformation:
-        # Convert best_conformation to dict format if needed
-        best_conf_dict = {
-            'atom_coordinates': results.best_conformation.atom_coordinates
-        }
-        geometric_results = analyze_geometric_attractors_v2(
-            best_conformation=best_conf_dict,
-            sequence=sequence
-        )
-        if not geometric_results:
-            print("⚠️  Geometric analysis did not complete successfully")
-    else:
-        print("⚠️  No best conformation available for geometric analysis")
-    
-    # Old geometric analysis (kept for backward compatibility with PDB files)
-    # Only run if PDB file is available and new analysis didn't run
-    if pdb_file and not geometric_results:
-        print(f"\n{'='*70}")
-        print("GEOMETRIC INTEGRITY ANALYSIS (Legacy)")
-        print(f"{'='*70}")
-        geometric_results = analyze_geometric_attractors(
-            pdb_file=pdb_file,
-            sequence=sequence,
-            qcp_values=qcp_values_native,
-            estimated_rmsd=estimated_rmsd,
-            best_energy=results.best_energy
-        )
-        if not geometric_results:
-            print("⚠️  Geometric analysis did not complete successfully")
-        print(f"{'='*70}")
-    
-    # Bonus: THz Determinism Test (smaller scale for speed)
-    thz_results = None
-    if len(sequence) <= 20:  # Only for small proteins (fast testing)
-        thz_results = analyze_thz_determinism(
-            sequence=sequence,
-            num_trials=10,
-            iterations_per_trial=100
-        )
-    
-    # Get cache stats
-    cache_stats = qcpp_adapter.get_cache_stats()
-    
-    # Print summary
     print("\n" + "="*70)
     print("RESULTS SUMMARY")
     print("="*70)
     
+    # Structural exploration
     print(f"\n🔬 STRUCTURAL EXPLORATION:")
     print(f"  - Best Energy: {results.best_energy:.2f} kcal/mol")
-    if rmsd_result:
-        print(f"  - RMSD: {estimated_rmsd:.2f} Å ({rmsd_quality})")
-        print(f"  - GDT-TS: {rmsd_result.gdt_ts:.1f}")
-        print(f"  - TM-score: {rmsd_result.tm_score:.3f}")
+    
+    if results.best_rmsd is not None and results.best_rmsd != float('inf'):
+        quality = results.validation_quality or "N/A"
+        print(f"  - RMSD: {results.best_rmsd:.2f} Å ({quality.upper()})")
     else:
-        print(f"  - Estimated RMSD: {estimated_rmsd:.2f} Å ({rmsd_quality})")
-    print(f"  - Conformations: {total_conformations:,}")
-    print(f"  - Time: {exploration_time:.1f}s")
-    print(f"  - Throughput: {throughput:.1f} conf/s")
+        print(f"  - RMSD: Not available (no native structure)")
     
+    if results.gdt_ts_score is not None:
+        print(f"  - GDT-TS: {results.gdt_ts_score:.1f}")
+    if results.tm_score is not None:
+        print(f"  - TM-score: {results.tm_score:.3f}")
+    
+    print(f"  - Conformations: {results.conformations_explored:,}")
+    print(f"  - Time: {results.exploration_time_seconds:.1f}s")
+    print(f"  - Throughput: {results.throughput_conf_per_sec:.1f} conf/s")
+    
+    # QCPP Integration
     print(f"\n📊 QCPP INTEGRATION:")
-    print(f"  - Total Analyses: {cache_stats['total_analyses']:,}")
-    print(f"  - Cache Hit Rate: {cache_stats['cache_hit_rate']:.1f}%")
-    print(f"  - Avg Analysis Time: {cache_stats['avg_calculation_time_ms']:.2f}ms")
+    print(f"  - Total Analyses: {results.qcpp_total_analyses:,}")
+    print(f"  - Cache Hit Rate: {results.qcpp_cache_hit_rate:.1f}%")
+    print(f"  - Avg Analysis Time: {results.qcpp_avg_time_ms:.2f}ms")
     
-    if rmse_results:
-        print(f"\n🎯 PREDICTION ACCURACY:")
-        print(f"  - Temperature RMSE: {rmse_results['temperature_rmse']:.2f} °C")
-        print(f"  - ΔG RMSE: {rmse_results['dg_rmse']:.2f} kcal/mol")
-        print(f"  - Overall Quality: {rmse_results['quality']}")
-    
-    if refinement_result:
+    # Quantum refinement
+    if results.refinement_applied:
         print(f"\n⚛️ QUANTUM REFINEMENT:")
-        print(f"  - Initial RMSD: {refinement_result.initial_rmsd:.2f} Å")
-        print(f"  - Final RMSD: {refinement_result.final_rmsd:.2f} Å")
-        print(f"  - RMSD Improvement: {refinement_result.rmsd_improvement:.2f} Å ({refinement_result.rmsd_improvement / refinement_result.initial_rmsd * 100:.1f}%)")
-        print(f"  - Final Energy: {refinement_result.energy:.2f} kcal/mol")
-        print(f"  - GDT-TS: {refinement_result.gdt_ts:.1f}")
-        print(f"  - TM-score: {refinement_result.tm_score:.3f}")
-        print(f"  - Refinement Time: {refinement_result.refinement_time_seconds:.1f}s")
-        
-        # Component breakdown if available
-        if hasattr(refinement_result, 'rmsd_components') and refinement_result.rmsd_components:
-            print(f"  - RMSD Components:")
-            components = refinement_result.rmsd_components
-            if 'helix' in components:
-                print(f"    • Helix: {components['helix']:.2f} Å")
-            if 'sheet' in components:
-                print(f"    • Sheet: {components['sheet']:.2f} Å")
-            if 'loop' in components:
-                print(f"    • Loop: {components['loop']:.2f} Å")
-            if 'core' in components:
-                print(f"    • Core: {components['core']:.2f} Å")
+        print(f"  - Initial RMSD: {results.refinement_initial_rmsd:.2f} Å")
+        print(f"  - Final RMSD: {results.refinement_final_rmsd:.2f} Å")
+        improvement = results.refinement_improvement_percent or 0
+        print(f"  - RMSD Improvement: {improvement:.1f}%")
+        if results.refinement_time_seconds:
+            print(f"  - Refinement Time: {results.refinement_time_seconds:.1f}s")
     
-    if geometric_results:
+    # Geometric analysis
+    if results.geometric_analysis:
+        geo = results.geometric_analysis
         print(f"\n🔬 GEOMETRIC ATTRACTOR ANALYSIS:")
         
-        # Handle both old and new result formats
-        if 'golden_ratio_percentage' in geometric_results:
-            # New format from analyze_geometric_attractors_v2
-            phi_pct = geometric_results['golden_ratio_percentage']
-            rot_sym = geometric_results['symmetry_metrics']['rotational']
-            icosa_sim = geometric_results['platonic_similarities']['icosahedron']
-            dodeca_sim = geometric_results['platonic_similarities']['dodecahedron']
-            
+        if 'golden_ratio_percentage' in geo:
+            phi_pct = geo['golden_ratio_percentage']
             print(f"  - Golden Ratio (φ) Patterns: {phi_pct:.1f}%")
-            print(f"  - Rotational Symmetry: {rot_sym:.3f}")
-            print(f"  - Icosahedron Similarity: {icosa_sim:.3f}")
-            print(f"  - Dodecahedron Similarity: {dodeca_sim:.3f}")
-        else:
-            # Old format from analyze_geometric_attractors
-            phi_pct = geometric_results['golden_ratio']['percentage']
-            rot_sym = geometric_results['symmetry']['rotational']
-            icosa_sim = geometric_results['platonic_similarity']['icosahedron']
-            dodeca_sim = geometric_results['platonic_similarity']['dodecahedron']
-            
-            print(f"  - Golden Ratio (φ) Patterns: {phi_pct:.1f}%")
-            print(f"  - Rotational Symmetry: {rot_sym:.3f}")
-            print(f"  - Icosahedron Similarity: {icosa_sim:.3f}")
-            print(f"  - Dodecahedron Similarity: {dodeca_sim:.3f}")
+        
+        if 'symmetry_metrics' in geo:
+            sym = geo['symmetry_metrics']
+            print(f"  - Rotational Symmetry: {sym.get('rotational', 0):.3f}")
+        
+        if 'platonic_similarities' in geo:
+            plat = geo['platonic_similarities']
+            print(f"  - Icosahedron Similarity: {plat.get('icosahedron', 0):.3f}")
+            print(f"  - Dodecahedron Similarity: {plat.get('dodecahedron', 0):.3f}")
         
         # Interpretation
-        if phi_pct > 15 or icosa_sim > 0.6 or dodeca_sim > 0.6:
+        phi_pct = geo.get('golden_ratio_percentage', 0)
+        icosa = geo.get('platonic_similarities', {}).get('icosahedron', 0)
+        dodeca = geo.get('platonic_similarities', {}).get('dodecahedron', 0)
+        
+        if phi_pct > 15 or icosa > 0.6 or dodeca > 0.6:
             print(f"  ✨ HYPOTHESIS SUPPORT: Strong geometric optimization detected!")
         elif phi_pct > 10:
             print(f"  ⚡ HYPOTHESIS SUPPORT: Moderate geometric patterns present")
-        else:
-            print(f"  📊 Low geometric optimization (expected for small/unstructured proteins)")
     
-    if thz_results:
-        print(f"\n🎵 THz DETERMINISM ANALYSIS:")
-        print(f"  - Signatures collected: {thz_results['total_signatures']}")
-        print(f"  - Signature clusters: {thz_results['num_clusters']}")
-        print(f"  - Convergence ratio: {thz_results['convergence_ratio']:.1%}")
-        print(f"  - Determinism score: {thz_results['determinism_score']:.3f}")
-        print(f"  - {thz_results['interpretation']}")
-        
-        if thz_results['determinism_score'] > 0.8:
-            print(f"  🌟 STRONG EVIDENCE: Folding is highly deterministic!")
-        elif thz_results['determinism_score'] > 0.6:
-            print(f"  ✨ MODERATE EVIDENCE: Multiple convergent pathways")
-        else:
-            print(f"  ⚡ WEAK EVIDENCE: Stochastic folding behavior")
+    # Mediator statistics
+    if results.mediator_stats:
+        ms = results.mediator_stats
+        print(f"\n🔍 MEDIATOR AGENT ANALYSIS:")
+        print(f"  - Active Mediators: {ms.get('mediator_count', 0)}")
+        print(f"  - Total Patterns Detected: {ms.get('total_detections', 0)}")
     
-    # Get Mediator statistics if enabled
-    mediator_stats = None
-    if enable_mediators:
-        try:
-            mediator_stats = coordinator.get_mediator_statistics()
-            print(f"\n🔍 MEDIATOR AGENT ANALYSIS:")
-            print(f"  - Active Mediators: {mediator_stats.get('mediator_count', 0)}")
-            print(f"  - Detection Cycles Run: Available after exploration")
-            
-            # Pattern detection statistics
-            total_patterns = mediator_stats.get('total_detections', 0)
-            print(f"  - Total Patterns Detected: {total_patterns}")
-            if total_patterns > 0:
-                thz = mediator_stats.get('thz_detections', 0)
-                folding = mediator_stats.get('folding_detections', 0)
-                geometric = mediator_stats.get('geometric_detections', 0)
-                
-                if thz > 0:
-                    print(f"    • THz Resonance: {thz}")
-                if folding > 0:
-                    print(f"    • Folding Dynamics: {folding}")
-                if geometric > 0:
-                    print(f"    • Geometric Similarity: {geometric}")
-            
-            # Broadcasting statistics
-            broadcasts = mediator_stats.get('broadcasts', 0)
-            print(f"  - Broadcasts Sent: {broadcasts}")
-            
-            # Cache performance
-            hit_rate = mediator_stats.get('cache_hit_rate', 0.0)
-            print(f"  - Cache Hit Rate: {hit_rate*100:.1f}%")
-        except ValueError as e:
-            # Mediators not enabled or error occurred
-            print(f"⚠️  Could not retrieve Mediator statistics: {e}")
-    
-    # Get Hierarchical Folding statistics if enabled
-    hierarchical_stats = None
-    if enable_hierarchical:
-        try:
-            hierarchical_stats = coordinator.get_hierarchical_folding_statistics()
-            print(f"\n🔗 HIERARCHICAL FOLDING ANALYSIS:")
-            
-            # Phase information
-            if 'phase' in hierarchical_stats:
-                phase_info = hierarchical_stats['phase']
-                current_phase = phase_info.get('current_phase', 'unknown')
-                iterations_in_phase = phase_info.get('iterations_in_phase', 0)
-                print(f"  - Current Phase: {current_phase.upper()}")
-                print(f"  - Iterations in Phase: {iterations_in_phase}")
-                
-                # Phase metrics
-                if 'metrics' in phase_info:
-                    metrics = phase_info['metrics']
-                    print(f"  - Move Scale: {phase_info.get('move_scale', 1.0):.2f}")
-                    print(f"  - Energy Stable Iterations: {metrics.get('energy_stable_iterations', 0)}")
-            
-            # Anchoring information
-            if 'anchoring' in hierarchical_stats:
-                anchor_info = hierarchical_stats['anchoring']
-                anchor_pct = anchor_info.get('anchoring_percentage', 0.0)
-                print(f"  - Residues Anchored: {anchor_pct:.1f}%")
-                
-                # Anchor distribution
-                if 'anchor_distribution' in anchor_info:
-                    dist = anchor_info['anchor_distribution']
-                    soft = dist.get('soft', 0)
-                    medium = dist.get('medium', 0)
-                    hard = dist.get('hard', 0)
-                    locked = dist.get('locked', 0)
-                    
-                    if soft + medium + hard + locked > 0:
-                        print(f"    • Soft: {soft}, Medium: {medium}, Hard: {hard}, Locked: {locked}")
-                
-                # Anchored segments
-                if 'anchored_segments' in anchor_info and anchor_info['anchored_segments']:
-                    print(f"  - Anchored Segments:")
-                    for seg in anchor_info['anchored_segments'][:5]:  # Show first 5
-                        print(f"    • Residues {seg['start']}-{seg['end']} ({seg['length']} res): {seg['state']}")
-                
-                # Statistics
-                if 'statistics' in anchor_info:
-                    stats = anchor_info['statistics']
-                    print(f"  - Constraint Rate: {stats.get('constraint_rate', 0.0):.1f}%")
-                    print(f"  - Anchor Promotions: {stats.get('anchor_promotions', 0)}")
-                    
-            # Interpretation
-            if hierarchical_stats.get('anchoring', {}).get('anchoring_percentage', 0) > 30:
-                print(f"  ✨ SIGNIFICANT anchoring achieved - search space reduced!")
-            elif hierarchical_stats.get('anchoring', {}).get('anchoring_percentage', 0) > 10:
-                print(f"  ⚡ Moderate anchoring - some structure stabilized")
-            else:
-                print(f"  📊 Limited anchoring - more iterations may help")
-                
-        except (ValueError, AttributeError) as e:
-            print(f"⚠️  Could not retrieve Hierarchical Folding statistics: {e}")
+    # Hierarchical folding statistics
+    if results.hierarchical_folding_stats:
+        hf = results.hierarchical_folding_stats
+        print(f"\n🔗 HIERARCHICAL FOLDING:")
+        if 'anchoring' in hf:
+            anchor_pct = hf['anchoring'].get('anchoring_percentage', 0)
+            print(f"  - Anchoring: {anchor_pct:.1f}%")
     
     print(f"\n" + "="*70)
     
     # Overall assessment
-    if rmsd_quality in ["GOOD", "FAIR"]:
-        print("✅ TEST SUCCESSFUL!")
-        print("   Structure prediction shows promising results")
+    if results.best_rmsd is not None and results.best_rmsd != float('inf'):
+        if results.best_rmsd < 4.0:
+            print("✅ TEST SUCCESSFUL!")
+            print("   Structure prediction shows promising results")
+        elif results.best_rmsd < 8.0:
+            print("⚠️  Results show moderate accuracy")
+            print("   Consider: longer iterations, quantum refinement")
+        else:
+            print("⚠️  Results show room for improvement")
+            print("   Consider: longer iterations, more agents, quantum refinement")
     else:
-        print("⚠️  Results show room for improvement")
-        print("   Consider: longer iterations, more agents")
-    
-    if rmse_results and rmse_results['quality'] in ["GOOD", "FAIR"]:
-        print("✅ PREDICTION ACCURACY VALIDATED!")
-        print("   QCPP physics model shows good agreement with experimental data")
+        if results.best_energy < 0:
+            print("✅ Energy minimization successful (no native structure for RMSD)")
+        else:
+            print("⚠️  Exploration may need more iterations")
     
     print("="*70)
+
+
+def save_results(results: PredictionResults, pdb_id: Optional[str], 
+                 exp_data: Optional[dict], config: PredictionConfig) -> dict:
+    """Save results to JSON file."""
     
-    # Save results to organized directory
     results_dir = Path("results/test_results")
     results_dir.mkdir(parents=True, exist_ok=True)
     
+    # Determine RMSD quality
+    rmsd_quality = "N/A"
+    if results.best_rmsd is not None and results.best_rmsd != float('inf'):
+        if results.best_rmsd < 2.0:
+            rmsd_quality = "EXCELLENT"
+        elif results.best_rmsd < 4.0:
+            rmsd_quality = "GOOD"
+        elif results.best_rmsd < 6.0:
+            rmsd_quality = "FAIR"
+        else:
+            rmsd_quality = "NEEDS IMPROVEMENT"
+    
+    # Build output structure (compatible with previous format)
     output = {
         'protein_info': {
             'pdb_id': pdb_id,
-            'sequence_length': len(sequence),
-            'category': settings['category']
+            'sequence_length': results.sequence_length,
+            'category': get_optimal_settings(results.sequence_length)['category']
         },
         'test_config': {
-            'num_agents': num_agents,
-            'iterations_per_agent': iterations,
-            'total_conformations': total_conformations,
-            'mediators_enabled': enable_mediators,
-            'mediator_count': mediator_count if enable_mediators else 0,
-            'quantum_refinement_enabled': enable_refinement
+            'num_agents': config.agents,
+            'iterations_per_agent': config.iterations,
+            'total_conformations': (config.agents or 0) * (config.iterations or 0),
+            'mediators_enabled': config.enable_mediators,
+            'mediator_count': config.mediator_count if config.enable_mediators else 0,
+            'quantum_refinement_enabled': config.enable_refinement,
+            'hierarchical_folding_enabled': config.enable_hierarchical_folding,
+            'target_geometry': config.target_geometry,
+            'using_prediction_runner': True  # Mark as using unified code path
         },
         'exploration_results': {
             'best_energy': results.best_energy,
-            'estimated_rmsd': estimated_rmsd,
+            'estimated_rmsd': results.best_rmsd,
             'rmsd_quality': rmsd_quality,
-            'exploration_time_s': exploration_time,
-            'throughput_conf_per_s': throughput
+            'exploration_time_s': results.exploration_time_seconds,
+            'throughput_conf_per_s': results.throughput_conf_per_sec
         },
         'rmsd_validation': {
-            'rmsd': rmsd_result.rmsd if rmsd_result else None,
-            'gdt_ts': rmsd_result.gdt_ts if rmsd_result else None,
-            'tm_score': rmsd_result.tm_score if rmsd_result else None,
-            'n_atoms': rmsd_result.n_atoms if rmsd_result else None,
-            'aligned': rmsd_result.aligned if rmsd_result else None,
-            'calculation_method': 'kabsch' if rmsd_result else 'energy_estimate'
-        } if rmsd_result or estimated_rmsd else None,
+            'rmsd': results.best_rmsd,
+            'gdt_ts': results.gdt_ts_score,
+            'tm_score': results.tm_score,
+            'n_atoms': results.sequence_length,
+            'aligned': True if results.best_rmsd else False,
+            'calculation_method': results.rmsd_calculation_method
+        } if results.best_rmsd else None,
         'quantum_refinement': {
-            'initial_rmsd': refinement_result.initial_rmsd,
-            'final_rmsd': refinement_result.final_rmsd,
-            'rmsd_improvement': refinement_result.rmsd_improvement,
-            'energy': refinement_result.energy,
-            'gdt_ts': refinement_result.gdt_ts,
-            'tm_score': refinement_result.tm_score,
-            'refinement_time_seconds': refinement_result.refinement_time_seconds,
-            'rmsd_components': refinement_result.rmsd_components if hasattr(refinement_result, 'rmsd_components') else None,
-            'convergence_trajectory': refinement_result.convergence_trajectory if hasattr(refinement_result, 'convergence_trajectory') else None
-        } if refinement_result else None,
+            'initial_rmsd': results.refinement_initial_rmsd,
+            'final_rmsd': results.refinement_final_rmsd,
+            'rmsd_improvement': (results.refinement_initial_rmsd - results.refinement_final_rmsd) 
+                               if results.refinement_initial_rmsd and results.refinement_final_rmsd else None,
+            'improvement_percent': results.refinement_improvement_percent,
+            'refinement_time_seconds': results.refinement_time_seconds
+        } if results.refinement_applied else None,
         'qcpp_integration': {
-            'total_analyses': cache_stats['total_analyses'],
-            'cache_hit_rate': cache_stats['cache_hit_rate'],
-            'avg_calculation_time_ms': cache_stats['avg_calculation_time_ms']
+            'total_analyses': results.qcpp_total_analyses,
+            'cache_hit_rate': results.qcpp_cache_hit_rate,
+            'avg_calculation_time_ms': results.qcpp_avg_time_ms
         },
-        'rmse_validation': rmse_results,
-        'geometric_attractor_analysis': geometric_results,
-        'thz_determinism_analysis': thz_results,
-        'mediator_statistics': mediator_stats,
+        'geometric_attractor_analysis': results.geometric_analysis,
+        'mediator_statistics': results.mediator_stats,
+        'hierarchical_folding_statistics': results.hierarchical_folding_stats,
+        'prediction_runner_version': '2.0',  # Mark version
         'timestamp': datetime.now().isoformat()
     }
     
     output_file = results_dir / f"test_{pdb_id or 'custom'}_results.json"
     with open(output_file, 'w') as f:
-        json.dump(output, f, indent=2)
+        json.dump(output, f, indent=2, default=str)
     
-    print(f"\n✓ Results saved to: {output_file}\n")
+    print(f"\n✓ Results saved to: {output_file}")
+    
+    # Also save PDB structure if we have coordinates
+    if results.best_conformation_coords:
+        pdb_dir = Path("results/predicted_structures")
+        pdb_dir.mkdir(parents=True, exist_ok=True)
+        
+        pdb_filename = f"{pdb_id or 'custom'}_predicted.pdb"
+        if config.target_geometry != 'none':
+            pdb_filename = f"{pdb_id or 'custom'}_predicted_{config.target_geometry}.pdb"
+        
+        pdb_path = pdb_dir / pdb_filename
+        save_conformation_as_pdb(
+            sequence=results.sequence,
+            coordinates=results.best_conformation_coords,
+            energy=results.best_energy,
+            output_file=pdb_path,
+            pdb_id=pdb_id
+        )
     
     return output
+
+
+def save_conformation_as_pdb(sequence: str, coordinates: list, energy: float, 
+                              output_file: Path, pdb_id: Optional[str] = None):
+    """Save a conformation to PDB format."""
+    with open(output_file, 'w') as f:
+        f.write("HEADER    PROTEIN STRUCTURE PREDICTION\n")
+        if pdb_id:
+            f.write(f"TITLE     UBF-QCPP PREDICTION FOR {pdb_id.upper()}\n")
+        else:
+            f.write(f"TITLE     UBF-QCPP PREDICTION\n")
+        f.write(f"REMARK    SEQUENCE: {sequence}\n")
+        f.write(f"REMARK    ENERGY: {energy:.2f} kcal/mol\n")
+        f.write(f"REMARK    METHOD: UBF with QCPP integration (PredictionRunner)\n")
+        f.write(f"REMARK    DATE: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+        f.write("\n")
+        
+        for i, (aa_letter, coord) in enumerate(zip(sequence, coordinates), 1):
+            x, y, z = coord
+            aa_3letter = AA1_TO_AA3.get(aa_letter, 'UNK')
+            f.write(f"ATOM  {i:5d}  CA  {aa_3letter:3s} A{i:4d}    "
+                   f"{x:8.3f}{y:8.3f}{z:8.3f}  1.00  0.00           C\n")
+        
+        f.write("END\n")
+    
+    print(f"✓ Structure saved to: {output_file}")
 
 
 def list_available_proteins():
@@ -1165,7 +560,6 @@ def list_available_proteins():
         print(f"\nFound {len(AVAILABLE_PROTEINS)} PDB files in your workspace:\n")
         
         for pdb_id, info in sorted(AVAILABLE_PROTEINS.items()):
-            # Check if we have detailed info
             if pdb_id in KNOWN_PROTEINS:
                 known = KNOWN_PROTEINS[pdb_id]
                 print(f"{pdb_id} - {known['name']}")
@@ -1186,7 +580,7 @@ def list_available_proteins():
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Test protein structure prediction with QCPP-UBF integration',
+        description='Test protein structure prediction with QCPP-UBF integration (uses PredictionRunner)',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -1199,7 +593,8 @@ Examples:
   python test_protein.py --pdb 1UBQ --enable-mediators # Enable pattern detection
   python test_protein.py --pdb 1UBQ --enable-refinement # Enable quantum refinement
   python test_protein.py --pdb 1UBQ --enable-hierarchical # Enable hierarchical folding
-  python test_protein.py --pdb 1UBQ --enable-mediators --mediator-count 5  # 5 Mediators
+
+NOTE: This CLI uses PredictionRunner, the SAME code path as the website backend.
         """
     )
     
@@ -1214,11 +609,11 @@ Examples:
     parser.add_argument('--enable-mediators', action='store_true',
                         help='Enable Mediator Agents for pattern detection and information relay')
     parser.add_argument('--mediator-count', type=int, default=2,
-                        help='Number of Mediator Agents to deploy (default: 2, only used if --enable-mediators is set)')
+                        help='Number of Mediator Agents to deploy (default: 2)')
     parser.add_argument('--enable-refinement', action='store_true',
-                        help='Enable quantum refinement for two-stage optimization (coarse → refined)')
+                        help='Enable quantum refinement for two-stage optimization')
     parser.add_argument('--enable-hierarchical', action='store_true',
-                        help='Enable hierarchical folding with progressive search confinement (anchoring + phase control)')
+                        help='Enable hierarchical folding with progressive search confinement')
     parser.add_argument('--list', action='store_true', help='List available test proteins')
     parser.add_argument('--quick', action='store_true', help='Quick test on Villin (35 residues)')
     
@@ -1233,7 +628,6 @@ Examples:
     if args.quick:
         print("🚀 Quick Test Mode: Using Villin (1VII, 35 residues, reduced iterations)")
         args.pdb = '1VII'
-        # Override with quick settings - much fewer iterations for speed
         quick_settings = get_quick_test_settings(35)
         if not args.agents:
             args.agents = quick_settings['agents']
