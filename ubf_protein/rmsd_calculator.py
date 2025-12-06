@@ -639,7 +639,7 @@ class NativeStructureLoader:
         
         current_residue = None
         model_count = 0
-        in_model = False
+        first_chain = None  # Track first chain encountered
         
         for line in lines:
             # Handle MODEL records (use only first model)
@@ -647,7 +647,6 @@ class NativeStructureLoader:
                 model_count += 1
                 if model_count > 1:
                     break  # Stop after first model
-                in_model = True
                 continue
             
             if line.startswith('ENDMDL'):
@@ -655,15 +654,27 @@ class NativeStructureLoader:
                     break  # We have first model, stop
                 continue
             
+            # Stop at TER (end of chain) if we have already parsed residues
+            if line.startswith('TER') and coords:
+                break
+            
             # Parse ATOM records
             if line.startswith('ATOM'):
                 atom_name = line[12:16].strip()
                 res_name = line[17:20].strip()
-                chain = line[21:22].strip()
+                chain = line[21:22]  # Don't strip - space is valid chain ID
                 res_num = int(line[22:26].strip())
                 
                 # Skip if not in standard amino acids
                 if res_name not in aa_map:
+                    continue
+                
+                # Lock to first chain encountered
+                if first_chain is None:
+                    first_chain = chain
+                
+                # Only process residues from the first chain
+                if chain != first_chain:
                     continue
                 
                 # For CA-only mode, skip non-CA atoms

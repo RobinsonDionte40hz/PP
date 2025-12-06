@@ -117,10 +117,11 @@ const SequenceStep: React.FC<SequenceStepProps> = ({ formData, onChange }) => {
         'SER': 'S', 'THR': 'T', 'VAL': 'V', 'TRP': 'W', 'TYR': 'Y'
       };
 
-      // Parse ATOM records for CA atoms (one per residue) from chain A
+      // Parse ATOM records for CA atoms (one per residue) from first chain only
       const lines = pdbText.split('\n');
       const residues: { resNum: number; resName: string }[] = [];
-      const seenResidues = new Set<string>();
+      const seenResidues = new Set<number>();
+      let firstChainId: string | null = null;
       
       for (const line of lines) {
         if (line.startsWith('ATOM') || line.startsWith('HETATM')) {
@@ -129,18 +130,23 @@ const SequenceStep: React.FC<SequenceStepProps> = ({ formData, onChange }) => {
           const chainId = line.substring(21, 22);
           const resSeq = parseInt(line.substring(22, 26).trim(), 10);
           
-          // Only process CA atoms from first chain (usually 'A' or ' ')
+          // Only process CA atoms from standard amino acids
           if (atomName === 'CA' && aaMap[resName]) {
-            const key = `${chainId}:${resSeq}`;
-            if (!seenResidues.has(key)) {
-              seenResidues.add(key);
+            // Lock to first chain encountered
+            if (firstChainId === null) {
+              firstChainId = chainId;
+            }
+            
+            // Only process residues from the first chain
+            if (chainId === firstChainId && !seenResidues.has(resSeq)) {
+              seenResidues.add(resSeq);
               residues.push({ resNum: resSeq, resName });
             }
           }
         }
-        // Stop at first TER or ENDMDL (single chain/model only)
-        if (line.startsWith('TER') || line.startsWith('ENDMDL')) {
-          if (residues.length > 0) break;
+        // Stop at TER (end of chain) or ENDMDL (end of model) if we have residues
+        if ((line.startsWith('TER') || line.startsWith('ENDMDL')) && residues.length > 0) {
+          break;
         }
       }
 
@@ -149,15 +155,28 @@ const SequenceStep: React.FC<SequenceStepProps> = ({ formData, onChange }) => {
       let sequence = residues.map(r => aaMap[r.resName]).join('');
 
       if (sequence.length === 0) {
-        // Fallback to SEQRES if no ATOM records found
+        // Fallback to SEQRES if no ATOM records found - use first chain only
         const seqresLines = lines.filter(line => line.startsWith('SEQRES'));
+        let seqresChainId: string | null = null;
+        
         seqresLines.forEach(line => {
-          const parts = line.split(/\s+/).slice(4);
-          parts.forEach(aa => {
-            if (aaMap[aa]) {
-              sequence += aaMap[aa];
-            }
-          });
+          // SEQRES format: columns 12 = chain ID
+          const chainId = line.substring(11, 12).trim();
+          
+          // Lock to first chain encountered
+          if (seqresChainId === null) {
+            seqresChainId = chainId;
+          }
+          
+          // Only process residues from the first chain
+          if (chainId === seqresChainId) {
+            const parts = line.split(/\s+/).slice(4);
+            parts.forEach(aa => {
+              if (aaMap[aa]) {
+                sequence += aaMap[aa];
+              }
+            });
+          }
         });
       }
 
