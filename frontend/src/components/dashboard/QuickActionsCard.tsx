@@ -68,10 +68,6 @@ const QuickActionsCard: React.FC<QuickActionsCardProps> = ({ onNavigate }) => {
       elevation={2}
       sx={{
         height: '100%',
-        background: `linear-gradient(135deg, ${alpha(
-          theme.palette.primary.main,
-          0.05
-        )} 0%, ${alpha(theme.palette.background.paper, 1)} 100%)`,
       }}
     >
       <CardContent>
