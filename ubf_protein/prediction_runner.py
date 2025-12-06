@@ -558,8 +558,25 @@ class PredictionRunner:
         
         logger.info(f"Attempting to load native structure: pdb={self.config.native_pdb}, file={self.config.pdb_file_path}")
         
+        # Use absolute path for pdb_cache in Docker environment
+        import os
+        cache_dir = os.environ.get('PDB_CACHE_DIR', './pdb_cache')
+        # If running in /app (Docker), use /app/pdb_cache
+        if os.getcwd() == '/app':
+            cache_dir = '/app/pdb_cache'
+        
+        logger.info(f"Using PDB cache directory: {cache_dir} (cwd={os.getcwd()})")
+        
+        # Ensure cache directory exists
+        os.makedirs(cache_dir, exist_ok=True)
+        
+        # Check what's in the cache
+        if os.path.exists(cache_dir):
+            cached_files = os.listdir(cache_dir)
+            logger.info(f"PDB cache contains {len(cached_files)} files: {cached_files[:5]}...")
+        
         try:
-            loader = NativeStructureLoader(cache_dir="./pdb_cache")
+            loader = NativeStructureLoader(cache_dir=cache_dir)
             
             if self.config.pdb_file_path and Path(self.config.pdb_file_path).exists():
                 self.native_structure = loader.load_from_file(
@@ -567,6 +584,7 @@ class PredictionRunner:
                 )
                 logger.info(f"Loaded native from file: {self.config.pdb_file_path}")
             elif self.config.native_pdb:
+                logger.info(f"Attempting to load PDB ID: {self.config.native_pdb}")
                 self.native_structure = loader.load_from_pdb_id(
                     self.config.native_pdb, ca_only=True
                 )
