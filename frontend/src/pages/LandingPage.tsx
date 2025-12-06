@@ -129,19 +129,19 @@ const LandingPage: React.FC = () => {
     {
       icon: <TwoIcon sx={{ fontSize: 40 }} />,
       title: 'Multi-Agent Exploration',
-      description: 'Our UBF system deploys multiple agents to explore conformational space using consciousness-inspired optimization.',
+      description: 'The UBF system deploys coordinated agents with adaptive strategies to efficiently explore conformational space.',
       color: '#47597E',
     },
     {
       icon: <ThreeIcon sx={{ fontSize: 40 }} />,
       title: 'Quantum Refinement',
-      description: 'QCPP applies quantum coherence analysis and golden ratio patterns to refine structures toward native-like conformations.',
+      description: 'QCPP analyzes quantum coherence patterns, THz spectra, and golden ratio geometry. Optional two-stage refinement achieves 45-58% RMSD improvement.',
       color: '#6B7D9E',
     },
     {
       icon: <FourIcon sx={{ fontSize: 40 }} />,
       title: 'Analyze Results',
-      description: 'View 3D structures, energy landscapes, RMSD metrics, and detailed agent statistics. Export PDB files for further analysis.',
+      description: 'Explore RMSD, GDT-TS, TM-Score, energy breakdown, geometric patterns, and trajectory data. Export PDB structures for downstream analysis.',
       color: '#B2AB8C',
     },
   ];
@@ -149,23 +149,23 @@ const LandingPage: React.FC = () => {
   const features = [
     {
       icon: <PsychologyIcon sx={{ fontSize: 48 }} />,
-      title: 'Consciousness-Inspired AI',
-      description: 'Multi-agent system with emergent exploration behaviors for novel conformational sampling.',
+      title: 'Multi-Agent Exploration',
+      description: 'Coordinated agents with adaptive behaviors navigate energy landscapes to discover optimal protein conformations.',
     },
     {
       icon: <ScienceIcon sx={{ fontSize: 48 }} />,
-      title: 'Quantum Coherence',
-      description: 'Physics-based refinement using quantum mechanics and golden ratio geometric patterns.',
+      title: 'Quantum Coherence Analysis',
+      description: 'QCPP engine evaluates quantum coherence patterns, THz spectra, and golden ratio geometry for structure refinement.',
     },
     {
       icon: <SpeedIcon sx={{ fontSize: 48 }} />,
       title: 'Real-Time Monitoring',
-      description: 'Watch predictions unfold with live energy charts, RMSD tracking, and agent status updates.',
+      description: 'Watch predictions unfold with live energy charts, RMSD tracking, convergence metrics, and detailed event logs.',
     },
     {
       icon: <BiotechIcon sx={{ fontSize: 48 }} />,
-      title: '3D Visualization',
-      description: 'Interactive protein structure viewer with multiple representations and geometric overlays.',
+      title: '3D Visualization & Analysis',
+      description: 'Interactive NGL viewer with geometric overlays, trajectory playback, Platonic solid similarity scores, and PDB export.',
     },
   ];
 
@@ -415,13 +415,13 @@ const LandingPage: React.FC = () => {
                     color: 'white',
                   }}
                 >
-                  Quantum-Enhanced Protein Structure Prediction
+                  Folds Emerging Within Conformational Space
                 </Typography>
                 <Typography
                   variant="h5"
                   sx={{ mb: 4, lineHeight: 1.6, maxWidth: 500, color: 'rgba(255, 255, 255, 0.85)', fontSize: { xs: '1.1rem', sm: '1.25rem', md: '1.5rem' } }}
                 >
-                  Explore protein conformational space with consciousness-inspired multi-agent optimization and quantum coherence refinement.
+                  Navigate protein energy landscapes with multi-agent exploration, quantum coherence analysis, golden ratio geometry, and real-time 3D visualization—all in one unified research platform.
                 </Typography>
                 <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 4 }}>
                   <Button
@@ -856,7 +856,7 @@ const LandingPage: React.FC = () => {
                 />
               </Box>
               <Typography variant="body2" sx={{ opacity: 0.8, textAlign: { xs: 'center', md: 'left' } }}>
-                Quantum-Enhanced Protein Structure Prediction
+                Folds Emerging Within Conformational Space
               </Typography>
             </Grid>
             <Grid size={{ xs: 12, md: 4 }}>
