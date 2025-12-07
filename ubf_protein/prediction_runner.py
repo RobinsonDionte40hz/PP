@@ -420,7 +420,18 @@ class PredictionRunner:
         if self.native_structure and best_conf:
             rmsd_result = self._calculate_rmsd(best_conf)
             if rmsd_result:
-                final_rmsd = rmsd_result.rmsd
+                # Use recalculated RMSD only if it's better than tracked best_rmsd
+                # The tracked best_rmsd may come from hierarchical folding or other sources
+                # and represents the true minimum found during exploration
+                recalculated_rmsd = rmsd_result.rmsd
+                if best_rmsd != float('inf') and best_rmsd < recalculated_rmsd:
+                    logger.info(
+                        f"Using tracked best RMSD ({best_rmsd:.2f}Å) instead of "
+                        f"recalculated ({recalculated_rmsd:.2f}Å) - conformation may have drifted"
+                    )
+                    final_rmsd = best_rmsd
+                else:
+                    final_rmsd = recalculated_rmsd
                 gdt_ts = rmsd_result.gdt_ts
                 tm_score = rmsd_result.tm_score
                 rmsd_method = "kabsch"

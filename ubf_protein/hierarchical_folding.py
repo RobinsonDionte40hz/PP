@@ -414,6 +414,27 @@ class HierarchicalFoldingManager:
             return self.anchor_manager.get_anchored_residues()
         return []
     
+    def get_best_rmsd(self) -> Optional[float]:
+        """Get the best RMSD tracked by the phase controller.
+        
+        Returns:
+            Best RMSD found during hierarchical folding, or None if not available.
+        """
+        if self.phase_controller is not None:
+            return self.phase_controller.metrics.best_rmsd
+        return None
+    
+    def get_best_energy(self) -> Optional[float]:
+        """Get the best energy tracked by the phase controller.
+        
+        Returns:
+            Best energy found during hierarchical folding, or None if not available.
+        """
+        if self.phase_controller is not None:
+            best = self.phase_controller.metrics.best_energy
+            return best if best != float('inf') else None
+        return None
+    
     def get_summary(self) -> Dict[str, Any]:
         """Get comprehensive summary of hierarchical folding state."""
         summary = {

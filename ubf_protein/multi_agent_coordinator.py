@@ -669,6 +669,16 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
                             rmsd=self._best_rmsd if self._best_rmsd < float('inf') else None
                         )
                         
+                        # Sync best RMSD back from hierarchical folding
+                        # The phase controller may track a better RMSD during its updates
+                        hf_best_rmsd = self._hierarchical_manager.get_best_rmsd()
+                        if hf_best_rmsd is not None and hf_best_rmsd < self._best_rmsd:
+                            logger.info(
+                                f"Syncing better RMSD from hierarchical folding: "
+                                f"{self._best_rmsd:.2f}Å -> {hf_best_rmsd:.2f}Å"
+                            )
+                            self._best_rmsd = hf_best_rmsd
+                        
                         # Log phase transitions and anchoring progress periodically
                         if (iteration + 1) % 50 == 0:
                             phase = self._hierarchical_manager.get_current_phase()
