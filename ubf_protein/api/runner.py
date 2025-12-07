@@ -122,14 +122,16 @@ class PredictionRunner(IPredictionRunner):
             if progress_callback:
                 def wrapped_callback(internal_update):
                     # Convert internal ProgressUpdate to public schema
+                    # Internal uses: stage, progress_percentage
+                    # Public uses: phase, percentage
                     public_update = ProgressUpdate(
                         iteration=internal_update.iteration,
                         total_iterations=internal_update.total_iterations,
-                        phase=internal_update.phase,
-                        percentage=internal_update.percentage,
+                        phase=getattr(internal_update, 'stage', 'exploration'),
+                        percentage=getattr(internal_update, 'progress_percentage', 0.0),
                         best_energy=internal_update.best_energy,
-                        current_rmsd=getattr(internal_update, 'current_rmsd', None),
-                        message=internal_update.message,
+                        current_rmsd=getattr(internal_update, 'current_rmsd', None) or getattr(internal_update, 'folding_rmsd', None),
+                        message=getattr(internal_update, 'message', None),
                         metrics=getattr(internal_update, 'metrics', {}),
                     )
                     progress_callback(public_update)
@@ -153,24 +155,56 @@ class PredictionRunner(IPredictionRunner):
         """Convert internal results to public schema."""
         # Extract metrics
         metrics = ValidationMetrics(
-            rmsd=getattr(internal_results, 'rmsd', None),
+            rmsd=getattr(internal_results, 'best_rmsd', None) or getattr(internal_results, 'folding_rmsd', None),
             tm_score=getattr(internal_results, 'tm_score', None),
+            gdt_ts=getattr(internal_results, 'gdt_ts_score', None),
             energy_total=getattr(internal_results, 'best_energy', None),
             qcp_score=getattr(internal_results, 'qcp_score', None),
         )
         
+        # Get coordinates from internal results
+        coords = getattr(internal_results, 'best_conformation_coords', None) or []
+        
+        # Convert coordinates to list format if they're tuples
+        if coords and isinstance(coords[0], tuple):
+            coords = [list(c) for c in coords]
+        
+        # Generate PDB string from coordinates if available
+        pdb_string = ""
+        if coords:
+            pdb_lines = ["HEADER    PROTEIN STRUCTURE PREDICTION"]
+            pdb_lines.append(f"TITLE     Predicted structure for {len(internal_results.sequence)} residues")
+            for i, (x, y, z) in enumerate(coords):
+                residue = internal_results.sequence[i] if i < len(internal_results.sequence) else 'ALA'
+                # Convert 1-letter to 3-letter code
+                aa_map = {
+                    'A': 'ALA', 'C': 'CYS', 'D': 'ASP', 'E': 'GLU', 'F': 'PHE',
+                    'G': 'GLY', 'H': 'HIS', 'I': 'ILE', 'K': 'LYS', 'L': 'LEU',
+                    'M': 'MET', 'N': 'ASN', 'P': 'PRO', 'Q': 'GLN', 'R': 'ARG',
+                    'S': 'SER', 'T': 'THR', 'V': 'VAL', 'W': 'TRP', 'Y': 'TYR'
+                }
+                res_name = aa_map.get(residue, 'ALA')
+                pdb_lines.append(
+                    f"ATOM  {i+1:5d}  CA  {res_name} A{i+1:4d}    {x:8.3f}{y:8.3f}{z:8.3f}  1.00  0.00           C"
+                )
+            pdb_lines.append("END")
+            pdb_string = "\n".join(pdb_lines)
+        
         # Build results
         return PredictionResults(
             sequence=internal_results.sequence,
-            pdb_string=internal_results.pdb_string,
-            coordinates=internal_results.coordinates,
+            pdb_string=pdb_string,
+            coordinates=coords,
             metrics=metrics,
             trajectory=getattr(internal_results, 'trajectory', []),
-            runtime_seconds=getattr(internal_results, 'runtime_seconds', 0.0),
+            runtime_seconds=getattr(internal_results, 'total_time_seconds', 0.0),
             config=self._config.to_dict(),
             metadata={
                 'engine_version': '1.0.0',
                 'qcpp_enabled': self._config.qcpp_config != 'none',
+                'prediction_id': getattr(internal_results, 'prediction_id', ''),
+                'conformations_explored': getattr(internal_results, 'conformations_explored', 0),
+                'refinement_applied': getattr(internal_results, 'refinement_applied', False),
             }
         )
     
