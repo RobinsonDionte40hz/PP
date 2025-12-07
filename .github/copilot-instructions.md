@@ -6,6 +6,18 @@
 
 **Live Site**: https://emergentfolds.com
 
+### Production Deployment
+
+| Setting | Value |
+|---------|-------|
+| **Provider** | Hostinger VPS |
+| **Domain** | emergentfolds.com |
+| **Server Path** | `/opt/PP` |
+| **Compose File** | `docker-compose.prod.yml` |
+| **SSL** | Let's Encrypt via Nginx |
+
+**Important**: Always use `docker-compose.prod.yml` for production deployments, not `docker-compose.yml`.
+
 ### What This Platform Does
 
 - **Fast structure prediction** — Submit a sequence, get a 3D structure in seconds to minutes
@@ -45,6 +57,7 @@
 - `docs/SETUP.md` — Installation and configuration
 - `docs/USER_GUIDE.md` — Platform features
 - `docs/API.md` — REST API and WebSocket reference
+- `docs/DEPLOYMENT.md` — Production deployment guide
 
 ---
 

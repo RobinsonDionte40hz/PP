@@ -178,6 +178,57 @@ PP/
 
 ---
 
+## Production Deployment
+
+The live site **[emergentfolds.com](https://emergentfolds.com)** runs on:
+
+| Component | Details |
+|-----------|---------|
+| **Hosting** | Hostinger VPS |
+| **Server** | `/opt/PP` |
+| **Compose File** | `docker-compose.prod.yml` |
+| **SSL/HTTPS** | Nginx with Let's Encrypt |
+| **Database** | PostgreSQL 15 |
+| **Cache/Queue** | Redis 7 |
+
+### Quick Commands (on VPS)
+
+```bash
+# SSH into server
+ssh root@your-vps-ip
+
+# Navigate to project
+cd /opt/PP
+
+# View running containers
+docker ps -a
+
+# Restart all services
+docker compose -f docker-compose.prod.yml down
+docker compose -f docker-compose.prod.yml up -d
+
+# View logs
+docker logs pp_backend --tail 100
+docker logs pp_nginx --tail 100
+docker logs pp_worker --tail 100
+
+# Check service health
+docker exec pp_redis redis-cli ping
+```
+
+### Troubleshooting Production
+
+| Issue | Solution |
+|-------|----------|
+| **502 Bad Gateway** | Restart nginx: `docker restart pp_nginx` |
+| **Can't login** | Check Redis: `docker logs pp_redis --tail 50` |
+| **Slow dashboard** | Check backend: `docker logs pp_backend --tail 100` |
+| **Container network issues** | Full restart: `docker compose -f docker-compose.prod.yml down && docker compose -f docker-compose.prod.yml up -d` |
+
+Full deployment guide: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
+
+---
+
 ## Local Development
 
 ### Prerequisites

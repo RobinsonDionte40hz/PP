@@ -1,18 +1,79 @@
 # Production Deployment Guide
 
 ## Table of Contents
-1. [Overview](#overview)
-2. [Prerequisites](#prerequisites)
-3. [Environment Configuration](#environment-configuration)
-4. [Database Setup](#database-setup)
-5. [Redis Configuration](#redis-configuration)
-6. [SSL/TLS Setup](#ssltls-setup)
-7. [Docker Deployment](#docker-deployment)
-8. [Manual Deployment](#manual-deployment)
-9. [Security Hardening](#security-hardening)
-10. [Monitoring & Maintenance](#monitoring--maintenance)
-11. [Backup & Recovery](#backup--recovery)
-12. [Troubleshooting](#troubleshooting)
+1. [Live Deployment Info](#live-deployment-info)
+2. [Overview](#overview)
+3. [Prerequisites](#prerequisites)
+4. [Environment Configuration](#environment-configuration)
+5. [Database Setup](#database-setup)
+6. [Redis Configuration](#redis-configuration)
+7. [SSL/TLS Setup](#ssltls-setup)
+8. [Docker Deployment](#docker-deployment)
+9. [Manual Deployment](#manual-deployment)
+10. [Security Hardening](#security-hardening)
+11. [Monitoring & Maintenance](#monitoring--maintenance)
+12. [Backup & Recovery](#backup--recovery)
+13. [Troubleshooting](#troubleshooting)
+
+---
+
+## Live Deployment Info
+
+The production site **[emergentfolds.com](https://emergentfolds.com)** is deployed on:
+
+| Setting | Value |
+|---------|-------|
+| **Provider** | Hostinger VPS |
+| **Domain** | emergentfolds.com |
+| **Server Path** | `/opt/PP` |
+| **Compose File** | `docker-compose.prod.yml` |
+| **SSL** | Let's Encrypt via Nginx |
+
+### Container Names (Production)
+
+| Service | Container Name | Port |
+|---------|---------------|------|
+| Nginx | `pp_nginx` | 80, 443 |
+| Backend | `pp_backend` | 8000 (internal) |
+| Worker | `pp_worker` | - |
+| PostgreSQL | `pp_postgres` | 5432 (internal) |
+| Redis | `pp_redis` | 6379 (internal) |
+
+### Quick Operations
+
+```bash
+# SSH to VPS
+ssh root@<vps-ip>
+cd /opt/PP
+
+# Check status
+docker ps -a
+
+# Restart all services
+docker compose -f docker-compose.prod.yml down
+docker compose -f docker-compose.prod.yml up -d
+
+# View logs
+docker logs pp_backend --tail 100
+docker logs pp_nginx --tail 100
+docker logs pp_worker --tail 100
+
+# Check Redis health
+docker exec pp_redis redis-cli ping
+
+# Check PostgreSQL
+docker exec pp_postgres pg_isready
+```
+
+### Common Issues & Fixes
+
+| Problem | Cause | Fix |
+|---------|-------|-----|
+| **502 Bad Gateway** | Nginx can't reach backend | `docker compose -f docker-compose.prod.yml down && docker compose -f docker-compose.prod.yml up -d` |
+| **Login fails** | Redis session issue | Check `docker logs pp_redis --tail 50` |
+| **"Host unreachable"** | Container network mismatch | Full restart with prod compose file |
+| **Slow dashboard** | Database or Redis overload | Check `docker logs pp_backend --tail 100` |
+| **No nginx container** | Used wrong compose file | Use `docker-compose.prod.yml` not `docker-compose.yml` |
 
 ---
 
