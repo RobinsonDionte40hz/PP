@@ -198,8 +198,21 @@ const TrajectoryTab: React.FC<TrajectoryTabProps> = ({ predictionId }) => {
 
   if (isLoading) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
+      <Box 
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          minHeight: '400px',
+          width: '100%',
+          gap: 2,
+        }}
+      >
         <CircularProgress />
+        <Typography variant="body2" color="text.secondary">
+          Loading trajectory data...
+        </Typography>
       </Box>
     );
   }

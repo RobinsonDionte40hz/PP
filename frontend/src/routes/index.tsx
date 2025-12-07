@@ -25,7 +25,7 @@ const VerifyEmail = lazy(() => import('../pages/VerifyEmail'));
 
 // Suspense wrapper for lazy-loaded components
 const withSuspense = (Component: React.LazyExoticComponent<React.ComponentType<any>>) => (
-  <Suspense fallback={<LoadingSpinner />}>
+  <Suspense fallback={<LoadingSpinner fullPage message="Loading page..." />}>
     <Component />
   </Suspense>
 );

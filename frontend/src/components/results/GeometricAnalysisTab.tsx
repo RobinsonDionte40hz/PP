@@ -189,8 +189,21 @@ const GeometricAnalysisTab: React.FC<GeometricAnalysisTabProps> = ({ predictionI
 
   if (isLoading) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
+      <Box 
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          minHeight: '400px',
+          width: '100%',
+          gap: 2,
+        }}
+      >
         <CircularProgress />
+        <Typography variant="body2" color="text.secondary">
+          Loading geometric analysis...
+        </Typography>
       </Box>
     );
   }

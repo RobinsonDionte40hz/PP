@@ -160,8 +160,21 @@ const AccountTab: React.FC = () => {
 
   if (isLoading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+      <Box 
+        sx={{ 
+          display: 'flex', 
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center', 
+          minHeight: '300px',
+          width: '100%',
+          gap: 2,
+        }}
+      >
         <CircularProgress />
+        <Typography variant="body2" color="text.secondary">
+          Loading account settings...
+        </Typography>
       </Box>
     );
   }

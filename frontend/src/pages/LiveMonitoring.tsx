@@ -53,11 +53,16 @@ const ActivePredictionsList: React.FC = () => {
 
   if (isLoading) {
     return (
-      <Box sx={{ p: 3 }}>
+      <Box sx={{ p: 3, width: '100%' }}>
         <Typography variant="h4" fontWeight="bold" gutterBottom>
           Active Predictions
         </Typography>
-        <LinearProgress />
+        <Box sx={{ width: '100%', mt: 2 }}>
+          <LinearProgress />
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1, textAlign: 'center' }}>
+            Loading active predictions...
+          </Typography>
+        </Box>
       </Box>
     );
   }
