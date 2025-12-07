@@ -41,9 +41,41 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
-    # ...existing config...
-    # All environment variables now loaded from .env.production via env_file
-    # ...existing config...
+    environment:
+      - ENVIRONMENT=production
+      - APP_ENV=production
+      # Celery uses Redis DB 0
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      # Auth sessions use Redis DB 1 (separate for isolation)
+      - REDIS_SESSION_URL=redis://redis:6379/1
+      - SESSION_REDIS_URL=redis://redis:6379/1
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - SECRET_KEY=${SECRET_KEY}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      # JWT Configuration (NEW - v1.0.0)
+      - JWT_ACCESS_TOKEN_EXPIRE_MINUTES=${JWT_ACCESS_TOKEN_EXPIRE_MINUTES:-15}
+      - JWT_REFRESH_TOKEN_EXPIRE_DAYS=${JWT_REFRESH_TOKEN_EXPIRE_DAYS:-7}
+      - JWT_ALGORITHM=${JWT_ALGORITHM:-HS256}
+      - SESSION_TTL_SECONDS=${SESSION_TTL_SECONDS:-900}
+      - SESSION_EXPIRE_MINUTES=${SESSION_EXPIRE_MINUTES:-30}
+      # Security Configuration (NEW - v1.0.0)
+      - ENABLE_CSRF=${ENABLE_CSRF:-true}
+      - ENABLE_HSTS=${ENABLE_HSTS:-true}
+      - HSTS_MAX_AGE=${HSTS_MAX_AGE:-31536000}
+      # Email Configuration - loaded from .env.production via env_file
+      # (Do not override here, let env_file handle SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD)
+      - FEEDBACK_EMAIL=${FEEDBACK_EMAIL:-}
+      # OAuth Configuration (Google and GitHub)
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+      - GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI:-}
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID:-}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET:-}
+      - GITHUB_REDIRECT_URI=${GITHUB_REDIRECT_URI:-}
+      - FRONTEND_URL=${FRONTEND_URL:-https://emergentfolds.com}
     volumes:
       - ./checkpoints:/app/checkpoints
       - ./visualization_output:/app/visualization_output
