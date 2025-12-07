@@ -242,29 +242,24 @@ def run_prediction_v2(self, prediction_id: str):
         logger.info(f"Output directory: {prediction_dir}")
         
         # Create PredictionConfig from web request config
+        # Only pass parameters that PredictionConfig actually supports
         pred_config = PredictionConfig(
             sequence=sequence,
             native_pdb=config.get('native_pdb'),
-            agents=config.get('agents', None),  # None = auto-configure
-            iterations=config.get('iterations', None),  # None = auto-configure
-            diversity=config.get('diversity', 'balanced'),
+            agents=config.get('agents', 10),
+            iterations=config.get('iterations', 500),
             qcpp_config=config.get('qcpp_config', 'default'),
             enable_refinement=config.get('enable_refinement', False),
             enable_mediators=config.get('enable_mediators', False),
-            mediator_count=config.get('mediator_count', 3),
-            target_geometry=config.get('target_geometry', 'auto'),
-            enable_checkpointing=config.get('enable_checkpointing', True),
-            checkpoint_interval=config.get('checkpoint_interval', 50),
-            checkpoint_dir=str(checkpoint_dir),
             output_dir=str(prediction_dir),
-            save_pdb=True,
-            save_trajectory=True,
-            enable_hierarchical_folding=config.get('enable_hierarchical_folding', False),
+            checkpoint_interval=config.get('checkpoint_interval', 50),
         )
         
+        # Store extra config for metrics tracking
+        enable_hierarchical_folding = config.get('enable_hierarchical_folding', False)
+        
         logger.info(f"Running prediction: seq_len={len(sequence)}, "
-                   f"agents={pred_config.agents}, iter={pred_config.iterations}, "
-                   f"hierarchical={pred_config.enable_hierarchical_folding}")
+                   f"agents={pred_config.agents}, iter={pred_config.iterations}")
         
         # Create progress callback for WebSocket updates
         progress_callback = create_websocket_progress_callback(
@@ -301,7 +296,7 @@ def run_prediction_v2(self, prediction_id: str):
             "qcp_score": results.qcp_score,
             "refinement_applied": results.refinement_applied,
             "refinement_improvement_percent": results.refinement_improvement_percent,
-            "hierarchical_folding_enabled": config.get('enable_hierarchical_folding', False),
+            "hierarchical_folding_enabled": enable_hierarchical_folding,
             "hierarchical_folding_stats": results.hierarchical_folding_stats,
         })
         
