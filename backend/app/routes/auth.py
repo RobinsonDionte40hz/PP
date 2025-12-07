@@ -552,6 +552,16 @@ async def send_verification_email(
     import logging
     logger = logging.getLogger("security.auth")
     
+    from app.models.user import User
+    
+    # Get the actual user from database
+    user = db.query(User).filter(User.key_id == current_user["sub"]).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found"
+        )
+    
     # Default request if not provided
     if request is None:
         request = SendVerificationRequest()
@@ -559,7 +569,7 @@ async def send_verification_email(
     verification_service = EmailVerificationService()
     success, message = verification_service.send_verification_email(
         db=db,
-        user=current_user,
+        user=user,
         force_resend=request.force_resend
     )
     
@@ -586,7 +596,7 @@ async def send_verification_email(
                 detail=message
             )
     
-    logger.info(f"Verification email sent to user {current_user.key_id}")
+    logger.info(f"Verification email sent to user {user.key_id}")
     return SendVerificationResponse(message=message, success=True)
 
 
