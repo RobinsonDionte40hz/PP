@@ -882,8 +882,16 @@ async def google_oauth_callback(
     try:
         state_key = f"oauth_state:{request.state}"
         stored_provider = session_manager.redis_client.get(state_key)
-        if not stored_provider or stored_provider.decode() != "google":
+        if not stored_provider:
             logger.warning(f"Invalid OAuth state: {request.state[:8]}...")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid or expired state token"
+            )
+        # Handle both bytes and string from Redis
+        provider_str = stored_provider.decode() if isinstance(stored_provider, bytes) else stored_provider
+        if provider_str != "google":
+            logger.warning(f"Invalid OAuth state provider: {provider_str}")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid or expired state token"
@@ -895,10 +903,13 @@ async def google_oauth_callback(
     except Exception as e:
         logger.error(f"Failed to validate OAuth state: {str(e)}")
     
+    # Build redirect URI - must match what was used in authorization
+    actual_redirect_uri = redirect_uri or f"{settings.FRONTEND_URL}/auth/google/callback"
+    
     # Exchange code for user info
     success, message, user_info = await OAuthService.exchange_google_code(
         code=request.code,
-        redirect_uri=redirect_uri
+        redirect_uri=actual_redirect_uri
     )
     
     if not success or not user_info:
@@ -1059,8 +1070,16 @@ async def github_oauth_callback(
     try:
         state_key = f"oauth_state:{request.state}"
         stored_provider = session_manager.redis_client.get(state_key)
-        if not stored_provider or stored_provider.decode() != "github":
+        if not stored_provider:
             logger.warning(f"Invalid OAuth state: {request.state[:8]}...")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid or expired state token"
+            )
+        # Handle both bytes and string from Redis
+        provider_str = stored_provider.decode() if isinstance(stored_provider, bytes) else stored_provider
+        if provider_str != "github":
+            logger.warning(f"Invalid OAuth state provider: {provider_str}")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid or expired state token"
@@ -1072,10 +1091,13 @@ async def github_oauth_callback(
     except Exception as e:
         logger.error(f"Failed to validate OAuth state: {str(e)}")
     
+    # Build redirect URI - must match what was used in authorization
+    actual_redirect_uri = redirect_uri or f"{settings.FRONTEND_URL}/auth/github/callback"
+    
     # Exchange code for user info
     success, message, user_info = await OAuthService.exchange_github_code(
         code=request.code,
-        redirect_uri=redirect_uri
+        redirect_uri=actual_redirect_uri
     )
     
     if not success or not user_info:
@@ -1332,7 +1354,9 @@ async def complete_oauth_link(
                 detail="Invalid or expired state token"
             )
         
-        parts = stored_data.decode().split(":")
+        # Handle both bytes and string from Redis
+        data_str = stored_data.decode() if isinstance(stored_data, bytes) else stored_data
+        parts = data_str.split(":")
         if len(parts) != 3 or parts[0] != "link" or parts[1] != provider:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -1358,16 +1382,19 @@ async def complete_oauth_link(
             detail="User not found"
         )
     
+    # Build redirect URI - must match what was used in authorization
+    actual_redirect_uri = redirect_uri or f"{settings.FRONTEND_URL}/auth/{provider}/callback"
+    
     # Exchange code for user info
     if provider == "google":
         success, message, user_info = await OAuthService.exchange_google_code(
             code=request.code,
-            redirect_uri=redirect_uri
+            redirect_uri=actual_redirect_uri
         )
     else:
         success, message, user_info = await OAuthService.exchange_github_code(
             code=request.code,
-            redirect_uri=redirect_uri
+            redirect_uri=actual_redirect_uri
         )
     
     if not success or not user_info:
