@@ -431,6 +431,74 @@ async def require_auth_with_session(
         )
 
 
+async def require_verified_email(
+    credentials: Optional[HTTPAuthorizationCredentials] = Security(security)
+) -> Dict[str, Any]:
+    """
+    FastAPI dependency that requires valid JWT, active session, AND verified email.
+    Use this for endpoints that require email verification (e.g., predictions).
+    
+    Usage:
+        @app.post("/predictions")
+        async def create_prediction(user: Dict = Depends(require_verified_email)):
+            return {"user": user}
+    
+    Returns the authenticated user payload if all checks pass.
+    Raises HTTPException with 403 if email not verified.
+    """
+    # First, do the standard auth check
+    payload = await require_auth_with_session(credentials)
+    
+    # Check if email verification is required
+    from app.config import settings
+    if not settings.REQUIRE_EMAIL_VERIFICATION:
+        return payload
+    
+    # Get user from database to check verification status
+    user_id = payload.get("sub") or payload.get("key_id")
+    if not user_id:
+        raise HTTPException(
+            status_code=401,
+            detail="User ID not found in token",
+        )
+    
+    # Admin/developer users bypass verification requirement
+    role = payload.get("role", "user")
+    if role in ("admin", "developer"):
+        return payload
+    
+    # Check database for email verification status
+    from app.database import get_db
+    from app.models.user import User
+    
+    db = next(get_db())
+    try:
+        user = db.query(User).filter(User.key_id == user_id).first()
+        
+        if not user:
+            raise HTTPException(
+                status_code=401,
+                detail="User not found",
+            )
+        
+        # Users without email can proceed (they should be prompted to add one)
+        if not user.email:
+            return payload
+        
+        # Check if email is verified
+        if not user.email_verified:
+            raise HTTPException(
+                status_code=403,
+                detail="Email verification required. Please verify your email to continue.",
+                headers={"X-Email-Verification-Required": "true"}
+            )
+        
+        return payload
+        
+    finally:
+        db.close()
+
+
 # ==================== CSRF Protection ====================
 
 # Store for CSRF tokens (in production, use Redis or database)

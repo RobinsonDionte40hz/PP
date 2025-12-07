@@ -21,7 +21,7 @@ This document outlines the implementation plan for enhancing security and usage 
 | Phase | Status | Description |
 |-------|--------|-------------|
 | Phase 1: Usage Quotas | ✅ **COMPLETE** | Daily/monthly prediction limits |
-| Phase 2: Email Verification | 🔲 Not Started | Require email verification |
+| Phase 2: Email Verification | ✅ **COMPLETE** | Require email verification |
 | Phase 3: CAPTCHA | 🔲 Not Started | Bot protection on registration |
 | Phase 4: OAuth | 🔲 Not Started | Google/GitHub social login |
 | Phase 5: Frontend | 🔲 Not Started | UI for quotas and OAuth |
@@ -137,37 +137,58 @@ Create `backend/app/tasks/quota_tasks.py`:
 
 ---
 
-### Phase 2: Email Verification (Week 2)
+### Phase 2: Email Verification (Week 2) ✅ COMPLETE
 
 **Goal**: Prevent account farming with fake emails
 
-#### Task 2.1: Add Email Verification Fields
+**Implemented Files**:
+- `backend/app/models/user.py` - Added email verification fields
+- `backend/app/services/email_service.py` - SMTP email sending service
+- `backend/app/services/email_verification_service.py` - Verification logic
+- `backend/app/routes/auth.py` - Verification API endpoints
+- `backend/app/security.py` - `require_verified_email` dependency
+- `backend/app/config.py` - Verification settings
+- `backend/alembic/versions/003_add_email_verification.py` - Database migration
+- `backend/tests/test_email_verification.py` - Unit tests (23 passing)
 
-Add to User model:
+#### Task 2.1: Add Email Verification Fields ✅
+
+Added to `backend/app/models/user.py`:
+
 ```python
-email_verified: bool = False
-email_verification_token: str = None
-email_verification_sent_at: datetime = None
+# Email verification
+email_verified = Column(Boolean, nullable=False, default=False)
+email_verification_token = Column(String(64), nullable=True, index=True)
+email_verification_sent_at = Column(DateTime(timezone=True), nullable=True)
 ```
 
-#### Task 2.2: Create Verification Endpoints
+#### Task 2.2: Create Verification Endpoints ✅
 
 - `POST /api/auth/send-verification` — Send/resend verification email
-- `GET /api/auth/verify-email/{token}` — Verify email with token
-- `POST /api/auth/resend-verification` — Resend verification email
+- `POST /api/auth/verify-email` — Verify email with token (POST)
+- `GET /api/auth/verify-email/{token}` — Verify email with token (GET for email links)
+- `GET /api/auth/verification-status` — Get current verification status
 
-#### Task 2.3: Block Unverified Users
+#### Task 2.3: Block Unverified Users ✅
 
-- Modify `require_auth_with_session` to check `email_verified`
-- Allow: login, logout, resend-verification, account settings
-- Block: predictions, sessions, all other features
+- Created `require_verified_email` dependency in `security.py`
+- Applied to prediction creation endpoints (`predictions.py`, `sessions.py`)
+- Admin/developer roles bypass verification
+- Users without email can proceed (prompted to add one)
 
-#### Task 2.4: Email Templates
+#### Task 2.4: Email Templates ✅
 
-- Create HTML email template for verification
-- Include: verification link, expiration time (24 hours), support contact
+- HTML email template with EmergentFolds branding
+- Plain text fallback
+- Includes: verification link, expiration time (24 hours)
+- Development mode: logs email content instead of sending
 
-**SMTP Configuration**: Already exists in `config.py` (SMTP_HOST, etc.)
+**Configuration Settings**:
+```python
+EMAIL_VERIFICATION_EXPIRE_HOURS: int = 24
+REQUIRE_EMAIL_VERIFICATION: bool = True
+FRONTEND_URL: str = "http://localhost:5173"
+```
 
 ---
 

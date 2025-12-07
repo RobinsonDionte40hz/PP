@@ -39,6 +39,11 @@ class User(Base):
     daily_prediction_limit = Column(Integer, nullable=False, default=20)
     monthly_prediction_limit = Column(Integer, nullable=False, default=100)
     
+    # Email verification
+    email_verified = Column(Boolean, nullable=False, default=False)
+    email_verification_token = Column(String(64), nullable=True, index=True)
+    email_verification_sent_at = Column(DateTime(timezone=True), nullable=True)
+    
     # Timestamps
     created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
@@ -66,6 +71,7 @@ class User(Base):
             "email": self.email,
             "is_active": self.is_active,
             "role": self.role,
+            "email_verified": self.email_verified,
             "account_tier": self.account_tier,
             "daily_prediction_count": self.daily_prediction_count,
             "monthly_prediction_count": self.monthly_prediction_count,
@@ -85,6 +91,7 @@ class User(Base):
             "username": self.username,
             "email": self.email,
             "role": self.role,
+            "email_verified": self.email_verified,
             "account_tier": self.account_tier,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }

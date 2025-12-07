@@ -23,7 +23,7 @@ from app.schemas.prediction import (
 from app.services.work_session_service import work_session_service
 from app.services.prediction_service import PredictionService
 from app.services.quota_service import quota_service
-from app.security import require_auth_with_session
+from app.security import require_auth_with_session, require_verified_email
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 import logging
@@ -500,7 +500,7 @@ async def create_session_prediction(
     request: Request,
     data: PredictionCreateSchema,
     session_id: str = Path(..., description="Session ID"),
-    user: Dict[str, Any] = Depends(require_auth_with_session)
+    user: Dict[str, Any] = Depends(require_verified_email)
 ):
     """
     Create a new prediction within a work session.

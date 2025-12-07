@@ -227,3 +227,100 @@ class ErrorResponse(BaseModel):
             ]
         }
     }
+
+
+# Email Verification Schemas
+
+class SendVerificationRequest(BaseModel):
+    """Request schema for sending verification email"""
+    force_resend: bool = Field(default=False, description="Force resend even if recently sent")
+    
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "force_resend": False
+                }
+            ]
+        }
+    }
+
+
+class SendVerificationResponse(BaseModel):
+    """Response schema for send verification endpoint"""
+    message: str = Field(..., description="Status message")
+    success: bool = Field(..., description="Whether email was sent")
+    
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "message": "Verification email sent",
+                    "success": True
+                }
+            ]
+        }
+    }
+
+
+class VerifyEmailRequest(BaseModel):
+    """Request schema for email verification"""
+    token: str = Field(..., description="Verification token from email")
+    
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "token": "abc123def456..."
+                }
+            ]
+        }
+    }
+
+
+class VerifyEmailResponse(BaseModel):
+    """Response schema for email verification"""
+    message: str = Field(..., description="Status message")
+    success: bool = Field(..., description="Whether verification succeeded")
+    user: Optional[UserResponse] = Field(None, description="User data if verification succeeded")
+    
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "message": "Email verified successfully",
+                    "success": True,
+                    "user": {
+                        "key_id": "550e8400-e29b-41d4-a716-446655440000",
+                        "username": "john_doe",
+                        "email": "john@example.com",
+                        "role": "user",
+                        "created_at": "2025-11-22T10:30:00"
+                    }
+                }
+            ]
+        }
+    }
+
+
+class VerificationStatusResponse(BaseModel):
+    """Response schema for verification status"""
+    email: Optional[str] = Field(None, description="User's email address")
+    email_verified: bool = Field(..., description="Whether email is verified")
+    verification_required: bool = Field(..., description="Whether verification is required")
+    can_resend: bool = Field(..., description="Whether user can request new verification email")
+    token_expires_at: Optional[str] = Field(None, description="When current verification token expires")
+    
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "email": "john@example.com",
+                    "email_verified": False,
+                    "verification_required": True,
+                    "can_resend": True,
+                    "token_expires_at": "2025-12-08T10:30:00+00:00"
+                }
+            ]
+        }
+    }

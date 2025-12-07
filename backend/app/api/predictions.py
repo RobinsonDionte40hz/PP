@@ -11,7 +11,7 @@ from app.schemas.prediction import (
 from app.models.prediction import PredictionStatus
 from app.services.prediction_service import prediction_service
 from app.services.quota_service import quota_service
-from app.security import require_auth_with_session
+from app.security import require_auth_with_session, require_verified_email
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 import logging
@@ -49,7 +49,7 @@ async def create_prediction(
     request: Request,
     data: PredictionCreateSchema,
     background_tasks: BackgroundTasks,
-    user: Dict[str, Any] = Depends(require_auth_with_session),
+    user: Dict[str, Any] = Depends(require_verified_email),
 ):
     """
     Create a new prediction job.

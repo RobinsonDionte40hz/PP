@@ -98,6 +98,11 @@ class Settings(BaseSettings):
     ENTERPRISE_DAILY_QUOTA: int = -1  # Enterprise tier (-1 = unlimited)
     ENTERPRISE_MONTHLY_QUOTA: int = -1  # Enterprise tier (-1 = unlimited)
     
+    # Email Verification Settings
+    EMAIL_VERIFICATION_EXPIRE_HOURS: int = 24  # Verification links expire after 24 hours
+    REQUIRE_EMAIL_VERIFICATION: bool = True  # Require email verification for predictions
+    FRONTEND_URL: str = "http://localhost:5173"  # Frontend URL for verification links
+    
     # Celery Configuration
     CELERY_BROKER_URL: str = "redis://localhost:6379/0"
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/0"

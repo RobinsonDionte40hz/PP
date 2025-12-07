@@ -477,3 +477,205 @@ async def refresh(
 async def health_check():
     """Health check endpoint for authentication service"""
     return {"status": "healthy", "service": "authentication"}
+
+
+# ==================== Email Verification Endpoints ====================
+
+from app.schemas.auth import (
+    SendVerificationRequest,
+    SendVerificationResponse,
+    VerifyEmailRequest,
+    VerifyEmailResponse,
+    VerificationStatusResponse
+)
+from app.services.email_verification_service import EmailVerificationService
+from app.security import require_auth_with_session
+
+
+@router.post(
+    "/send-verification",
+    response_model=SendVerificationResponse,
+    status_code=status.HTTP_200_OK,
+    responses={
+        200: {"description": "Verification email sent or status returned"},
+        400: {"model": ErrorResponse, "description": "Email already verified or no email"},
+        401: {"model": ErrorResponse, "description": "Not authenticated"},
+        429: {"model": ErrorResponse, "description": "Too many requests"},
+        500: {"model": ErrorResponse, "description": "Failed to send email"}
+    },
+    summary="Send verification email",
+    description="""
+    Send or resend email verification link to the authenticated user.
+    
+    Rate limited to once every 5 minutes unless force_resend is True.
+    """
+)
+async def send_verification_email(
+    request: SendVerificationRequest = None,
+    current_user=Depends(require_auth_with_session),
+    db: Session = Depends(get_db)
+):
+    """
+    Send verification email to authenticated user.
+    
+    Requires authentication. The verification email contains a link
+    that expires after EMAIL_VERIFICATION_EXPIRE_HOURS (default 24h).
+    """
+    import logging
+    logger = logging.getLogger("security.auth")
+    
+    # Default request if not provided
+    if request is None:
+        request = SendVerificationRequest()
+    
+    verification_service = EmailVerificationService()
+    success, message = verification_service.send_verification_email(
+        db=db,
+        user=current_user,
+        force_resend=request.force_resend
+    )
+    
+    if not success:
+        # Check if it's a "wait before resending" message (not an error)
+        if "wait" in message.lower():
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=message
+            )
+        elif "already verified" in message.lower():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=message
+            )
+        elif "no email" in message.lower():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=message
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=message
+            )
+    
+    logger.info(f"Verification email sent to user {current_user.key_id}")
+    return SendVerificationResponse(message=message, success=True)
+
+
+@router.post(
+    "/verify-email",
+    response_model=VerifyEmailResponse,
+    status_code=status.HTTP_200_OK,
+    responses={
+        200: {"description": "Email verified successfully"},
+        400: {"model": ErrorResponse, "description": "Invalid or expired token"},
+    },
+    summary="Verify email with token",
+    description="""
+    Verify email address using the token from verification email.
+    
+    This endpoint does not require authentication - the token itself
+    proves the user has access to the email.
+    """
+)
+async def verify_email(
+    request: VerifyEmailRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Verify email using token from verification email.
+    
+    The token is valid for EMAIL_VERIFICATION_EXPIRE_HOURS after sending.
+    """
+    import logging
+    logger = logging.getLogger("security.auth")
+    
+    verification_service = EmailVerificationService()
+    success, message, user = verification_service.verify_email(db, request.token)
+    
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=message
+        )
+    
+    logger.info(f"Email verified for user {user.key_id if user else 'unknown'}")
+    
+    return VerifyEmailResponse(
+        message=message,
+        success=True,
+        user=UserResponse(**user.to_profile()) if user else None
+    )
+
+
+@router.get(
+    "/verify-email/{token}",
+    response_model=VerifyEmailResponse,
+    status_code=status.HTTP_200_OK,
+    responses={
+        200: {"description": "Email verified successfully"},
+        400: {"model": ErrorResponse, "description": "Invalid or expired token"},
+    },
+    summary="Verify email with token (GET)",
+    description="""
+    Verify email address using the token from verification email.
+    
+    This is a GET endpoint for convenience when clicking links in emails.
+    """
+)
+async def verify_email_get(
+    token: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Verify email using token from URL (GET request).
+    
+    This endpoint is for clicking links directly from emails.
+    """
+    import logging
+    logger = logging.getLogger("security.auth")
+    
+    verification_service = EmailVerificationService()
+    success, message, user = verification_service.verify_email(db, token)
+    
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=message
+        )
+    
+    logger.info(f"Email verified via link for user {user.key_id if user else 'unknown'}")
+    
+    return VerifyEmailResponse(
+        message=message,
+        success=True,
+        user=UserResponse(**user.to_profile()) if user else None
+    )
+
+
+@router.get(
+    "/verification-status",
+    response_model=VerificationStatusResponse,
+    status_code=status.HTTP_200_OK,
+    responses={
+        200: {"description": "Verification status returned"},
+        401: {"model": ErrorResponse, "description": "Not authenticated"},
+    },
+    summary="Get verification status",
+    description="""
+    Get current email verification status for authenticated user.
+    
+    Returns whether email is verified, if verification is required,
+    and whether user can request a new verification email.
+    """
+)
+async def get_verification_status(
+    current_user=Depends(require_auth_with_session),
+):
+    """
+    Get email verification status for authenticated user.
+    """
+    verification_service = EmailVerificationService()
+    status_info = verification_service.get_verification_status(current_user)
+    
+    return VerificationStatusResponse(**status_info)
