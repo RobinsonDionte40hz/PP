@@ -492,6 +492,100 @@ const SummaryTab: React.FC<SummaryTabProps> = ({ prediction }) => {
         </Alert>
       )}
 
+      {/* Aggregation Screening Results */}
+      {prediction.metrics?.screening && !prediction.metrics.screening.error && (
+        <Paper sx={{ p: 3 }}>
+          <Typography variant="h6" gutterBottom>
+            Aggregation Screening Results
+          </Typography>
+          <Alert 
+            severity={
+              prediction.metrics.screening.risk_level === 'low' ? 'success' :
+              prediction.metrics.screening.risk_level === 'moderate' ? 'warning' :
+              'error'
+            }
+            sx={{ mb: 2 }}
+          >
+            <Typography variant="body2">
+              <strong>Risk Level: </strong>
+              {prediction.metrics.screening.risk_level?.charAt(0).toUpperCase() + 
+               prediction.metrics.screening.risk_level?.slice(1) || 'Unknown'}
+              {' — '}
+              {prediction.metrics.screening.passes_screening 
+                ? 'Protein is likely to fold stably' 
+                : 'Protein may have aggregation issues'}
+            </Typography>
+          </Alert>
+          
+          <Box display="flex" flexWrap="wrap" gap={2} mb={2}>
+            <Box flex="1 1 calc(25% - 12px)" minWidth={150}>
+              <MetricCard
+                icon={<CheckCircle />}
+                title="Aggregation Score"
+                value={(prediction.metrics.screening.aggregation_score ?? 0).toFixed(3)}
+                subtitle="Higher is better (0-1)"
+                color={
+                  (prediction.metrics.screening.aggregation_score ?? 0) >= 0.7 ? '#4caf50' :
+                  (prediction.metrics.screening.aggregation_score ?? 0) >= 0.4 ? '#ff9800' : '#f44336'
+                }
+              />
+            </Box>
+            <Box flex="1 1 calc(25% - 12px)" minWidth={150}>
+              <MetricCard
+                icon={<Speed />}
+                title="Energy Score"
+                value={(prediction.metrics.screening.energy_score ?? 0).toFixed(3)}
+                subtitle="Stability indicator"
+                color="#2196f3"
+              />
+            </Box>
+            <Box flex="1 1 calc(25% - 12px)" minWidth={150}>
+              <MetricCard
+                icon={<Timeline />}
+                title="Structure Score"
+                value={(prediction.metrics.screening.structure_score ?? 0).toFixed(3)}
+                subtitle="Secondary structure"
+                color="#9c27b0"
+              />
+            </Box>
+            <Box flex="1 1 calc(25% - 12px)" minWidth={150}>
+              <MetricCard
+                icon={<Memory />}
+                title="Compactness"
+                value={(prediction.metrics.screening.compactness_score ?? 0).toFixed(3)}
+                subtitle="Folding quality"
+                color="#00bcd4"
+              />
+            </Box>
+          </Box>
+
+          {prediction.metrics.screening.risk_factors && prediction.metrics.screening.risk_factors.length > 0 && (
+            <Box>
+              <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
+                Risk Factors
+              </Typography>
+              <Box display="flex" flexWrap="wrap" gap={1}>
+                {prediction.metrics.screening.risk_factors.map((factor, idx) => (
+                  <Typography
+                    key={idx}
+                    variant="caption"
+                    sx={{
+                      px: 1.5,
+                      py: 0.5,
+                      borderRadius: 1,
+                      bgcolor: alpha(theme.palette.warning.main, 0.1),
+                      color: theme.palette.warning.dark,
+                    }}
+                  >
+                    {factor}
+                  </Typography>
+                ))}
+              </Box>
+            </Box>
+          )}
+        </Paper>
+      )}
+
       {/* Energy Breakdown and Agent Statistics */}
       <Box>
         <Box display="flex" alignItems="center" gap={1} mb={2}>

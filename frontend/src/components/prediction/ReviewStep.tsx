@@ -20,11 +20,18 @@ interface ReviewStepProps {
     sequence: string;
     native_pdb_id?: string;
     iterations?: number;
+    agents?: number;
     consciousness_level?: number;
     consistency?: number;
     enable_qcpp?: boolean;
     qcpp_config?: string;
     checkpoint_interval?: number;
+    enable_mediators?: boolean;
+    mediator_count?: number;
+    enable_refinement?: boolean;
+    enable_hierarchical_folding?: boolean;
+    enable_screening?: boolean;
+    screening_mode?: string;
   };
 }
 
@@ -128,6 +135,15 @@ const ReviewStep: React.FC<ReviewStepProps> = ({ formData }) => {
 
             <Box display="flex" justifyContent="space-between">
               <Typography variant="body2" color="text.secondary">
+                Number of Agents
+              </Typography>
+              <Typography variant="body2" fontWeight="medium">
+                {formData.agents || 10}
+              </Typography>
+            </Box>
+
+            <Box display="flex" justifyContent="space-between">
+              <Typography variant="body2" color="text.secondary">
                 Exploration Aggressiveness
               </Typography>
               <Typography variant="body2" fontWeight="medium">
@@ -152,6 +168,53 @@ const ReviewStep: React.FC<ReviewStepProps> = ({ formData }) => {
                 Every {formData.checkpoint_interval || 100} iterations
               </Typography>
             </Box>
+
+            {formData.enable_mediators && (
+              <Box display="flex" justifyContent="space-between">
+                <Typography variant="body2" color="text.secondary">
+                  Mediator Agents
+                </Typography>
+                <Chip
+                  label={`${formData.mediator_count || 3} agents`}
+                  size="small"
+                  color="info"
+                />
+              </Box>
+            )}
+
+            {formData.enable_refinement && (
+              <Box display="flex" justifyContent="space-between">
+                <Typography variant="body2" color="text.secondary">
+                  Quantum Refinement
+                </Typography>
+                <Chip label="Enabled" size="small" color="success" />
+              </Box>
+            )}
+
+            {formData.enable_hierarchical_folding && (
+              <Box display="flex" justifyContent="space-between">
+                <Typography variant="body2" color="text.secondary">
+                  Hierarchical Folding
+                </Typography>
+                <Chip label="Enabled" size="small" color="success" />
+              </Box>
+            )}
+
+            {formData.enable_screening && (
+              <Box display="flex" justifyContent="space-between">
+                <Typography variant="body2" color="text.secondary">
+                  Aggregation Screening
+                </Typography>
+                <Chip
+                  label={
+                    formData.screening_mode === 'fast' ? 'Fast' :
+                    formData.screening_mode === 'thorough' ? 'Thorough' : 'Balanced'
+                  }
+                  size="small"
+                  color="warning"
+                />
+              </Box>
+            )}
           </Stack>
         </Paper>
 

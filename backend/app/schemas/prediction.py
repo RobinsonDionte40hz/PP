@@ -21,6 +21,8 @@ class PredictionConfigurationSchema(BaseModel):
     mediator_count: int = Field(default=3, ge=1, le=10, description="Number of mediator agents")
     enable_refinement: bool = Field(default=False, description="Enable quantum refinement post-processing")
     enable_hierarchical_folding: bool = Field(default=False, description="Enable hierarchical folding with progressive search confinement")
+    enable_screening: bool = Field(default=False, description="Enable aggregation screening analysis")
+    screening_mode: Optional[str] = Field(default="balanced", description="Screening mode: fast, balanced, thorough")
     
     @field_validator("diversity")
     @classmethod
@@ -38,6 +40,16 @@ class PredictionConfigurationSchema(BaseModel):
         allowed = ["default", "high_performance", "high_accuracy"]
         if v not in allowed:
             raise ValueError(f"qcpp_config must be one of {allowed}")
+        return v
+    
+    @field_validator("screening_mode")
+    @classmethod
+    def validate_screening_mode(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return "balanced"
+        allowed = ["fast", "balanced", "thorough"]
+        if v not in allowed:
+            raise ValueError(f"screening_mode must be one of {allowed}")
         return v
 
 

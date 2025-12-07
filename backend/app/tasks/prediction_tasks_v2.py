@@ -293,6 +293,41 @@ def run_prediction_v2(self, prediction_id: str):
             "hierarchical_folding_stats": results.hierarchical_folding_stats,
         })
         
+        # Run aggregation screening if enabled
+        if config.get('enable_screening', False):
+            try:
+                from ubf_protein.aggregation_screening import AggregationScreener, ScreeningConfig
+                
+                screening_mode = config.get('screening_mode', 'balanced')
+                screening_config_map = {
+                    'fast': ScreeningConfig.fast(),
+                    'balanced': ScreeningConfig.balanced(),
+                    'thorough': ScreeningConfig.thorough(),
+                }
+                screening_config = screening_config_map.get(screening_mode, ScreeningConfig.balanced())
+                
+                screener = AggregationScreener(screening_config)
+                screening_result = screener.screen_sequence(sequence)
+                
+                # Add screening results to metrics
+                final_metrics["screening"] = {
+                    "aggregation_score": screening_result.aggregation_score,
+                    "risk_level": screening_result.risk_level.value,
+                    "risk_factors": screening_result.risk_factors,
+                    "passes_screening": screening_result.passes_screening,
+                    "energy_score": screening_result.energy_score,
+                    "structure_score": screening_result.structure_score,
+                    "hydrophobic_score": screening_result.hydrophobic_score,
+                    "compactness_score": screening_result.compactness_score,
+                    "secondary_structure_pct": screening_result.secondary_structure_pct,
+                    "radius_of_gyration": screening_result.radius_of_gyration,
+                }
+                logger.info(f"Screening completed: risk={screening_result.risk_level.value}, "
+                           f"score={screening_result.aggregation_score:.3f}")
+            except Exception as screening_err:
+                logger.warning(f"Screening failed (non-critical): {screening_err}")
+                final_metrics["screening"] = {"error": str(screening_err)}
+        
         # Update prediction as completed
         prediction_service.update_prediction(
             prediction_id,

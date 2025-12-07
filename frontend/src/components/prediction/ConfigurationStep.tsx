@@ -32,6 +32,8 @@ interface ConfigurationStepProps {
     mediator_count?: number;
     enable_refinement?: boolean;
     enable_hierarchical_folding?: boolean;
+    enable_screening?: boolean;
+    screening_mode?: string;
   };
   onChange: (updates: Partial<ConfigurationStepProps['formData']>) => void;
 }
@@ -306,6 +308,43 @@ const ConfigurationStep: React.FC<ConfigurationStepProps> = ({ formData, onChang
               />
             </Box>
           </FormControl>
+
+          {/* Aggregation Screening */}
+          <FormControl>
+            <Box display="flex" alignItems="center" justifyContent="space-between">
+              <Box>
+                <FormLabel>Aggregation Screening</FormLabel>
+                <Typography variant="caption" color="text.secondary" display="block">
+                  Analyze aggregation risk - identifies if protein is likely to fold stably or aggregate
+                </Typography>
+              </Box>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={formData.enable_screening || false}
+                    onChange={(e) => onChange({ enable_screening: e.target.checked })}
+                  />
+                }
+                label=""
+              />
+            </Box>
+          </FormControl>
+
+          {/* Screening Mode */}
+          {formData.enable_screening && (
+            <FormControl fullWidth>
+              <FormLabel>Screening Mode</FormLabel>
+              <Select
+                value={formData.screening_mode || 'balanced'}
+                onChange={(e) => onChange({ screening_mode: e.target.value })}
+                size="small"
+              >
+                <MenuItem value="fast">Fast (quick scan)</MenuItem>
+                <MenuItem value="balanced">Balanced (default)</MenuItem>
+                <MenuItem value="thorough">Thorough (detailed analysis)</MenuItem>
+              </Select>
+            </FormControl>
+          )}
         </Stack>
       </Box>
 

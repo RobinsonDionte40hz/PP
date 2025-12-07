@@ -17,6 +17,8 @@ export interface PredictionConfiguration {
   mediator_count?: number;
   enable_refinement?: boolean;
   enable_hierarchical_folding?: boolean;
+  enable_screening?: boolean;
+  screening_mode?: 'fast' | 'balanced' | 'thorough';
 }
 
 export interface PredictionCreate {
@@ -79,6 +81,19 @@ export interface PredictionResponse {
     water_shielding?: number;
     qcp_score?: number;
     refinement_applied?: boolean;
+    // Screening results (if enable_screening was true)
+    screening?: {
+      aggregation_score?: number;
+      risk_level?: 'low' | 'moderate' | 'high' | 'critical';
+      risk_factors?: string[];
+      passes_screening?: boolean;
+      energy_score?: number;
+      structure_score?: number;
+      hydrophobic_score?: number;
+      compactness_score?: number;
+      secondary_structure_pct?: number;
+      radius_of_gyration?: number;
+    };
   };
 }
 
