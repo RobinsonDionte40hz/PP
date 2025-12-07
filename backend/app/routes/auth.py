@@ -2,6 +2,7 @@
 Authentication API routes
 """
 from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -15,11 +16,19 @@ from app.schemas.auth import (
     TokenRefreshResponse,
     UserResponse,
     TokenResponse,
-    ErrorResponse
+    ErrorResponse,
+    OAuthConfigResponse,
+    OAuthInitiateResponse,
+    OAuthCallbackRequest,
+    OAuthLoginResponse,
+    OAuthUnlinkRequest,
+    OAuthLinkedAccountsResponse,
+    SetPasswordRequest,
 )
 from app.services.auth_service import AuthService
 from app.utils.rate_limit import RateLimiter
 from app.services.session_manager import get_session_manager
+from app.security import require_auth_with_session
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
@@ -729,3 +738,790 @@ async def get_captcha_config():
         "provider": CaptchaService.get_provider(),
         "site_key": CaptchaService.get_site_key()
     }
+
+
+# -------------------- OAuth Endpoints --------------------
+
+
+@router.get(
+    "/oauth-config",
+    response_model=OAuthConfigResponse,
+    status_code=status.HTTP_200_OK,
+    responses={
+        200: {"description": "OAuth configuration returned"},
+    },
+    summary="Get OAuth configuration",
+    description="""
+    Get OAuth provider configuration for frontend integration.
+    
+    Returns which OAuth providers are enabled and their client IDs
+    for initializing OAuth buttons on the frontend.
+    """
+)
+async def get_oauth_config():
+    """
+    Get OAuth configuration for frontend use.
+    
+    This endpoint provides the public configuration needed
+    to display OAuth login buttons on the frontend.
+    No authentication required.
+    """
+    from app.services.oauth_service import OAuthService
+    
+    return OAuthService.get_oauth_config()
+
+
+@router.get(
+    "/google",
+    response_model=OAuthInitiateResponse,
+    status_code=status.HTTP_200_OK,
+    responses={
+        200: {"description": "Authorization URL generated"},
+        400: {"model": ErrorResponse, "description": "Google OAuth not configured"},
+    },
+    summary="Initiate Google OAuth",
+    description="""
+    Generate Google OAuth authorization URL.
+    
+    Returns a URL to redirect the user to Google's login page,
+    along with a state token for CSRF protection.
+    
+    The state token should be stored (e.g., in session storage)
+    and validated when the callback is received.
+    """
+)
+async def initiate_google_oauth(
+    redirect_uri: str = None,
+    session_manager = Depends(get_session_manager)
+):
+    """
+    Initiate Google OAuth flow.
+    
+    Generates authorization URL and state token.
+    """
+    import logging
+    logger = logging.getLogger("security.auth")
+    
+    from app.services.oauth_service import OAuthService
+    
+    if not OAuthService.is_google_enabled():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Google OAuth is not configured"
+        )
+    
+    # Generate state for CSRF protection
+    state = OAuthService.generate_state()
+    
+    # Store state in Redis with 10-minute TTL
+    try:
+        state_key = f"oauth_state:{state}"
+        session_manager.redis_client.setex(state_key, 600, "google")
+    except Exception as e:
+        logger.error(f"Failed to store OAuth state: {str(e)}")
+    
+    # Generate authorization URL
+    url = OAuthService.get_google_authorization_url(state=state, redirect_uri=redirect_uri)
+    
+    logger.info(f"Google OAuth initiated, state={state[:8]}...")
+    
+    return OAuthInitiateResponse(
+        authorization_url=url,
+        state=state
+    )
+
+
+@router.post(
+    "/google/callback",
+    response_model=OAuthLoginResponse,
+    status_code=status.HTTP_200_OK,
+    responses={
+        200: {"description": "Login successful"},
+        400: {"model": ErrorResponse, "description": "Invalid code or state"},
+        401: {"model": ErrorResponse, "description": "Authentication failed"},
+        403: {"model": ErrorResponse, "description": "Account inactive"},
+    },
+    summary="Google OAuth callback",
+    description="""
+    Handle Google OAuth callback.
+    
+    Exchanges authorization code for tokens, retrieves user info,
+    and creates or authenticates the user account.
+    
+    If the user doesn't exist, a new account is created.
+    If a user with the same email exists, the Google account is linked.
+    """
+)
+async def google_oauth_callback(
+    request: OAuthCallbackRequest,
+    redirect_uri: str = None,
+    db: Session = Depends(get_db),
+    session_manager = Depends(get_session_manager)
+):
+    """
+    Handle Google OAuth callback.
+    """
+    import logging
+    logger = logging.getLogger("security.auth")
+    
+    from app.services.oauth_service import OAuthService
+    from app.security import create_access_token, create_refresh_token
+    from app.config import settings
+    
+    # Validate state (CSRF protection)
+    try:
+        state_key = f"oauth_state:{request.state}"
+        stored_provider = session_manager.redis_client.get(state_key)
+        if not stored_provider or stored_provider.decode() != "google":
+            logger.warning(f"Invalid OAuth state: {request.state[:8]}...")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid or expired state token"
+            )
+        # Delete state after use
+        session_manager.redis_client.delete(state_key)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to validate OAuth state: {str(e)}")
+    
+    # Exchange code for user info
+    success, message, user_info = await OAuthService.exchange_google_code(
+        code=request.code,
+        redirect_uri=redirect_uri
+    )
+    
+    if not success or not user_info:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=message
+        )
+    
+    # Authenticate or create user
+    success, message, user, is_new_user = OAuthService.authenticate_or_create_oauth_user(
+        db=db,
+        provider="google",
+        user_info=user_info
+    )
+    
+    if not success or not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=message
+        )
+    
+    # Check if user is active
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account is inactive"
+        )
+    
+    # Create JWT tokens
+    access_token = create_access_token(
+        data={"sub": user.key_id, "username": user.username, "role": user.role}
+    )
+    refresh_token = create_refresh_token(
+        data={"sub": user.key_id, "username": user.username, "role": user.role}
+    )
+    
+    # Create session
+    try:
+        session_manager.create_session(
+            user_id=user.key_id,
+            user_data={
+                "username": user.username,
+                "role": user.role,
+                "email": user.email
+            },
+            access_token=access_token
+        )
+    except Exception as e:
+        logger.error(f"Failed to create session: {str(e)}")
+    
+    logger.info(
+        f"Google OAuth login: username={user.username}, is_new={is_new_user}"
+    )
+    
+    return OAuthLoginResponse(
+        message="Login successful" if not is_new_user else "Account created successfully",
+        user=UserResponse(**user.to_profile()),
+        tokens=TokenResponse(
+            access_token=access_token,
+            refresh_token=refresh_token,
+            token_type="bearer",
+            expires_in=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES * 60
+        ),
+        is_new_user=is_new_user
+    )
+
+
+@router.get(
+    "/github",
+    response_model=OAuthInitiateResponse,
+    status_code=status.HTTP_200_OK,
+    responses={
+        200: {"description": "Authorization URL generated"},
+        400: {"model": ErrorResponse, "description": "GitHub OAuth not configured"},
+    },
+    summary="Initiate GitHub OAuth",
+    description="""
+    Generate GitHub OAuth authorization URL.
+    
+    Returns a URL to redirect the user to GitHub's login page,
+    along with a state token for CSRF protection.
+    """
+)
+async def initiate_github_oauth(
+    redirect_uri: str = None,
+    session_manager = Depends(get_session_manager)
+):
+    """
+    Initiate GitHub OAuth flow.
+    """
+    import logging
+    logger = logging.getLogger("security.auth")
+    
+    from app.services.oauth_service import OAuthService
+    
+    if not OAuthService.is_github_enabled():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="GitHub OAuth is not configured"
+        )
+    
+    # Generate state for CSRF protection
+    state = OAuthService.generate_state()
+    
+    # Store state in Redis with 10-minute TTL
+    try:
+        state_key = f"oauth_state:{state}"
+        session_manager.redis_client.setex(state_key, 600, "github")
+    except Exception as e:
+        logger.error(f"Failed to store OAuth state: {str(e)}")
+    
+    # Generate authorization URL
+    url = OAuthService.get_github_authorization_url(state=state, redirect_uri=redirect_uri)
+    
+    logger.info(f"GitHub OAuth initiated, state={state[:8]}...")
+    
+    return OAuthInitiateResponse(
+        authorization_url=url,
+        state=state
+    )
+
+
+@router.post(
+    "/github/callback",
+    response_model=OAuthLoginResponse,
+    status_code=status.HTTP_200_OK,
+    responses={
+        200: {"description": "Login successful"},
+        400: {"model": ErrorResponse, "description": "Invalid code or state"},
+        401: {"model": ErrorResponse, "description": "Authentication failed"},
+        403: {"model": ErrorResponse, "description": "Account inactive"},
+    },
+    summary="GitHub OAuth callback",
+    description="""
+    Handle GitHub OAuth callback.
+    
+    Exchanges authorization code for tokens, retrieves user info,
+    and creates or authenticates the user account.
+    """
+)
+async def github_oauth_callback(
+    request: OAuthCallbackRequest,
+    redirect_uri: str = None,
+    db: Session = Depends(get_db),
+    session_manager = Depends(get_session_manager)
+):
+    """
+    Handle GitHub OAuth callback.
+    """
+    import logging
+    logger = logging.getLogger("security.auth")
+    
+    from app.services.oauth_service import OAuthService
+    from app.security import create_access_token, create_refresh_token
+    from app.config import settings
+    
+    # Validate state (CSRF protection)
+    try:
+        state_key = f"oauth_state:{request.state}"
+        stored_provider = session_manager.redis_client.get(state_key)
+        if not stored_provider or stored_provider.decode() != "github":
+            logger.warning(f"Invalid OAuth state: {request.state[:8]}...")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid or expired state token"
+            )
+        # Delete state after use
+        session_manager.redis_client.delete(state_key)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to validate OAuth state: {str(e)}")
+    
+    # Exchange code for user info
+    success, message, user_info = await OAuthService.exchange_github_code(
+        code=request.code,
+        redirect_uri=redirect_uri
+    )
+    
+    if not success or not user_info:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=message
+        )
+    
+    # Authenticate or create user
+    success, message, user, is_new_user = OAuthService.authenticate_or_create_oauth_user(
+        db=db,
+        provider="github",
+        user_info=user_info
+    )
+    
+    if not success or not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=message
+        )
+    
+    # Check if user is active
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account is inactive"
+        )
+    
+    # Create JWT tokens
+    access_token = create_access_token(
+        data={"sub": user.key_id, "username": user.username, "role": user.role}
+    )
+    refresh_token = create_refresh_token(
+        data={"sub": user.key_id, "username": user.username, "role": user.role}
+    )
+    
+    # Create session
+    try:
+        session_manager.create_session(
+            user_id=user.key_id,
+            user_data={
+                "username": user.username,
+                "role": user.role,
+                "email": user.email
+            },
+            access_token=access_token
+        )
+    except Exception as e:
+        logger.error(f"Failed to create session: {str(e)}")
+    
+    logger.info(
+        f"GitHub OAuth login: username={user.username}, is_new={is_new_user}"
+    )
+    
+    return OAuthLoginResponse(
+        message="Login successful" if not is_new_user else "Account created successfully",
+        user=UserResponse(**user.to_profile()),
+        tokens=TokenResponse(
+            access_token=access_token,
+            refresh_token=refresh_token,
+            token_type="bearer",
+            expires_in=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES * 60
+        ),
+        is_new_user=is_new_user
+    )
+
+
+# -------------------- Account Linking Endpoints --------------------
+
+
+@router.get(
+    "/linked-accounts",
+    response_model=OAuthLinkedAccountsResponse,
+    status_code=status.HTTP_200_OK,
+    responses={
+        200: {"description": "Linked accounts returned"},
+        401: {"model": ErrorResponse, "description": "Not authenticated"},
+    },
+    summary="Get linked OAuth accounts",
+    description="""
+    Get list of OAuth accounts linked to the current user.
+    
+    Returns which OAuth providers are linked and whether
+    the user has a password set (for account security).
+    """
+)
+async def get_linked_accounts(
+    db: Session = Depends(get_db),
+    current_user=Depends(require_auth_with_session),
+):
+    """
+    Get linked OAuth accounts for current user.
+    """
+    from app.models.user import User
+    
+    user = db.query(User).filter(User.key_id == current_user["sub"]).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found"
+        )
+    
+    return OAuthLinkedAccountsResponse(
+        google=user.google_id is not None,
+        github=user.github_id is not None,
+        has_password=user.password_hash is not None
+    )
+
+
+@router.post(
+    "/link/{provider}",
+    response_model=OAuthInitiateResponse,
+    status_code=status.HTTP_200_OK,
+    responses={
+        200: {"description": "Authorization URL generated for linking"},
+        400: {"model": ErrorResponse, "description": "Invalid provider or already linked"},
+        401: {"model": ErrorResponse, "description": "Not authenticated"},
+    },
+    summary="Initiate OAuth account linking",
+    description="""
+    Generate OAuth authorization URL for linking an account.
+    
+    Use this to add Google or GitHub login to an existing account.
+    The user will be redirected to the OAuth provider to authorize.
+    """
+)
+async def initiate_oauth_link(
+    provider: str,
+    redirect_uri: str = None,
+    db: Session = Depends(get_db),
+    session_manager = Depends(get_session_manager),
+    current_user=Depends(require_auth_with_session),
+):
+    """
+    Initiate OAuth account linking flow.
+    """
+    import logging
+    logger = logging.getLogger("security.auth")
+    
+    from app.services.oauth_service import OAuthService
+    from app.models.user import User
+    
+    provider = provider.lower()
+    if provider not in ['google', 'github']:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Provider must be 'google' or 'github'"
+        )
+    
+    # Check if provider is enabled
+    if provider == "google" and not OAuthService.is_google_enabled():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Google OAuth is not configured"
+        )
+    if provider == "github" and not OAuthService.is_github_enabled():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="GitHub OAuth is not configured"
+        )
+    
+    # Check if already linked
+    user = db.query(User).filter(User.key_id == current_user["sub"]).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found"
+        )
+    
+    if provider == "google" and user.google_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Google account is already linked"
+        )
+    if provider == "github" and user.github_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="GitHub account is already linked"
+        )
+    
+    # Generate state for CSRF protection (includes user ID for linking)
+    state = OAuthService.generate_state()
+    
+    # Store state with user ID for linking
+    try:
+        state_key = f"oauth_state:{state}"
+        state_data = f"link:{provider}:{user.key_id}"
+        session_manager.redis_client.setex(state_key, 600, state_data)
+    except Exception as e:
+        logger.error(f"Failed to store OAuth state: {str(e)}")
+    
+    # Generate authorization URL
+    if provider == "google":
+        url = OAuthService.get_google_authorization_url(state=state, redirect_uri=redirect_uri)
+    else:
+        url = OAuthService.get_github_authorization_url(state=state, redirect_uri=redirect_uri)
+    
+    logger.info(f"OAuth link initiated: user={user.username}, provider={provider}")
+    
+    return OAuthInitiateResponse(
+        authorization_url=url,
+        state=state
+    )
+
+
+@router.post(
+    "/link/{provider}/callback",
+    status_code=status.HTTP_200_OK,
+    responses={
+        200: {"description": "Account linked successfully"},
+        400: {"model": ErrorResponse, "description": "Invalid code or state"},
+        401: {"model": ErrorResponse, "description": "Authentication failed"},
+        409: {"model": ErrorResponse, "description": "OAuth account already linked to another user"},
+    },
+    summary="Complete OAuth account linking",
+    description="""
+    Complete OAuth account linking after authorization.
+    
+    Exchanges code for tokens, retrieves OAuth user info,
+    and links the OAuth account to the current user.
+    """
+)
+async def complete_oauth_link(
+    provider: str,
+    request: OAuthCallbackRequest,
+    redirect_uri: str = None,
+    db: Session = Depends(get_db),
+    session_manager = Depends(get_session_manager),
+):
+    """
+    Complete OAuth account linking.
+    """
+    import logging
+    logger = logging.getLogger("security.auth")
+    
+    from app.services.oauth_service import OAuthService
+    from app.models.user import User
+    
+    provider = provider.lower()
+    if provider not in ['google', 'github']:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Provider must be 'google' or 'github'"
+        )
+    
+    # Validate state (CSRF protection and get user ID)
+    user_id = None
+    try:
+        state_key = f"oauth_state:{request.state}"
+        stored_data = session_manager.redis_client.get(state_key)
+        if not stored_data:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid or expired state token"
+            )
+        
+        parts = stored_data.decode().split(":")
+        if len(parts) != 3 or parts[0] != "link" or parts[1] != provider:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid state token"
+            )
+        
+        user_id = parts[2]
+        session_manager.redis_client.delete(state_key)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to validate OAuth state: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Failed to validate state token"
+        )
+    
+    # Get user
+    user = db.query(User).filter(User.key_id == user_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found"
+        )
+    
+    # Exchange code for user info
+    if provider == "google":
+        success, message, user_info = await OAuthService.exchange_google_code(
+            code=request.code,
+            redirect_uri=redirect_uri
+        )
+    else:
+        success, message, user_info = await OAuthService.exchange_github_code(
+            code=request.code,
+            redirect_uri=redirect_uri
+        )
+    
+    if not success or not user_info:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=message
+        )
+    
+    # Link account
+    oauth_id = user_info.get("id")
+    email = user_info.get("email")
+    email_verified = user_info.get("email_verified", False)
+    
+    success, message = OAuthService.link_oauth_account(
+        db=db,
+        user=user,
+        provider=provider,
+        oauth_id=oauth_id,
+        email=email,
+        email_verified=email_verified
+    )
+    
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=message
+        )
+    
+    logger.info(f"OAuth account linked: user={user.username}, provider={provider}")
+    
+    return {"message": message, "success": True}
+
+
+@router.delete(
+    "/unlink/{provider}",
+    status_code=status.HTTP_200_OK,
+    responses={
+        200: {"description": "Account unlinked successfully"},
+        400: {"model": ErrorResponse, "description": "Cannot unlink only auth method"},
+        401: {"model": ErrorResponse, "description": "Not authenticated"},
+    },
+    summary="Unlink OAuth account",
+    description="""
+    Unlink an OAuth account from the current user.
+    
+    Cannot unlink if it's the user's only authentication method
+    (no password and no other OAuth accounts linked).
+    """
+)
+async def unlink_oauth_account(
+    provider: str,
+    db: Session = Depends(get_db),
+    current_user=Depends(require_auth_with_session),
+):
+    """
+    Unlink OAuth account from current user.
+    """
+    import logging
+    logger = logging.getLogger("security.auth")
+    
+    from app.services.oauth_service import OAuthService
+    from app.models.user import User
+    
+    provider = provider.lower()
+    if provider not in ['google', 'github']:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Provider must be 'google' or 'github'"
+        )
+    
+    user = db.query(User).filter(User.key_id == current_user["sub"]).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found"
+        )
+    
+    # Check if provider is linked
+    if provider == "google" and not user.google_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Google account is not linked"
+        )
+    if provider == "github" and not user.github_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="GitHub account is not linked"
+        )
+    
+    success, message = OAuthService.unlink_oauth_account(
+        db=db,
+        user=user,
+        provider=provider
+    )
+    
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=message
+        )
+    
+    logger.info(f"OAuth account unlinked: user={user.username}, provider={provider}")
+    
+    return {"message": message, "success": True}
+
+
+@router.post(
+    "/set-password",
+    status_code=status.HTTP_200_OK,
+    responses={
+        200: {"description": "Password set successfully"},
+        400: {"model": ErrorResponse, "description": "Invalid password or already has password"},
+        401: {"model": ErrorResponse, "description": "Not authenticated"},
+    },
+    summary="Set password for OAuth user",
+    description="""
+    Set a password for an OAuth-only user.
+    
+    Allows users who signed up via OAuth to also use
+    username/password login. Required before unlinking
+    all OAuth accounts.
+    """
+)
+async def set_password(
+    request: SetPasswordRequest,
+    db: Session = Depends(get_db),
+    current_user=Depends(require_auth_with_session),
+):
+    """
+    Set password for OAuth-only user.
+    """
+    import logging
+    logger = logging.getLogger("security.auth")
+    
+    from app.models.user import User
+    from app.utils.password import hash_password, validate_password_strength
+    
+    user = db.query(User).filter(User.key_id == current_user["sub"]).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found"
+        )
+    
+    # Check if user already has a password
+    if user.password_hash:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User already has a password. Use change-password endpoint instead."
+        )
+    
+    # Validate password strength
+    valid, errors = validate_password_strength(request.password)
+    if not valid:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="; ".join(errors)
+        )
+    
+    # Set password
+    user.password_hash = hash_password(request.password)
+    db.commit()
+    
+    logger.info(f"Password set for OAuth user: {user.username}")
+    
+    return {"message": "Password set successfully", "success": True}
+

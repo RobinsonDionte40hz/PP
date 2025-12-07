@@ -23,7 +23,7 @@ This document outlines the implementation plan for enhancing security and usage 
 | Phase 1: Usage Quotas | ✅ **COMPLETE** | Daily/monthly prediction limits |
 | Phase 2: Email Verification | ✅ **COMPLETE** | Require email verification |
 | Phase 3: CAPTCHA | ✅ **COMPLETE** | Bot protection on registration |
-| Phase 4: OAuth | 🔲 Not Started | Google/GitHub social login |
+| Phase 4: OAuth | ✅ **COMPLETE** | Google/GitHub social login |
 | Phase 5: Frontend | 🔲 Not Started | UI for quotas and OAuth |
 
 ---
@@ -246,51 +246,77 @@ Added `GET /api/auth/captcha-config`:
 
 ---
 
-### Phase 4: OAuth Integration (Week 3)
+### Phase 4: OAuth Integration (Week 3) ✅ COMPLETE
 
 **Goal**: Add social login options
 
-#### Task 4.1: Install Dependencies
+**Implemented Files**:
+- `backend/app/services/oauth_service.py` - OAuth service with Google/GitHub support
+- `backend/app/routes/auth.py` - OAuth routes and callbacks
+- `backend/app/schemas/auth.py` - OAuth request/response schemas
+- `backend/app/models/user.py` - Added OAuth fields to User model
+- `backend/app/config.py` - Added OAuth configuration settings
+- `backend/alembic/versions/004_add_oauth_fields.py` - Database migration
+- `backend/tests/test_oauth_service.py` - Unit tests (30+ test cases)
+
+#### Task 4.1: Install Dependencies ✅
+
+Added to `backend/requirements.txt`:
 
 ```bash
-pip install authlib httpx
+authlib==1.3.0
+httpx==0.27.2  # Already present
 ```
 
-#### Task 4.2: Google OAuth
+#### Task 4.2: Google OAuth ✅
 
-Create `backend/app/services/oauth_service.py`:
+Created `backend/app/services/oauth_service.py`:
 
-- Configure Google OAuth client
+- Google OAuth client configuration
 - Endpoints:
-  - `GET /api/auth/google` — Redirect to Google
-  - `GET /api/auth/google/callback` — Handle callback
-- Link Google account to existing user or create new
+  - `GET /api/auth/google` — Generate authorization URL
+  - `POST /api/auth/google/callback` — Exchange code for tokens and login/create user
+  - `GET /api/auth/oauth-config` — Get OAuth configuration for frontend
+- CSRF protection via state tokens stored in Redis
+- User creation or linking based on OAuth ID or email
 
-**Environment Variables**:
-```env
-GOOGLE_CLIENT_ID=your-client-id
-GOOGLE_CLIENT_SECRET=your-client-secret
-GOOGLE_REDIRECT_URI=https://emergentfolds.com/api/auth/google/callback
+**Configuration Settings** (added to `config.py`):
+```python
+GOOGLE_CLIENT_ID: Optional[str] = None
+GOOGLE_CLIENT_SECRET: Optional[str] = None
+GOOGLE_REDIRECT_URI: Optional[str] = None  # Defaults to FRONTEND_URL/auth/google/callback
 ```
 
-#### Task 4.3: GitHub OAuth
+#### Task 4.3: GitHub OAuth ✅
 
-Similar to Google:
-- `GET /api/auth/github` — Redirect to GitHub
-- `GET /api/auth/github/callback` — Handle callback
+Same pattern as Google:
+- `GET /api/auth/github` — Generate authorization URL
+- `POST /api/auth/github/callback` — Exchange code for tokens and login/create user
+- Fetches email separately from GitHub emails API if not in user info
 
-**Environment Variables**:
-```env
-GITHUB_CLIENT_ID=your-client-id
-GITHUB_CLIENT_SECRET=your-client-secret
-GITHUB_REDIRECT_URI=https://emergentfolds.com/api/auth/github/callback
+**Configuration Settings**:
+```python
+GITHUB_CLIENT_ID: Optional[str] = None
+GITHUB_CLIENT_SECRET: Optional[str] = None
+GITHUB_REDIRECT_URI: Optional[str] = None  # Defaults to FRONTEND_URL/auth/github/callback
 ```
 
-#### Task 4.4: Account Linking
+#### Task 4.4: Account Linking ✅
 
-- Allow existing users to link OAuth accounts
-- Allow OAuth users to set password for traditional login
-- Handle email conflicts (same email, different provider)
+- `GET /api/auth/linked-accounts` — Get which OAuth providers are linked
+- `POST /api/auth/link/{provider}` — Initiate OAuth linking flow
+- `POST /api/auth/link/{provider}/callback` — Complete OAuth linking
+- `DELETE /api/auth/unlink/{provider}` — Unlink OAuth account
+- `POST /api/auth/set-password` — Set password for OAuth-only users
+- Prevents unlinking if it's the user's only authentication method
+
+**Database Migration**: Added OAuth fields to users table:
+```python
+google_id = Column(String(100), nullable=True, unique=True, index=True)
+github_id = Column(String(100), nullable=True, unique=True, index=True)
+oauth_provider = Column(String(20), nullable=True)  # Primary OAuth provider
+password_hash = Column(String(255), nullable=True)  # Now nullable for OAuth users
+```
 
 ---
 
@@ -493,24 +519,33 @@ GITHUB_REDIRECT_URI=https://emergentfolds.com/api/auth/github/callback
 
 ### New Endpoints
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/auth/google` | Initiate Google OAuth |
-| GET | `/api/auth/google/callback` | Google OAuth callback |
-| GET | `/api/auth/github` | Initiate GitHub OAuth |
-| GET | `/api/auth/github/callback` | GitHub OAuth callback |
-| POST | `/api/auth/send-verification` | Send verification email |
-| GET | `/api/auth/verify-email/{token}` | Verify email |
-| GET | `/api/users/me/quota` | Get current quota status |
+| Method | Endpoint | Description | Status |
+|--------|----------|-------------|--------|
+| GET | `/api/auth/google` | Initiate Google OAuth | ✅ Implemented |
+| POST | `/api/auth/google/callback` | Google OAuth callback | ✅ Implemented |
+| GET | `/api/auth/github` | Initiate GitHub OAuth | ✅ Implemented |
+| POST | `/api/auth/github/callback` | GitHub OAuth callback | ✅ Implemented |
+| GET | `/api/auth/oauth-config` | Get OAuth configuration | ✅ Implemented |
+| GET | `/api/auth/linked-accounts` | Get linked OAuth accounts | ✅ Implemented |
+| POST | `/api/auth/link/{provider}` | Initiate OAuth account linking | ✅ Implemented |
+| POST | `/api/auth/link/{provider}/callback` | Complete OAuth linking | ✅ Implemented |
+| DELETE | `/api/auth/unlink/{provider}` | Unlink OAuth account | ✅ Implemented |
+| POST | `/api/auth/set-password` | Set password for OAuth user | ✅ Implemented |
+| POST | `/api/auth/send-verification` | Send verification email | ✅ Implemented |
+| POST | `/api/auth/verify-email` | Verify email (POST) | ✅ Implemented |
+| GET | `/api/auth/verify-email/{token}` | Verify email (GET) | ✅ Implemented |
+| GET | `/api/auth/verification-status` | Get verification status | ✅ Implemented |
+| GET | `/api/auth/captcha-config` | Get CAPTCHA configuration | ✅ Implemented |
+| GET | `/api/users/me/quota` | Get current quota status | ✅ Implemented |
 
 ### Modified Endpoints
 
-| Endpoint | Change |
-|----------|--------|
-| `POST /api/auth/register` | Add CAPTCHA validation |
-| `POST /api/predictions` | Add quota check |
-| `POST /api/sessions/{id}/predictions` | Add quota check |
-| `GET /api/users/me` | Include quota info in response |
+| Endpoint | Change | Status |
+|----------|--------|--------|
+| `POST /api/auth/register` | Add CAPTCHA validation | ✅ Implemented |
+| `POST /api/predictions` | Add quota check + email verification | ✅ Implemented |
+| `POST /api/sessions/{id}/predictions` | Add quota check + email verification | ✅ Implemented |
+| `GET /api/users/me` | Include quota info in response | ✅ Implemented |
 
 ---
 

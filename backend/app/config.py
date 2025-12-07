@@ -110,6 +110,16 @@ class Settings(BaseSettings):
     REQUIRE_EMAIL_VERIFICATION: bool = True  # Require email verification for predictions
     FRONTEND_URL: str = "http://localhost:5173"  # Frontend URL for verification links
     
+    # OAuth Settings - Google
+    GOOGLE_CLIENT_ID: Optional[str] = None  # Google OAuth client ID
+    GOOGLE_CLIENT_SECRET: Optional[str] = None  # Google OAuth client secret
+    GOOGLE_REDIRECT_URI: Optional[str] = None  # Google OAuth redirect URI (defaults to FRONTEND_URL/auth/google/callback)
+    
+    # OAuth Settings - GitHub
+    GITHUB_CLIENT_ID: Optional[str] = None  # GitHub OAuth client ID
+    GITHUB_CLIENT_SECRET: Optional[str] = None  # GitHub OAuth client secret
+    GITHUB_REDIRECT_URI: Optional[str] = None  # GitHub OAuth redirect URI (defaults to FRONTEND_URL/auth/github/callback)
+    
     # Celery Configuration
     CELERY_BROKER_URL: str = "redis://localhost:6379/0"
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/0"

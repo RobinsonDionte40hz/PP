@@ -326,3 +326,161 @@ class VerificationStatusResponse(BaseModel):
             ]
         }
     }
+
+
+# -------------------- OAuth Schemas --------------------
+
+
+class OAuthConfigResponse(BaseModel):
+    """Response schema for OAuth configuration"""
+    google: dict = Field(..., description="Google OAuth configuration")
+    github: dict = Field(..., description="GitHub OAuth configuration")
+    
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "google": {"enabled": True, "client_id": "your-client-id.apps.googleusercontent.com"},
+                    "github": {"enabled": True, "client_id": "your-client-id"}
+                }
+            ]
+        }
+    }
+
+
+class OAuthInitiateResponse(BaseModel):
+    """Response schema for OAuth initiation"""
+    authorization_url: str = Field(..., description="URL to redirect user for OAuth")
+    state: str = Field(..., description="State token for CSRF protection")
+    
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "authorization_url": "https://accounts.google.com/o/oauth2/v2/auth?...",
+                    "state": "random_state_token"
+                }
+            ]
+        }
+    }
+
+
+class OAuthCallbackRequest(BaseModel):
+    """Request schema for OAuth callback"""
+    code: str = Field(..., description="Authorization code from OAuth provider")
+    state: str = Field(..., description="State token for CSRF validation")
+    
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "code": "4/0AfJohXn...",
+                    "state": "random_state_token"
+                }
+            ]
+        }
+    }
+
+
+class OAuthLoginResponse(BaseModel):
+    """Response schema for successful OAuth login"""
+    message: str = Field(..., description="Success message")
+    user: UserResponse = Field(..., description="User profile data")
+    tokens: TokenResponse = Field(..., description="Authentication tokens")
+    is_new_user: bool = Field(..., description="Whether this is a newly created account")
+    
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "message": "Login successful",
+                    "user": {
+                        "key_id": "550e8400-e29b-41d4-a716-446655440000",
+                        "username": "john_doe",
+                        "email": "john@example.com",
+                        "role": "user",
+                        "created_at": "2025-11-22T10:30:00"
+                    },
+                    "tokens": {
+                        "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                        "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                        "token_type": "bearer",
+                        "expires_in": 1800
+                    },
+                    "is_new_user": False
+                }
+            ]
+        }
+    }
+
+
+class OAuthLinkRequest(BaseModel):
+    """Request schema for linking OAuth account"""
+    provider: str = Field(..., description="OAuth provider (google or github)")
+    
+    @field_validator('provider')
+    @classmethod
+    def validate_provider(cls, v: str) -> str:
+        if v.lower() not in ['google', 'github']:
+            raise ValueError("Provider must be 'google' or 'github'")
+        return v.lower()
+    
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {"provider": "google"}
+            ]
+        }
+    }
+
+
+class OAuthUnlinkRequest(BaseModel):
+    """Request schema for unlinking OAuth account"""
+    provider: str = Field(..., description="OAuth provider to unlink (google or github)")
+    
+    @field_validator('provider')
+    @classmethod
+    def validate_provider(cls, v: str) -> str:
+        if v.lower() not in ['google', 'github']:
+            raise ValueError("Provider must be 'google' or 'github'")
+        return v.lower()
+    
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {"provider": "google"}
+            ]
+        }
+    }
+
+
+class OAuthLinkedAccountsResponse(BaseModel):
+    """Response schema for linked OAuth accounts"""
+    google: bool = Field(..., description="Whether Google account is linked")
+    github: bool = Field(..., description="Whether GitHub account is linked")
+    has_password: bool = Field(..., description="Whether user has a password set")
+    
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "google": True,
+                    "github": False,
+                    "has_password": True
+                }
+            ]
+        }
+    }
+
+
+class SetPasswordRequest(BaseModel):
+    """Request schema for setting password on OAuth-only account"""
+    password: str = Field(..., min_length=8, max_length=72, description="New password")
+    
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {"password": "SecurePass123!"}
+            ]
+        }
+    }

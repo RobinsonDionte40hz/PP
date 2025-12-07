@@ -20,7 +20,7 @@ class User(Base):
     # Authentication fields
     username = Column(String(150), unique=True, nullable=False, index=True)
     email = Column(String(255), unique=True, nullable=True, index=True)
-    password_hash = Column(String(255), nullable=False)
+    password_hash = Column(String(255), nullable=True)  # Nullable for OAuth-only users
     
     # Account status
     is_active = Column(Boolean, nullable=False, default=True)
@@ -43,6 +43,11 @@ class User(Base):
     email_verified = Column(Boolean, nullable=False, default=False)
     email_verification_token = Column(String(64), nullable=True, index=True)
     email_verification_sent_at = Column(DateTime(timezone=True), nullable=True)
+    
+    # OAuth integration
+    google_id = Column(String(100), nullable=True, unique=True, index=True)
+    github_id = Column(String(100), nullable=True, unique=True, index=True)
+    oauth_provider = Column(String(20), nullable=True)  # Primary OAuth provider used for signup
     
     # Timestamps
     created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
@@ -79,6 +84,9 @@ class User(Base):
             "monthly_prediction_limit": self.monthly_prediction_limit,
             "daily_quota_reset_at": self.daily_quota_reset_at.isoformat() if self.daily_quota_reset_at else None,
             "monthly_quota_reset_at": self.monthly_quota_reset_at.isoformat() if self.monthly_quota_reset_at else None,
+            "google_id": self.google_id,
+            "github_id": self.github_id,
+            "oauth_provider": self.oauth_provider,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
             "last_login": self.last_login.isoformat() if self.last_login else None,
