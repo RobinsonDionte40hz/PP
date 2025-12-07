@@ -1,43 +1,22 @@
 # PP Platform - Quick Reference Card
 
-## 🚀 Four Ways to Use This Platform
+## 🚀 Three Ways to Use This Platform
 
-### 0. 🌐 Live Demo (NO SETUP REQUIRED)
-**Try the platform instantly at https://emergentfolds.com**
+### 1. 🌐 Production Website (RECOMMENDED - NO SETUP)
+**https://emergentfolds.com** - Hosted on Hostinger VPS
 
-- Create an account and start predicting immediately
-- Full feature access: predictions, 3D visualization, real-time monitoring
-- No installation required
+- ✅ Create an account and start predicting immediately
+- ✅ Full features: predictions, 3D visualization, real-time monitoring
+- ✅ Aggregation screening for risk assessment
+- ✅ Work sessions, sharing, campaigns
+- ✅ No installation required
 
----
-
-### 1. 🌐 Web Interface (RECOMMENDED for local development)
-**Interactive browser-based interface with real-time monitoring**
-
-```bash
-# Start the full application
-START_ALL.bat  # Windows
-# or
-docker compose up -d
-
-# Access at:
-# Frontend: http://localhost:5173 (development) or :3000 (production)
-# Backend API: http://localhost:8000/docs
-```
-
-**Login with Master Accounts**:
-- **Admin**: `admin` / `Admin@2025!`
-- **Developer**: `developer` / `Dev@2025!`
-- **Setup**: Run `cd backend && setup_master.bat` (first time only)
-
-**Best for**: Interactive predictions, real-time monitoring, 3D visualization, batch campaigns
-
-**Documentation**: `docs/SETUP.md`, `docs/USER_GUIDE.md`, `backend/MASTER_ACCOUNTS.md`
+**This is the primary way to use the platform.**
 
 ---
 
 ### 2. 🖥️ Command Line (For scripts and automation)
-**Direct Python scripts for single or systematic testing**
+**Direct Python scripts for batch processing and integration**
 
 ```bash
 # Single protein prediction
@@ -50,13 +29,33 @@ python systematic_protein_testing.py --start 0 --count 10
 python test_protein.py --quick
 ```
 
-**Best for**: Automation, batch processing, integration with other tools, research workflows
+**Best for**: Automation, batch processing, CI/CD integration, research workflows
 
-**Documentation**: `README.md`, `QUICKSTART.md`
+**Documentation**: `docs/CLI_REFERENCE.md`, `QUICKSTART.md`
 
 ---
 
-### 3. 📊 Python API (For custom integration)
+### 3. 🛠️ Local Development (For developers)
+**Run your own instance for development/testing**
+
+```bash
+# Start the full application
+START_ALL.bat  # Windows
+# or
+docker compose up -d
+
+# Access at:
+# Frontend: http://localhost:3000
+# Backend API: http://localhost:8000/docs
+```
+
+**Best for**: Contributing to the project, customization, testing changes
+
+**Documentation**: `docs/SETUP.md`, `docs/DEVELOPER_GUIDE.md`
+
+---
+
+### 4. 📊 Python API (For custom integration)
 **Direct access to UBF and QCPP systems**
 
 ```python

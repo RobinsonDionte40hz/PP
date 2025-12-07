@@ -2,7 +2,16 @@
 
 This guide will help you set up and run the Protein Prediction Platform web interface.
 
-> **🌐 Live Demo**: The platform is live at **https://emergentfolds.com** - you can try it out before setting up locally.
+> **🌐 Live Production Site**: The platform is live at **https://emergentfolds.com** hosted on Hostinger VPS - you can use it immediately without any setup!
+
+## Production vs Local Development
+
+| Environment | URL | Use Case |
+|------------|-----|----------|
+| **Production** | https://emergentfolds.com | Full-featured, always available |
+| **Local Dev** | http://localhost:3000 | Development and testing |
+
+**Most users should just use the production site.** This setup guide is for developers who want to run the platform locally or deploy their own instance.
 
 ## Table of Contents
 
@@ -65,13 +74,18 @@ This will:
 
 ### 4. Access the Application
 
-Once all services are running:
+Once all services are running (local development):
 
 - **Frontend**: http://localhost:3000
 - **Backend API**: http://localhost:8000
 - **API Documentation**: http://localhost:8000/docs
 - **Redis**: localhost:6379
 - **PostgreSQL**: localhost:5432
+
+For production, all services are available at:
+- **Web App**: https://emergentfolds.com
+- **API**: https://emergentfolds.com/api
+- **API Docs**: https://emergentfolds.com/api/docs
 
 ### 5. Verify Installation
 

@@ -4,7 +4,18 @@
 
 ---
 
-## 🚀 Installation
+## 🌐 Fastest Way: Use the Live Site
+
+**https://emergentfolds.com** - No installation required!
+
+1. Create an account
+2. Submit a prediction
+3. Watch real-time progress
+4. View 3D results
+
+---
+
+## 🖥️ CLI Installation (For automation)
 
 ```bash
 # Install dependencies
@@ -16,7 +27,7 @@ pip install -r ubf_protein/requirements.txt
 
 ---
 
-## 📊 Basic Usage
+## 📊 CLI Usage
 
 ### 1. Test Single Protein (PRIMARY MODULE)
 

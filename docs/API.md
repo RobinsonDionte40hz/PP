@@ -10,16 +10,19 @@ This document describes the REST API endpoints for the Protein Prediction Platfo
 - [Campaign Endpoints](#campaign-endpoints)
 - [Results Endpoints](#results-endpoints)
 - [Work Session Endpoints](#work-session-endpoints)
+- [Screening Endpoints](#screening-endpoints)
+- [Feedback Endpoints](#feedback-endpoints)
+- [Health Endpoints](#health-endpoints)
 - [WebSocket Events](#websocket-events)
 - [Error Handling](#error-handling)
 - [Rate Limiting](#rate-limiting)
 
 ## Base URL
 
+**Production**: `https://emergentfolds.com`
 **Development**: `http://localhost:8000`
-**Production**: `https://your-domain.com`
 
-All API endpoints are prefixed with `/api/v1` unless otherwise specified.
+The API is hosted on a Hostinger VPS. All API endpoints are prefixed with `/api` unless otherwise specified.
 
 ## Authentication
 
@@ -1498,6 +1501,401 @@ cleanup_service = get_cleanup_service()
 stats = cleanup_service.delete_expired_sessions(retention_days=90)
 print(f"Deleted {stats['sessions_deleted']} sessions")
 ```
+
+---
+
+## Screening Endpoints
+
+**Status**: ✅ Fully Implemented
+
+Fast aggregation risk assessment for protein sequences. Unlike full structure prediction, screening quickly answers: "Will this sequence fold stably, or is it likely to aggregate?"
+
+### Key Use Cases
+
+- **Pre-filtering**: Screen 100s-1000s of sequences before running expensive predictions
+- **Therapeutic development**: Identify aggregation-prone candidates in biologics
+- **Peptide libraries**: Filter problematic sequences
+- **Protein engineering**: Identify problematic mutations
+
+### Screening Modes
+
+| Mode | Iterations | Agents | Speed | Accuracy |
+|------|------------|--------|-------|----------|
+| `fast` | 50 | 2 | ~1-2s | Good |
+| `balanced` | 100 | 3 | ~3-5s | Better |
+| `thorough` | 200 | 5 | ~8-15s | Best |
+
+### Risk Levels
+
+| Level | Description | Action |
+|-------|-------------|--------|
+| `low` | Likely to fold stably | Proceed with full prediction |
+| `moderate` | Some concerns | May need sequence optimization |
+| `high` | Likely to aggregate | Redesign recommended |
+| `critical` | Will almost certainly aggregate | Do not proceed |
+
+---
+
+### Screen Single Sequence
+
+Quick screening of a single sequence.
+
+**Endpoint**: `POST /api/screening/single`
+
+**Authentication**: Required (JWT Bearer token)
+
+**Rate Limit**: 30 requests/minute
+
+**Query Parameters**:
+- `mode` (string): Screening mode: `fast`/`balanced`/`thorough` (default: `fast`)
+
+**Request Body**:
+```json
+{
+  "sequence": "MQIFVKTLTGKTITLEVEPSDTIENVKAKIQDKEGIPPDQQRLIFAGKQLEDGRTLSDYNIQKESTLHLVLRLRGG"
+}
+```
+
+**Parameters**:
+- `sequence` (string, required): Amino acid sequence (5-500 characters)
+
+**Response** (200 OK):
+```json
+{
+  "sequence": "MQIFVKTLTGKTITLEVEPSDTIENVKAKIQDKEGIPPDQQRLIFAGKQLEDGRTLSDYNIQKESTLHLVLRLRGG",
+  "sequence_length": 76,
+  "aggregation_score": 0.85,
+  "energy_score": 0.78,
+  "structure_score": 0.82,
+  "hydrophobic_score": 0.71,
+  "compactness_score": 0.88,
+  "risk_level": "low",
+  "risk_factors": [],
+  "passes_screening": true,
+  "final_energy": -156.3,
+  "secondary_structure_pct": 65.2,
+  "radius_of_gyration": 12.4,
+  "screening_time_ms": 1523.5
+}
+```
+
+**Response Fields**:
+- `aggregation_score`: Overall score (0-1, higher = lower risk)
+- `energy_score`: Energy stability score (0-1)
+- `structure_score`: Secondary structure formation score (0-1)
+- `hydrophobic_score`: Hydrophobic core quality (0-1)
+- `compactness_score`: Structural compactness (0-1)
+- `risk_level`: Classification: `low`/`moderate`/`high`/`critical`
+- `risk_factors`: List of identified concerns
+- `passes_screening`: Boolean pass/fail based on default threshold (0.5)
+- `final_energy`: Energy in kcal/mol (negative = stable)
+- `secondary_structure_pct`: Percentage with defined secondary structure
+- `radius_of_gyration`: Compactness measure in Ångströms
+
+**Error Responses**:
+- `400 Bad Request`: Invalid sequence
+- `401 Unauthorized`: Missing or invalid authentication
+- `429 Too Many Requests`: Rate limit exceeded
+- `500 Internal Server Error`: Screening failed
+
+**Example**:
+```bash
+curl -X POST "http://localhost:8000/api/screening/single?mode=fast" \
+  -H "Authorization: Bearer <access_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"sequence": "MQIFVKTLTGKTIT..."}'
+```
+
+---
+
+### Screen Batch of Sequences
+
+Screen multiple sequences in batch.
+
+**Endpoint**: `POST /api/screening/batch`
+
+**Authentication**: Required (JWT Bearer token)
+
+**Rate Limit**: 5 requests/minute
+
+**Request Body**:
+```json
+{
+  "sequences": [
+    "MQIFVKTLTGKTITLEVEPSDTIENVKAKIQDKEGIPPDQQRLIFAGKQLEDGRTLSDYNIQKESTLHLVLRLRGG",
+    "ACDEFGHIKLMNPQRSTVWY",
+    "MKTAYIAKQRQISFVKSHFSRQLEERLGLIEVQAPILSRVGDGTQDNLSGAEKAVQVKVKALPDAQFEVVHSLAKWKRQQIA"
+  ],
+  "mode": "balanced",
+  "name": "My Batch Test"
+}
+```
+
+**Parameters**:
+- `sequences` (array, required): List of sequences (1-500 sequences, each 5-500 characters)
+- `mode` (string): Screening mode: `fast`/`balanced`/`thorough` (default: `balanced`)
+- `name` (string, optional): Batch name for identification
+
+**Response** (202 Accepted):
+```json
+{
+  "batch_id": "screen_abc123def456",
+  "name": "My Batch Test",
+  "mode": "balanced",
+  "status": "completed",
+  "created_at": "2025-11-26T10:30:00Z",
+  "completed_at": "2025-11-26T10:30:15Z",
+  "total_sequences": 3,
+  "sequences_passed": 2,
+  "sequences_failed": 1,
+  "risk_summary": {
+    "low": 1,
+    "moderate": 1,
+    "high": 1,
+    "critical": 0
+  },
+  "results": [
+    {
+      "sequence": "MQIFVKT...",
+      "aggregation_score": 0.85,
+      "risk_level": "low",
+      "passes_screening": true,
+      ...
+    }
+  ]
+}
+```
+
+**Notes**:
+- Small batches (≤10 sequences) return results immediately
+- Larger batches run in background; poll `/batch/{batch_id}` for status
+- Results are sorted by `aggregation_score` (best first)
+
+---
+
+### Get Batch Status
+
+Check status and retrieve results for a batch screening job.
+
+**Endpoint**: `GET /api/screening/batch/{batch_id}`
+
+**Authentication**: Required (JWT Bearer token)
+
+**Rate Limit**: 30 requests/minute
+
+**Response** (200 OK): Same as batch creation response
+
+**Error Responses**:
+- `401 Unauthorized`: Missing or invalid authentication
+- `404 Not Found`: Batch not found
+
+---
+
+### Export Batch Results (CSV)
+
+Download batch screening results as CSV file.
+
+**Endpoint**: `GET /api/screening/batch/{batch_id}/export/csv`
+
+**Authentication**: Required (JWT Bearer token)
+
+**Rate Limit**: 10 requests/minute
+
+**Response** (200 OK):
+- `Content-Type: text/csv`
+- `Content-Disposition: attachment; filename="screening_batch_{batch_id}.csv"`
+
+**CSV Columns**:
+- `sequence`: Full amino acid sequence
+- `length`: Sequence length
+- `aggregation_score`: Overall score
+- `risk_level`: Risk classification
+- `passes_screening`: Pass/fail
+- `energy_score`, `structure_score`, `hydrophobic_score`, `compactness_score`: Component scores
+- `final_energy`: Energy in kcal/mol
+- `secondary_structure_pct`: SS percentage
+- `radius_of_gyration`: Rg in Ångströms
+- `risk_factors`: Comma-separated list
+
+---
+
+### Create Screening Campaign
+
+Create a screening campaign that optionally auto-creates predictions for passing sequences.
+
+**Endpoint**: `POST /api/screening/campaign`
+
+**Authentication**: Required (JWT Bearer token)
+
+**Rate Limit**: 5 requests/minute
+
+**Request Body**:
+```json
+{
+  "name": "Therapeutic Candidate Screen",
+  "sequences": ["MQIFVKT...", "ACDEFGH...", ...],
+  "mode": "thorough",
+  "min_aggregation_score": 0.6,
+  "auto_create_predictions": true
+}
+```
+
+**Parameters**:
+- `name` (string, required): Campaign name (1-200 characters)
+- `sequences` (array, required): Sequences to screen (1-1000)
+- `mode` (string): Screening mode (default: `balanced`)
+- `min_aggregation_score` (float): Minimum score to pass (default: 0.5, range: 0-1)
+- `auto_create_predictions` (bool): Auto-create full predictions for passing sequences (default: false)
+
+**Response** (202 Accepted):
+```json
+{
+  "id": "scamp_xyz789",
+  "name": "Therapeutic Candidate Screen",
+  "status": "running",
+  "mode": "thorough",
+  "created_at": "2025-11-26T10:30:00Z",
+  "total_sequences": 100,
+  "screened_sequences": 0,
+  "progress_percentage": 0.0,
+  "passed_count": 0,
+  "failed_count": 0,
+  "risk_distribution": {},
+  "prediction_ids": [],
+  "results_available": false
+}
+```
+
+---
+
+### Get Screening Campaign
+
+Get status and results of a screening campaign.
+
+**Endpoint**: `GET /api/screening/campaign/{campaign_id}`
+
+**Authentication**: Required (JWT Bearer token)
+
+**Response** (200 OK):
+```json
+{
+  "id": "scamp_xyz789",
+  "name": "Therapeutic Candidate Screen",
+  "status": "completed",
+  "mode": "thorough",
+  "created_at": "2025-11-26T10:30:00Z",
+  "completed_at": "2025-11-26T10:45:00Z",
+  "total_sequences": 100,
+  "screened_sequences": 100,
+  "progress_percentage": 100.0,
+  "passed_count": 42,
+  "failed_count": 58,
+  "risk_distribution": {
+    "low": 25,
+    "moderate": 17,
+    "high": 35,
+    "critical": 23
+  },
+  "prediction_ids": ["pred_abc123", "pred_def456", ...],
+  "results_available": true
+}
+```
+
+---
+
+## Feedback Endpoints
+
+**Status**: ✅ Fully Implemented
+
+Submit user feedback directly from the application.
+
+---
+
+### Submit Feedback
+
+Submit bug reports, feature requests, or general feedback.
+
+**Endpoint**: `POST /api/feedback`
+
+**Authentication**: Optional (includes user info if authenticated)
+
+**Rate Limit**: 10 requests/hour per IP
+
+**Request Body**:
+```json
+{
+  "category": "bug",
+  "subject": "Prediction fails for long sequences",
+  "message": "When I submit a sequence longer than 300 residues, the prediction fails with a timeout error...",
+  "email": "user@example.com",
+  "include_system_info": true
+}
+```
+
+**Parameters**:
+- `category` (string, required): One of: `bug`, `feature`, `improvement`, `other`
+- `subject` (string, required): Subject line (5-200 characters)
+- `message` (string, required): Feedback message (10-5000 characters)
+- `email` (string, optional): Contact email for follow-up
+- `include_system_info` (bool): Include browser/system info (default: false)
+
+**Response** (201 Created):
+```json
+{
+  "success": true,
+  "message": "Feedback submitted successfully",
+  "feedback_id": "fb_abc123"
+}
+```
+
+**Error Responses**:
+- `400 Bad Request`: Invalid category or missing required fields
+- `429 Too Many Requests`: Rate limit exceeded
+- `500 Internal Server Error`: Email delivery failed (feedback still logged)
+
+**Notes**:
+- Feedback is emailed to configured recipient if SMTP is configured
+- All feedback is logged even if email fails
+- Authenticated users' username is included automatically
+
+---
+
+## Health Endpoints
+
+System health and status checks.
+
+---
+
+### Health Check
+
+Check API and service health status.
+
+**Endpoint**: `GET /health`
+
+**Authentication**: Not required
+
+**Response** (200 OK):
+```json
+{
+  "status": "healthy",
+  "version": "1.0.0",
+  "services": {
+    "redis": "connected",
+    "database": "connected",
+    "pp_system": "ready"
+  }
+}
+```
+
+**Service Status Values**:
+- `connected`/`ready`: Service is operational
+- `disconnected`/`unavailable`: Service is not available
+- `degraded`: Service is partially functional
+
+**Use Cases**:
+- Load balancer health checks
+- Monitoring systems
+- Deployment verification
 
 ---
 

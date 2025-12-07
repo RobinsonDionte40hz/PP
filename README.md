@@ -6,14 +6,27 @@ This project contains two complementary protein structure prediction systems wit
 
 ---
 
-## 🌐 Web Interface (NEW - v1.0.0)
+## 🌐 Web Interface - LIVE NOW
 
-### Full-Stack Application
-A comprehensive web interface for protein structure prediction with real-time monitoring.
+### Production Site (Hostinger VPS)
 
-**🌐 Live Demo**: **https://emergentfolds.com**
+**🌐 https://emergentfolds.com** - Fully deployed and available!
 
-**Start locally**:
+No setup required. Create an account and start predicting immediately.
+
+| Feature | Available |
+|---------|-----------|
+| Protein predictions | ✅ |
+| Real-time monitoring | ✅ |
+| 3D visualization | ✅ |
+| Aggregation screening | ✅ |
+| Campaign management | ✅ |
+| Work sessions & sharing | ✅ |
+
+### Local Development (Optional)
+
+For developers who want to run locally:
+
 ```bash
 # All-in-one startup (Windows)
 START_ALL.bat
@@ -22,17 +35,12 @@ START_ALL.bat
 docker compose up -d
 ```
 
-**Access (Local Development)**:
+**Local URLs**:
 - **Frontend UI**: http://localhost:3000
 - **Backend API**: http://localhost:8000
 - **API Docs**: http://localhost:8000/docs
 
-**Access (Production)**:
-- **Live Site**: https://emergentfolds.com
-- **API**: https://emergentfolds.com/api
-- **API Docs**: https://emergentfolds.com/api/docs
-
-**Features**:
+### Features
 - 🎨 Interactive prediction submission with guided wizard
 - 📊 Real-time monitoring with live charts and metrics
 - 🧬 3D protein structure visualization (NGL Viewer)
@@ -46,37 +54,9 @@ docker compose up -d
 - 📁 **Work sessions for organizing predictions** (v1.0.0)
 - 🔗 **Share links for collaborative access** (v1.0.0)
 - 📦 **ZIP export of entire sessions** (v1.0.0)
+- 🔬 **Aggregation screening for risk assessment** (v1.0.0)
 
-**Authentication**:
-- Register/Login with secure password hashing (bcrypt, cost factor 12)
-- JWT access tokens (30min) + refresh tokens (7 days)
-- Single-session enforcement
-- Redis-based session management
-- Role-based permissions (user, developer, admin)
-- Master test accounts available (see `backend/MASTER_ACCOUNTS.md`)
-
-**Master Test Accounts**:
-- **Admin**: `admin` / `Admin@2025!` (full system access)
-- **Developer**: `developer` / `Dev@2025!` (testing & debugging)
-- Setup: `cd backend && setup_master.bat`
-
-**Work Sessions**:
-- 📁 Organize predictions into logical groups with isolated file storage
-- 🔗 Generate time-limited share links (up to 7 days)
-- 📦 Download entire sessions as ZIP archives
-- 🔐 User-isolated directories (`user_data/{user_id}/sessions/{session_id}/`)
-- 🧹 Automatic cleanup of expired sessions (90+ days inactive)
-- 🔄 Migration script for existing predictions (`backend/scripts/migrate_predictions_to_sessions.py`)
-
-**Configuration**:
-```bash
-USER_DATA_DIR=./user_data           # Session storage directory
-SESSION_RETENTION_DAYS=90           # Auto-delete after 90 days inactive
-SHARE_LINK_MAX_HOURS=168            # Share links expire after 7 days
-CLEANUP_SCHEDULE_CRON="0 2 * * *"   # Daily cleanup at 2 AM
-```
-
-**Documentation**: See `docs/SETUP.md`, `docs/USER_GUIDE.md`, `docs/API.md#authentication`, `docs/API.md#work-session-endpoints`, `docs/SESSION_MIGRATION_GUIDE.md`, and `RELEASE_NOTES.md`
+**Documentation**: See `docs/SETUP.md`, `docs/USER_GUIDE.md`, `docs/API.md`, `docs/CLI_REFERENCE.md`
 
 ---
 

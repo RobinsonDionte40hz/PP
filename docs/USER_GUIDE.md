@@ -1,6 +1,8 @@
 # User Guide - Protein Prediction Platform
 
-Welcome to the Protein Prediction Platform user guide! This document will walk you through all features of the web interface.
+**🌐 Live Site**: **https://emergentfolds.com**
+
+Welcome to the Protein Prediction Platform user guide! This document will walk you through all features of the web interface, available at the live production site or your local development instance.
 
 ## Table of Contents
 
@@ -24,7 +26,7 @@ The platform requires authentication for all features.
 
 #### Login
 
-1. **Navigate to**: http://localhost:3000
+1. **Navigate to**: https://emergentfolds.com (or http://localhost:3000 for local development)
 2. **Enter credentials**: Username and password
 3. **Click Login**: You'll be redirected to the dashboard
 
@@ -54,8 +56,8 @@ For testing and development, use these pre-configured accounts:
 
 ### First Time Setup
 
-1. **Access the application**: Open your browser and navigate to http://localhost:3000
-2. **Log in**: Use your credentials or master test account
+1. **Access the application**: Open your browser and navigate to https://emergentfolds.com
+2. **Log in**: Use your credentials or create a new account
 3. **Explore the dashboard**: You'll see the main dashboard with quick actions and system status
 4. **Try a quick prediction**: Click "New Prediction" to submit your first prediction
 
@@ -76,6 +78,7 @@ The interface consists of:
 - **Results**: View and analyze completed predictions
 - **3D Viewer**: Visualize protein structures
 - **Campaigns**: Manage systematic testing campaigns
+- **Aggregation Screening**: Fast screening for aggregation risk
 - **History**: Browse all past predictions
 - **Settings**: Configure application settings
 
@@ -190,7 +193,14 @@ Configure prediction parameters:
 **Enable Quantum Refinement**
 - Two-stage optimization with quantum physics
 - Refines structures after initial fold
-- Best results but slower
+- Achieves 45-58% RMSD improvement
+- Best results but adds ~20-40 seconds
+
+**Enable Hierarchical Folding**
+- Progressive search space confinement
+- Anchors stable secondary structures early
+- Reduces conformational search space
+- Best for medium-to-large proteins (>50 residues)
 
 #### QCPP Configuration Preset
 
@@ -571,6 +581,79 @@ If predictions fail:
 - Retry failed predictions
 - Adjust configurations
 
+## Aggregation Screening
+
+Fast screening of protein sequences for aggregation risk. Unlike full structure prediction, screening quickly answers: "Will this sequence fold stably, or is it likely to aggregate?"
+
+### When to Use Screening
+
+- **Pre-filtering**: Screen hundreds of sequences before running expensive full predictions
+- **Therapeutic development**: Identify aggregation-prone candidates in biologics design
+- **Peptide libraries**: Filter problematic sequences from large libraries
+- **Protein engineering**: Check if mutations introduce aggregation risk
+
+### Single Sequence Screening
+
+1. Navigate to **Aggregation Screening**
+2. Enter your protein sequence
+3. Select screening mode:
+   - **Fast**: ~1-2 seconds, good accuracy
+   - **Balanced**: ~3-5 seconds, better accuracy (default)
+   - **Thorough**: ~8-15 seconds, best accuracy
+4. Click **Screen Sequence**
+5. View results immediately
+
+### Understanding Results
+
+**Aggregation Score** (0-1)
+- Higher score = lower aggregation risk
+- 0.7+ = Low risk, good candidate
+- 0.5-0.7 = Moderate risk, may need optimization
+- 0.3-0.5 = High risk, redesign recommended
+- <0.3 = Critical risk, will likely aggregate
+
+**Risk Classification**
+- 🟢 **Low**: Likely to fold stably, proceed with full prediction
+- 🟡 **Moderate**: Some concerns, consider sequence optimization
+- 🟠 **High**: Likely to aggregate, redesign recommended
+- 🔴 **Critical**: Will almost certainly aggregate, do not proceed
+
+**Component Scores**
+- **Energy Score**: Thermodynamic stability
+- **Structure Score**: Secondary structure formation
+- **Hydrophobic Score**: Hydrophobic core quality
+- **Compactness Score**: Overall structural compactness
+
+**Risk Factors**: Specific issues identified, such as:
+- Hydrophobic patches on surface
+- Poor secondary structure formation
+- Unstable energy landscape
+- Aggregation-prone motifs
+
+### Batch Screening
+
+Screen multiple sequences at once:
+
+1. Click **Batch Screening** tab
+2. Enter sequences (one per line, or upload file)
+3. Select screening mode
+4. Click **Screen Batch**
+5. View sorted results (best candidates first)
+6. Export results as CSV
+
+### Screening Campaigns
+
+For systematic screening with automatic prediction creation:
+
+1. Click **Create Campaign**
+2. Name your campaign
+3. Add sequences (up to 1000)
+4. Set filtering threshold (minimum score to pass)
+5. Enable **Auto-create predictions** (optional)
+6. Start campaign
+
+Sequences that pass screening can automatically be queued for full structure prediction.
+
 ## History Browser
 
 Browse all your past predictions with powerful search and filtering.
@@ -754,12 +837,30 @@ Customize application behavior and appearance.
 | `/` | Focus search |
 | `Esc` | Close modal/dialog |
 
+## Command Line Interface
+
+For automation and scripting, use the CLI tools:
+
+```bash
+# Test single protein
+python test_protein.py --pdb 1UBQ --enable-refinement
+
+# Quick test
+python test_protein.py --quick
+
+# Systematic campaign
+python systematic_protein_testing.py --start 0 --count 10
+```
+
+See [CLI Reference](CLI_REFERENCE.md) for complete documentation.
+
 ## Support
 
 Need help? Check these resources:
 
 - [Setup Guide](SETUP.md) - Installation help
 - [API Documentation](API.md) - API reference
+- [CLI Reference](CLI_REFERENCE.md) - Command line tools
 - [Developer Guide](DEVELOPER_GUIDE.md) - Technical details
 - [Troubleshooting](TROUBLESHOOTING.md) - Common issues
 
