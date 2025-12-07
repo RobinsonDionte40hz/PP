@@ -292,33 +292,28 @@ def run_prediction_v2(self, prediction_id: str):
         runner = PredictionRunner(pred_config)
         results = runner.run(progress_callback=progress_callback)
         
+        # Extract metrics from public PredictionResults schema
+        # Public schema has: sequence, pdb_string, coordinates, metrics (ValidationMetrics), 
+        #                    trajectory, runtime_seconds, config, metadata
+        metrics = results.metrics
+        metadata = results.metadata or {}
+        
         # Convert results to metrics dict for database
         final_metrics = sanitize_metrics({
-            "best_energy": results.best_energy,
-            "best_rmsd": results.best_rmsd,
-            "folding_rmsd": results.folding_rmsd,
-            "final_energy": results.best_energy,
-            "final_rmsd": results.best_rmsd,
-            "current_energy": results.best_energy,
-            "current_rmsd": results.best_rmsd,
-            "conformations_explored": results.conformations_explored,
-            "energy_change": results.energy_change,
-            "convergence_rate": results.convergence_rate,
-            "initial_energy": results.initial_energy,
-            "unique_structures": results.unique_structures,
-            "gdt_ts_score": results.gdt_ts_score,
-            "tm_score": results.tm_score,
-            "validation_quality": results.validation_quality,
-            "qcpp_total_analyses": results.qcpp_total_analyses,
-            "qcpp_cache_hit_rate": results.qcpp_cache_hit_rate,
-            "qaap_alignment": results.qaap_alignment,
-            "resonance_40hz": results.resonance_40hz,
-            "water_shielding": results.water_shielding,
-            "qcp_score": results.qcp_score,
-            "refinement_applied": results.refinement_applied,
-            "refinement_improvement_percent": results.refinement_improvement_percent,
+            "best_energy": getattr(metrics, 'energy_total', None),
+            "best_rmsd": getattr(metrics, 'rmsd', None),
+            "folding_rmsd": getattr(metrics, 'rmsd', None),
+            "final_energy": getattr(metrics, 'energy_total', None),
+            "final_rmsd": getattr(metrics, 'rmsd', None),
+            "current_energy": getattr(metrics, 'energy_total', None),
+            "current_rmsd": getattr(metrics, 'rmsd', None),
+            "conformations_explored": metadata.get('conformations_explored', 0),
+            "gdt_ts_score": getattr(metrics, 'gdt_ts', None),
+            "tm_score": getattr(metrics, 'tm_score', None),
+            "qcp_score": getattr(metrics, 'qcp_score', None),
+            "refinement_applied": metadata.get('refinement_applied', False),
             "hierarchical_folding_enabled": enable_hierarchical_folding,
-            "hierarchical_folding_stats": results.hierarchical_folding_stats,
+            "runtime_seconds": results.runtime_seconds,
         })
         
         # Run aggregation screening if enabled
@@ -381,12 +376,11 @@ def run_prediction_v2(self, prediction_id: str):
                         'prediction_id': prediction_id,
                         'data': {
                             'status': 'completed',
-                            'best_energy': results.best_energy,
-                            'best_rmsd': results.best_rmsd,
-                            'gdt_ts_score': results.gdt_ts_score,
-                            'tm_score': results.tm_score,
-                            'validation_quality': results.validation_quality,
-                            'total_time_seconds': results.total_time_seconds,
+                            'best_energy': getattr(metrics, 'energy_total', None),
+                            'best_rmsd': getattr(metrics, 'rmsd', None),
+                            'gdt_ts_score': getattr(metrics, 'gdt_ts', None),
+                            'tm_score': getattr(metrics, 'tm_score', None),
+                            'total_time_seconds': results.runtime_seconds,
                         }
                     },
                     timeout=5.0
@@ -395,17 +389,16 @@ def run_prediction_v2(self, prediction_id: str):
             logger.warning(f"Failed to emit completion event: {e}")
         
         logger.info(f"Prediction {prediction_id} completed successfully")
-        logger.info(f"Results: RMSD={results.best_rmsd}, Energy={results.best_energy}, "
-                   f"GDT-TS={results.gdt_ts_score}, Quality={results.validation_quality}")
+        logger.info(f"Results: RMSD={getattr(metrics, 'rmsd', None)}, Energy={getattr(metrics, 'energy_total', None)}, "
+                   f"GDT-TS={getattr(metrics, 'gdt_ts', None)}")
         
         return {
             "status": "completed",
             "prediction_id": prediction_id,
-            "best_rmsd": results.best_rmsd,
-            "best_energy": results.best_energy,
-            "gdt_ts_score": results.gdt_ts_score,
-            "tm_score": results.tm_score,
-            "validation_quality": results.validation_quality,
+            "best_rmsd": getattr(metrics, 'rmsd', None),
+            "best_energy": getattr(metrics, 'energy_total', None),
+            "gdt_ts_score": getattr(metrics, 'gdt_ts', None),
+            "tm_score": getattr(metrics, 'tm_score', None),
         }
         
     except Exception as e:
