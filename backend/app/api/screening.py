@@ -231,39 +231,32 @@ def run_screening_sync(sequence: str, mode: ScreeningMode) -> SequenceScreeningR
     
     For larger batches, use the Celery task.
     """
-    import sys
-    from pathlib import Path
-    
-    # Add ubf_protein to path
-    project_root = Path(__file__).parent.parent.parent.parent
-    if str(project_root) not in sys.path:
-        sys.path.insert(0, str(project_root))
-    
-    from ubf_protein.aggregation_screening import (
+    # Import from public API (SOLID: Dependency Inversion Principle)
+    from ubf_protein.api import (
         AggregationScreener,
         ScreeningConfig,
-        AggregationRisk as UBFRisk,
+        AggregationRisk as APIRisk,
     )
     
-    # Map mode to config
+    # Map mode to config (window_size controls thoroughness)
     config_map = {
-        ScreeningMode.FAST: ScreeningConfig.fast(),
-        ScreeningMode.BALANCED: ScreeningConfig.balanced(),
-        ScreeningMode.THOROUGH: ScreeningConfig.thorough(),
+        ScreeningMode.FAST: ScreeningConfig(window_size=5, threshold=0.6),
+        ScreeningMode.BALANCED: ScreeningConfig(window_size=7, threshold=0.5),
+        ScreeningMode.THOROUGH: ScreeningConfig(window_size=9, threshold=0.4),
     }
     
-    config = config_map.get(mode, ScreeningConfig.balanced())
-    screener = AggregationScreener(config)
+    config = config_map.get(mode, config_map[ScreeningMode.BALANCED])
+    screener = AggregationScreener()
     
     # Run screening
-    result = screener.screen_sequence(sequence)
+    result = screener.screen(sequence, config)
     
-    # Map UBF risk level to API enum
+    # Map API risk level to endpoint enum
     risk_map = {
-        UBFRisk.LOW: AggregationRiskLevel.LOW,
-        UBFRisk.MODERATE: AggregationRiskLevel.MODERATE,
-        UBFRisk.HIGH: AggregationRiskLevel.HIGH,
-        UBFRisk.CRITICAL: AggregationRiskLevel.CRITICAL,
+        APIRisk.LOW: AggregationRiskLevel.LOW,
+        APIRisk.MODERATE: AggregationRiskLevel.MODERATE,
+        APIRisk.HIGH: AggregationRiskLevel.HIGH,
+        APIRisk.CRITICAL: AggregationRiskLevel.CRITICAL,
     }
     
     return SequenceScreeningResult(

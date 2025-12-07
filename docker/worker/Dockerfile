@@ -1,4 +1,5 @@
 # Worker Dockerfile
+# Runs Celery workers for prediction tasks
 FROM python:3.11-slim
 
 WORKDIR /app
@@ -9,27 +10,26 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements first for better caching
-COPY backend/requirements.txt ./backend_requirements.txt
-COPY requirements_qcpp.txt ./qcpp_requirements.txt
-COPY ubf_protein/requirements.txt ./ubf_requirements.txt
+# Copy backend requirements first for better caching
+COPY backend/requirements/base.txt ./requirements_base.txt
+COPY backend/requirements/prod.txt ./requirements_prod.txt
 
-# Install Python dependencies (backend + QCPP + UBF)
-RUN pip install --no-cache-dir -r backend_requirements.txt && \
-    pip install --no-cache-dir -r qcpp_requirements.txt && \
-    pip install --no-cache-dir -r ubf_requirements.txt
+# Install backend dependencies
+RUN pip install --no-cache-dir -r requirements_base.txt && \
+    pip install --no-cache-dir -r requirements_prod.txt
+
+# Copy ubf_protein package and install with worker extras (includes QCPP dependencies)
+COPY ubf_protein/ /packages/ubf_protein/
+COPY src/ /packages/src/
+
+# Install ubf_protein as a proper Python package with worker dependencies
+RUN pip install --no-cache-dir -e /packages/ubf_protein[worker]
+
+# Set up QCPP module path (src/ contains quantum_coherence_proteins)
+ENV PYTHONPATH=/packages
 
 # Copy backend code
 COPY backend/ .
-
-# Copy ubf_protein module (needed by prediction_tasks) to parent of /app
-COPY ubf_protein/ /ubf_protein/
-
-# Copy src directory (contains QCPP protein_predictor.py)
-COPY src/ /src/
-
-# Add parent directory to PYTHONPATH so ubf_protein and src can be imported
-ENV PYTHONPATH=/
 
 # Run Celery worker
 CMD ["celery", "-A", "celery_app", "worker", "--loglevel=info", "--pool=solo"]

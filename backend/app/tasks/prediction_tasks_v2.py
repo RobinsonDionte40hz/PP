@@ -2,10 +2,16 @@
 Celery task for running predictions using PredictionRunner.
 
 This module provides Celery tasks that use the unified PredictionRunner
-from ubf_protein. This ensures the website uses the SAME prediction logic
+from ubf_protein.api. This ensures the website uses the SAME prediction logic
 as the CLI (test_protein.py).
 
-The old prediction_tasks.py is kept for reference but should be deprecated.
+ARCHITECTURE NOTE:
+- This module imports ONLY from ubf_protein.api (public interface)
+- The sys.path manipulation below is temporary until ubf_protein is installed
+  as a proper Python package (see docs/ARCHITECTURE_REFACTORING_PLAN.md Phase 2)
+- Once installed as a package, the sys.path code can be removed
+
+The old prediction_tasks.py is deprecated - do not use it.
 """
 from celery import Task
 import sys
@@ -29,11 +35,16 @@ from app.services.work_session_service import work_session_service
 from app.models.prediction import PredictionStatus
 from app.schemas.prediction import PredictionUpdateSchema
 
-# Add paths for ubf_protein imports
-# In Docker: ubf_protein is at /ubf_protein/ with PYTHONPATH=/
+# TEMPORARY: Add paths for ubf_protein imports
+# TODO: Remove this once ubf_protein is installed as a package (Phase 2)
+# In Docker: ubf_protein is at /packages/ubf_protein/ with PYTHONPATH=/packages
 # Locally: ubf_protein is at ../../.. relative to this file
-if os.path.exists('/ubf_protein'):
-    # Docker environment
+if os.path.exists('/packages/ubf_protein'):
+    # Docker environment - new structure
+    if '/packages' not in sys.path:
+        sys.path.insert(0, '/packages')
+elif os.path.exists('/ubf_protein'):
+    # Docker environment - legacy structure (for backward compat)
     if '/' not in sys.path:
         sys.path.insert(0, '/')
 else:
@@ -42,12 +53,13 @@ else:
     if project_root not in sys.path:
         sys.path.insert(0, project_root)
 
-# Import unified PredictionRunner
-from ubf_protein.prediction_runner import (
+# Import from public API (SOLID: Dependency Inversion Principle)
+# External code should ONLY import from ubf_protein.api, not internal modules
+from ubf_protein.api import (
     PredictionRunner, 
     PredictionConfig, 
+    PredictionResults,
     ProgressUpdate,
-    PredictionResults
 )
 
 logger = logging.getLogger(__name__)
@@ -296,18 +308,19 @@ def run_prediction_v2(self, prediction_id: str):
         # Run aggregation screening if enabled
         if config.get('enable_screening', False):
             try:
-                from ubf_protein.aggregation_screening import AggregationScreener, ScreeningConfig
+                # Import from public API (SOLID: Dependency Inversion)
+                from ubf_protein.api import AggregationScreener, ScreeningConfig
                 
                 screening_mode = config.get('screening_mode', 'balanced')
                 screening_config_map = {
-                    'fast': ScreeningConfig.fast(),
-                    'balanced': ScreeningConfig.balanced(),
-                    'thorough': ScreeningConfig.thorough(),
+                    'fast': ScreeningConfig(window_size=5, threshold=0.6),
+                    'balanced': ScreeningConfig(window_size=7, threshold=0.5),
+                    'thorough': ScreeningConfig(window_size=9, threshold=0.4),
                 }
-                screening_config = screening_config_map.get(screening_mode, ScreeningConfig.balanced())
+                screening_config = screening_config_map.get(screening_mode, screening_config_map['balanced'])
                 
-                screener = AggregationScreener(screening_config)
-                screening_result = screener.screen_sequence(sequence)
+                screener = AggregationScreener()
+                screening_result = screener.screen(sequence, screening_config)
                 
                 # Add screening results to metrics
                 final_metrics["screening"] = {

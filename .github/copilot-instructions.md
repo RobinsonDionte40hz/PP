@@ -75,12 +75,17 @@ The engine uses multi-agent physics-based simulation:
 - `qcpp_integration.py` — Real-time quantum physics feedback
 - `checkpoint.py` — Save/restore exploration state
 
-### Using PredictionRunner
+### Using the Public API
 
-**All predictions must use `PredictionRunner`** — it is the single source of truth.
+**All external code must use `ubf_protein.api`** — the public interface module.
 
 ```python
-from ubf_protein.prediction_runner import PredictionRunner, PredictionConfig
+# CORRECT: Import from public API
+from ubf_protein.api import PredictionRunner, PredictionConfig
+
+# WRONG: Don't import internal modules directly
+# from ubf_protein.multi_agent_coordinator import MultiAgentCoordinator  # ❌
+# from ubf_protein.energy_function import EnergyFunction  # ❌
 
 config = PredictionConfig(
     sequence="MQIFVKT...",
@@ -91,7 +96,22 @@ config = PredictionConfig(
 
 runner = PredictionRunner(config)
 results = runner.run(progress_callback=my_callback)
+
+# Access results through typed schemas
+print(f"RMSD: {results.metrics.rmsd}")
+print(results.pdb_string)
 ```
+
+### Public API Modules
+
+| Module | Purpose |
+|--------|---------|
+| `ubf_protein.api` | Main entry point - import everything from here |
+| `ubf_protein.api.schemas` | Data classes (PredictionConfig, PredictionResults, etc.) |
+| `ubf_protein.api.interfaces` | Abstract interfaces for type hints and DI |
+| `ubf_protein.api.runner` | PredictionRunner implementation |
+| `ubf_protein.api.screening` | AggregationScreener |
+| `ubf_protein.api.exporters` | PDBExporter, JSONExporter |
 
 ### Running Predictions
 
@@ -174,6 +194,31 @@ PP/
 ---
 
 ## Coding Conventions
+
+### SOLID Principles
+
+This project follows SOLID principles. Key implementations:
+
+| Principle | Implementation |
+|-----------|----------------|
+| **Single Responsibility** | Each package has one purpose (frontend=UI, backend=API, engine=prediction) |
+| **Open/Closed** | Add features via `ubf_protein.api` without modifying internals |
+| **Liskov Substitution** | All runners implement `IPredictionRunner` interface |
+| **Interface Segregation** | Backend only imports from `ubf_protein.api`, not internals |
+| **Dependency Inversion** | High-level modules depend on abstractions (`interfaces.py`) |
+
+### Package Boundaries
+
+```
+External Code (backend, CLI) → ubf_protein.api → Internal Implementation
+                                    ↑
+                            ONLY CROSS HERE
+```
+
+**Never import directly from internal modules:**
+- ❌ `from ubf_protein.energy_function import ...`
+- ❌ `from ubf_protein.multi_agent_coordinator import ...`
+- ✅ `from ubf_protein.api import PredictionRunner`
 
 ### Python (Backend + Engine)
 

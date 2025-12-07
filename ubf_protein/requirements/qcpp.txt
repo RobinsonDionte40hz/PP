@@ -1,0 +1,26 @@
+# Prediction Engine - QCPP Requirements (CPython Only)
+#
+# These dependencies require CPython and are NOT compatible with PyPy.
+# The QCPP (Quantum Coherence) module uses NumPy/SciPy for calculations.
+
+-r core.txt
+
+# Scientific Computing
+numpy>=1.20.0
+scipy>=1.7.0
+
+# Biology
+biopython>=1.79
+
+# Data Processing
+pandas>=1.2.0
+
+# Machine Learning
+scikit-learn>=0.24.0
+
+# Visualization (for ablation studies)
+matplotlib>=3.5.0
+seaborn>=0.11.0
+
+# Statistics
+statsmodels>=0.13.0

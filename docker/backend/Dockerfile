@@ -1,4 +1,5 @@
 # Backend Dockerfile
+# Runs FastAPI server with Socket.IO support
 FROM python:3.11-slim
 
 WORKDIR /app
@@ -8,20 +9,22 @@ RUN apt-get update && apt-get install -y \
     gcc \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements first for better caching
-COPY backend/requirements.txt .
+# Copy backend requirements first for better caching
+COPY backend/requirements/base.txt ./requirements_base.txt
+COPY backend/requirements/prod.txt ./requirements_prod.txt
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Install backend dependencies
+RUN pip install --no-cache-dir -r requirements_base.txt && \
+    pip install --no-cache-dir -r requirements_prod.txt
+
+# Copy ubf_protein package and install (backend only needs core, no QCPP)
+COPY ubf_protein/ /packages/ubf_protein/
+
+# Install ubf_protein as a proper Python package (core only - no heavy deps)
+RUN pip install --no-cache-dir -e /packages/ubf_protein
 
 # Copy backend code
 COPY backend/ .
-
-# Copy ubf_protein module (needed by prediction_tasks)
-COPY ubf_protein/ /ubf_protein/
-
-# Add parent directory to PYTHONPATH so ubf_protein can be imported
-ENV PYTHONPATH=/
 
 # Expose port
 EXPOSE 8000

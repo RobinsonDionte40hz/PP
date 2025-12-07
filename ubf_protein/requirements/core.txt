@@ -1,0 +1,13 @@
+# Prediction Engine - Core Requirements (PyPy Compatible)
+# 
+# These dependencies are pure Python and compatible with PyPy for JIT optimization.
+# DO NOT add NumPy, SciPy, or other C-extension libraries here.
+
+# Testing
+pytest>=7.0.0
+
+# Type hints (stdlib in Python 3.8+)
+typing-extensions>=4.0.0
+
+# Data validation
+dataclasses>=0.6;python_version<"3.7"

@@ -18,8 +18,13 @@ if backend_root not in sys.path:
 from celery_app import celery_app
 
 # Add project root for ubf_protein imports
-if os.path.exists('/ubf_protein'):
-    # Docker environment
+# TODO: Remove once ubf_protein is installed as a package
+if os.path.exists('/packages/ubf_protein'):
+    # Docker environment - new structure
+    if '/packages' not in sys.path:
+        sys.path.insert(0, '/packages')
+elif os.path.exists('/ubf_protein'):
+    # Docker environment - legacy structure
     if '/' not in sys.path:
         sys.path.insert(0, '/')
 else:
@@ -31,18 +36,20 @@ else:
 logger = logging.getLogger(__name__)
 
 
-def get_screener(mode: str):
-    """Get aggregation screener with appropriate config."""
-    from ubf_protein.aggregation_screening import AggregationScreener, ScreeningConfig
+def get_screener_and_config(mode: str):
+    """Get aggregation screener and config for the specified mode."""
+    # Import from public API (SOLID: Dependency Inversion)
+    from ubf_protein.api import AggregationScreener, ScreeningConfig
     
+    # Map modes to window_size/threshold values
     config_map = {
-        'fast': ScreeningConfig.fast(),
-        'balanced': ScreeningConfig.balanced(),
-        'thorough': ScreeningConfig.thorough(),
+        'fast': ScreeningConfig(window_size=5, threshold=0.6),
+        'balanced': ScreeningConfig(window_size=7, threshold=0.5),
+        'thorough': ScreeningConfig(window_size=9, threshold=0.4),
     }
     
-    config = config_map.get(mode, ScreeningConfig.balanced())
-    return AggregationScreener(config)
+    config = config_map.get(mode, config_map['balanced'])
+    return AggregationScreener(), config
 
 
 def result_to_dict(result) -> Dict[str, Any]:
@@ -85,7 +92,7 @@ def run_batch_screening(
     logger.info(f"Starting batch screening {batch_id} with {len(sequences)} sequences")
     
     try:
-        screener = get_screener(mode)
+        screener, config = get_screener_and_config(mode)
         results = []
         
         def progress_callback(current: int, total: int, result):
@@ -111,9 +118,9 @@ def run_batch_screening(
             except Exception as e:
                 logger.warning(f"Progress callback failed: {e}")
         
-        # Run screening
+        # Run screening using public API
         for i, seq in enumerate(sequences):
-            result = screener.screen_sequence(seq)
+            result = screener.screen(seq, config)
             results.append(result)
             progress_callback(i + 1, len(sequences), result)
         
@@ -172,12 +179,12 @@ def run_screening_campaign(
     try:
         from app.api.screening import _screening_campaigns
         
-        screener = get_screener(mode)
+        screener, config = get_screener_and_config(mode)
         results = []
         passed_sequences = []
         
         for i, seq in enumerate(sequences):
-            result = screener.screen_sequence(seq)
+            result = screener.screen(seq, config)
             result_dict = result_to_dict(result)
             results.append(result_dict)
             

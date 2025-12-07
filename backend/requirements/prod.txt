@@ -1,0 +1,11 @@
+# Backend Production Requirements
+# Adds production dependencies to base
+
+-r base.txt
+
+# Production server
+gunicorn==23.0.0
+
+# Monitoring (optional)
+# prometheus-client==0.20.0
+# sentry-sdk[fastapi]==2.0.0

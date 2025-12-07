@@ -1,0 +1,10 @@
+# Prediction Engine - Worker Requirements (Full Stack)
+#
+# Complete requirements for running the prediction worker with all features.
+# Use this for Docker worker containers and full installations.
+
+-r qcpp.txt
+
+# Celery worker support (if running standalone)
+celery>=5.4.0
+redis>=5.2.0

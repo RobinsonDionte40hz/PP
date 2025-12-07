@@ -49,8 +49,10 @@ services:
       - BACKEND_URL=http://backend:8000
     volumes:
       - ./backend:/app
-      - ./ubf_protein:/ubf_protein
-      - ./src:/src
+      # Development: Mount source for hot reload. Production: remove these mounts.
+      - ./ubf_protein:/packages/ubf_protein
+      - ./src:/packages/src
+      # Data directories
       - ./checkpoints:/app/checkpoints
       - ./visualization_output:/app/visualization_output
       - ./pdb_cache:/app/pdb_cache

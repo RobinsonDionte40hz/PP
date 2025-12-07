@@ -1,6 +1,22 @@
 """
 Celery task for running predictions
+
+DEPRECATED: This module is deprecated. Use prediction_tasks_v2.py instead.
+
+This file is kept for reference only. The v2 module uses the public API
+(ubf_protein.api) following SOLID principles, while this module directly
+imports internal ubf_protein modules which violates Dependency Inversion.
+
+Migration: Import from prediction_tasks_v2 instead:
+    from app.tasks.prediction_tasks_v2 import run_prediction_v2
 """
+import warnings
+warnings.warn(
+    "prediction_tasks.py is deprecated. Use prediction_tasks_v2.py instead.",
+    DeprecationWarning,
+    stacklevel=2
+)
+
 from celery import Task
 import sys
 import os
@@ -25,10 +41,12 @@ from pathlib import Path
 from datetime import datetime, timezone
 
 # Add project root to path for ubf_protein imports
+# NOTE: This sys.path manipulation is deprecated. Use ubf_protein.api instead.
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
 sys.path.insert(0, project_root)
 
-# Import UBF system
+# DEPRECATED: Direct imports from internal modules
+# Use `from ubf_protein.api import PredictionRunner, PredictionConfig` instead
 from ubf_protein.multi_agent_coordinator import MultiAgentCoordinator
 from ubf_protein.adaptive_config import create_config_for_sequence
 import math

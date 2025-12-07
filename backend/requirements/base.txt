@@ -1,0 +1,37 @@
+# Backend Core Requirements
+# These are ONLY the dependencies needed by the FastAPI backend.
+# Scientific computing libraries (NumPy, SciPy, etc.) should NOT be here.
+# They belong in the prediction-engine package.
+
+# Web Framework
+fastapi==0.115.0
+uvicorn[standard]==0.32.0
+python-multipart==0.0.12
+
+# Task Queue
+celery==5.4.0
+redis==5.2.0
+
+# Database
+sqlalchemy==2.0.36
+alembic==1.13.1
+psycopg2-binary==2.9.10
+
+# WebSocket
+python-socketio==5.11.4
+
+# Validation & Settings
+pydantic[email]>=2.0.0
+pydantic-settings>=2.0.0
+
+# Security
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+
+# Utilities
+python-dotenv==1.0.1
+httpx==0.27.2
+requests==2.32.3
+
+# Rate Limiting
+slowapi==0.1.9
