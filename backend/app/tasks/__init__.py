@@ -15,6 +15,13 @@ from app.tasks.screening_tasks import (
     run_screening_campaign,
 )
 
+# Quota tasks (usage limit management)
+from app.tasks.quota_tasks import (
+    reset_daily_quotas,
+    reset_monthly_quotas,
+    check_and_reset_quotas,
+)
+
 __all__ = [
     # Legacy (deprecated)
     "run_prediction", 
@@ -27,4 +34,8 @@ __all__ = [
     # Screening
     "run_batch_screening",
     "run_screening_campaign",
+    # Quota management
+    "reset_daily_quotas",
+    "reset_monthly_quotas",
+    "check_and_reset_quotas",
 ]

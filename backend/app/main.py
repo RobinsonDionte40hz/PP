@@ -70,10 +70,11 @@ async def health_check():
     }
 
 # Import and include routers
-from app.api import predictions, campaigns, results, sessions, feedback, screening
+from app.api import predictions, campaigns, results, sessions, feedback, screening, users
 from app.routes import websocket_routes, auth
 
 app.include_router(auth.router)  # Authentication routes (/api/auth)
+app.include_router(users.router, prefix="/api/users", tags=["users"])  # User profile & quota
 app.include_router(predictions.router, prefix="/api/predictions", tags=["predictions"])
 app.include_router(campaigns.router, prefix="/api/campaigns", tags=["campaigns"])
 app.include_router(screening.router, prefix="/api/screening", tags=["screening"])  # Aggregation screening

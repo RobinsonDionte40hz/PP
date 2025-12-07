@@ -9,7 +9,8 @@ celery_app = Celery(
     include=[
         "app.tasks.prediction_tasks",
         "app.tasks.prediction_tasks_v2",
-        "app.tasks.cleanup_tasks"
+        "app.tasks.cleanup_tasks",
+        "app.tasks.quota_tasks"
     ]
 )
 
@@ -33,5 +34,14 @@ celery_app.conf.beat_schedule = {
     "cleanup-expired-shares": {
         "task": "app.tasks.cleanup_tasks.cleanup_expired_shares_task",
         "schedule": crontab(hour=3, minute=0),  # Daily at 3 AM UTC
+    },
+    # Quota management tasks
+    "reset-daily-quotas": {
+        "task": "app.tasks.quota_tasks.reset_daily_quotas",
+        "schedule": crontab(hour=0, minute=0),  # Daily at midnight UTC
+    },
+    "reset-monthly-quotas": {
+        "task": "app.tasks.quota_tasks.reset_monthly_quotas",
+        "schedule": crontab(hour=0, minute=5, day_of_month=1),  # 1st of month at 00:05 UTC
     },
 }

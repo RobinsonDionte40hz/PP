@@ -3,7 +3,7 @@ User database model
 """
 from datetime import datetime, timezone
 from typing import Optional
-from sqlalchemy import Column, String, DateTime, Boolean, Index
+from sqlalchemy import Column, String, DateTime, Boolean, Index, Integer
 from sqlalchemy.orm import relationship
 from app.database import Base
 
@@ -27,6 +27,17 @@ class User(Base):
     
     # Role management (user, developer, admin)
     role = Column(String(20), nullable=False, default='user')
+    
+    # Quota tracking
+    daily_prediction_count = Column(Integer, nullable=False, default=0)
+    monthly_prediction_count = Column(Integer, nullable=False, default=0)
+    daily_quota_reset_at = Column(DateTime(timezone=True), nullable=True)
+    monthly_quota_reset_at = Column(DateTime(timezone=True), nullable=True)
+    
+    # Tier settings (free, pro, enterprise)
+    account_tier = Column(String(20), nullable=False, default='free')
+    daily_prediction_limit = Column(Integer, nullable=False, default=20)
+    monthly_prediction_limit = Column(Integer, nullable=False, default=100)
     
     # Timestamps
     created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
@@ -55,6 +66,13 @@ class User(Base):
             "email": self.email,
             "is_active": self.is_active,
             "role": self.role,
+            "account_tier": self.account_tier,
+            "daily_prediction_count": self.daily_prediction_count,
+            "monthly_prediction_count": self.monthly_prediction_count,
+            "daily_prediction_limit": self.daily_prediction_limit,
+            "monthly_prediction_limit": self.monthly_prediction_limit,
+            "daily_quota_reset_at": self.daily_quota_reset_at.isoformat() if self.daily_quota_reset_at else None,
+            "monthly_quota_reset_at": self.monthly_quota_reset_at.isoformat() if self.monthly_quota_reset_at else None,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
             "last_login": self.last_login.isoformat() if self.last_login else None,
@@ -67,7 +85,26 @@ class User(Base):
             "username": self.username,
             "email": self.email,
             "role": self.role,
+            "account_tier": self.account_tier,
             "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+    
+    def to_quota_info(self) -> dict:
+        """Get quota information for the user"""
+        return {
+            "account_tier": self.account_tier,
+            "daily": {
+                "used": self.daily_prediction_count,
+                "limit": self.daily_prediction_limit,
+                "remaining": max(0, self.daily_prediction_limit - self.daily_prediction_count),
+                "reset_at": self.daily_quota_reset_at.isoformat() if self.daily_quota_reset_at else None,
+            },
+            "monthly": {
+                "used": self.monthly_prediction_count,
+                "limit": self.monthly_prediction_limit,
+                "remaining": max(0, self.monthly_prediction_limit - self.monthly_prediction_count),
+                "reset_at": self.monthly_quota_reset_at.isoformat() if self.monthly_quota_reset_at else None,
+            },
         }
 
     def __repr__(self) -> str:

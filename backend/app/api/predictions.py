@@ -10,6 +10,7 @@ from app.schemas.prediction import (
 )
 from app.models.prediction import PredictionStatus
 from app.services.prediction_service import prediction_service
+from app.services.quota_service import quota_service
 from app.security import require_auth_with_session
 from slowapi import Limiter
 from slowapi.util import get_remote_address
@@ -59,9 +60,26 @@ async def create_prediction(
     NOTE: Consider using POST /api/sessions/{session_id}/predictions for better organization.
     """
     user_id = get_user_id(user)
+    
+    # Check user quota before creating prediction
+    has_quota, error_message = quota_service.check_quota(user_id)
+    if not has_quota:
+        quota_info = quota_service.get_user_quota(user_id)
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "message": error_message,
+                "quota": quota_info
+            },
+            headers={"X-Quota-Exceeded": "true"}
+        )
+    
     try:
         # Create prediction with user's session
         prediction = prediction_service.create_prediction(data, user_id=user_id)
+        
+        # Increment user's quota count
+        quota_service.increment_quota(user_id)
         
         # Try to queue Celery task
         celery_available = False

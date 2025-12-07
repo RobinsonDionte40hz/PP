@@ -90,6 +90,14 @@ class Settings(BaseSettings):
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     
+    # Quota Settings - User prediction limits
+    DEFAULT_DAILY_QUOTA: int = 20  # Free tier daily limit
+    DEFAULT_MONTHLY_QUOTA: int = 100  # Free tier monthly limit
+    PRO_DAILY_QUOTA: int = 100  # Pro tier daily limit
+    PRO_MONTHLY_QUOTA: int = 500  # Pro tier monthly limit
+    ENTERPRISE_DAILY_QUOTA: int = -1  # Enterprise tier (-1 = unlimited)
+    ENTERPRISE_MONTHLY_QUOTA: int = -1  # Enterprise tier (-1 = unlimited)
+    
     # Celery Configuration
     CELERY_BROKER_URL: str = "redis://localhost:6379/0"
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/0"
