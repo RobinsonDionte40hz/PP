@@ -98,6 +98,13 @@ class Settings(BaseSettings):
     ENTERPRISE_DAILY_QUOTA: int = -1  # Enterprise tier (-1 = unlimited)
     ENTERPRISE_MONTHLY_QUOTA: int = -1  # Enterprise tier (-1 = unlimited)
     
+    # CAPTCHA Settings - Bot protection on registration
+    RECAPTCHA_ENABLED: bool = False  # Enable in production
+    RECAPTCHA_SITE_KEY: Optional[str] = None  # Public key for frontend
+    RECAPTCHA_SECRET_KEY: Optional[str] = None  # Secret key for backend verification
+    CAPTCHA_PROVIDER: str = "recaptcha"  # 'recaptcha' or 'hcaptcha'
+    RECAPTCHA_MIN_SCORE: float = 0.5  # Minimum score for v3 (0.0-1.0)
+    
     # Email Verification Settings
     EMAIL_VERIFICATION_EXPIRE_HOURS: int = 24  # Verification links expire after 24 hours
     REQUIRE_EMAIL_VERIFICATION: bool = True  # Require email verification for predictions

@@ -11,6 +11,7 @@ class UserRegisterRequest(BaseModel):
     username: str = Field(..., min_length=3, max_length=50, description="Username (3-50 characters)")
     email: Optional[str] = Field(None, description="Email address (optional)")
     password: str = Field(..., min_length=8, max_length=72, description="Password (8-72 characters)")
+    captcha_token: Optional[str] = Field(None, description="CAPTCHA verification token (required when CAPTCHA is enabled)")
     
     @field_validator('username')
     @classmethod
@@ -46,7 +47,8 @@ class UserRegisterRequest(BaseModel):
                 {
                     "username": "john_doe",
                     "email": "john@example.com",
-                    "password": "SecurePass123!"
+                    "password": "SecurePass123!",
+                    "captcha_token": "03AGdBq24..."
                 }
             ]
         }

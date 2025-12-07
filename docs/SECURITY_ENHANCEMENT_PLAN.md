@@ -22,7 +22,7 @@ This document outlines the implementation plan for enhancing security and usage 
 |-------|--------|-------------|
 | Phase 1: Usage Quotas | ✅ **COMPLETE** | Daily/monthly prediction limits |
 | Phase 2: Email Verification | ✅ **COMPLETE** | Require email verification |
-| Phase 3: CAPTCHA | 🔲 Not Started | Bot protection on registration |
+| Phase 3: CAPTCHA | ✅ **COMPLETE** | Bot protection on registration |
 | Phase 4: OAuth | 🔲 Not Started | Google/GitHub social login |
 | Phase 5: Frontend | 🔲 Not Started | UI for quotas and OAuth |
 
@@ -192,17 +192,52 @@ FRONTEND_URL: str = "http://localhost:5173"
 
 ---
 
-### Phase 3: CAPTCHA Integration (Week 2)
+### Phase 3: CAPTCHA Integration (Week 2) ✅ COMPLETE
 
 **Goal**: Prevent automated bot registrations
 
-#### Task 3.1: Backend Integration
+**Implemented Files**:
+- `backend/app/services/captcha_service.py` - CAPTCHA verification service
+- `backend/app/config.py` - Added CAPTCHA settings
+- `backend/app/schemas/auth.py` - Added captcha_token field
+- `backend/app/routes/auth.py` - CAPTCHA verification in registration + config endpoint
+- `backend/tests/test_captcha_service.py` - Unit tests (22 passing)
 
-- Add reCAPTCHA v3 or hCaptcha verification
-- Verify token on registration endpoint
-- Add to `.env`: `RECAPTCHA_SITE_KEY`, `RECAPTCHA_SECRET_KEY`
+#### Task 3.1: Backend Integration ✅
 
-#### Task 3.2: Frontend Integration
+Created `backend/app/services/captcha_service.py`:
+
+- Supports reCAPTCHA v3 (score-based, invisible) and v2 (checkbox)
+- Supports hCaptcha as alternative provider
+- Token verification with configurable score threshold
+- Graceful degradation (fails open on timeout/errors in development)
+- Fails closed in production for security
+
+**Configuration Settings** (added to `config.py`):
+```python
+# CAPTCHA Settings - Bot protection on registration
+RECAPTCHA_ENABLED: bool = False  # Enable in production
+RECAPTCHA_SITE_KEY: Optional[str] = None  # Public key for frontend
+RECAPTCHA_SECRET_KEY: Optional[str] = None  # Secret key for backend
+CAPTCHA_PROVIDER: str = "recaptcha"  # 'recaptcha' or 'hcaptcha'
+RECAPTCHA_MIN_SCORE: float = 0.5  # Minimum score for v3 (0.0-1.0)
+```
+
+#### Task 3.2: Registration Integration ✅
+
+- Added `captcha_token` field to `UserRegisterRequest` schema
+- CAPTCHA verification happens after rate limiting, before registration
+- Returns 400 error with user-friendly message on CAPTCHA failure
+- Skipped when CAPTCHA is disabled (development mode)
+
+#### Task 3.3: Configuration Endpoint ✅
+
+Added `GET /api/auth/captcha-config`:
+- Returns CAPTCHA configuration for frontend initialization
+- No authentication required
+- Response: `{ enabled, provider, site_key }`
+
+#### Task 3.4: Frontend Integration 🔲 Not Started
 
 - Add CAPTCHA widget to registration form
 - Pass token with registration request

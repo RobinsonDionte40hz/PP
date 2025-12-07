@@ -104,6 +104,25 @@ async def register(
         except Exception as e:
             # Fail open if rate limiting fails
             logger.error(f"Rate limiting check failed: {str(e)}")
+    
+    # Verify CAPTCHA token (bot protection)
+    from app.services.captcha_service import CaptchaService
+    if CaptchaService.is_enabled():
+        captcha_valid, captcha_message, captcha_score = await CaptchaService.verify_token(
+            token=request.captcha_token or "",
+            remote_ip=client_ip,
+            expected_action="register"
+        )
+        if not captcha_valid:
+            logger.warning(
+                f"CAPTCHA verification failed: ip={client_ip}, message={captcha_message}, score={captcha_score}"
+            )
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=captcha_message
+            )
+        logger.debug(f"CAPTCHA verified: ip={client_ip}, score={captcha_score}")
+    
     success, message, user = AuthService.register_user(
         db=db,
         username=request.username,
@@ -679,3 +698,34 @@ async def get_verification_status(
     status_info = verification_service.get_verification_status(current_user)
     
     return VerificationStatusResponse(**status_info)
+
+
+@router.get(
+    "/captcha-config",
+    status_code=status.HTTP_200_OK,
+    responses={
+        200: {"description": "CAPTCHA configuration returned"},
+    },
+    summary="Get CAPTCHA configuration",
+    description="""
+    Get CAPTCHA configuration for frontend integration.
+    
+    Returns whether CAPTCHA is enabled, the provider type,
+    and the public site key for widget initialization.
+    """
+)
+async def get_captcha_config():
+    """
+    Get CAPTCHA configuration for frontend use.
+    
+    This endpoint provides the public configuration needed
+    to initialize the CAPTCHA widget on the frontend.
+    No authentication required.
+    """
+    from app.services.captcha_service import CaptchaService
+    
+    return {
+        "enabled": CaptchaService.is_enabled(),
+        "provider": CaptchaService.get_provider(),
+        "site_key": CaptchaService.get_site_key()
+    }
