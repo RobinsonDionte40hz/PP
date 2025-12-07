@@ -17,6 +17,9 @@ COPY backend/requirements/prod.txt ./requirements_prod.txt
 RUN pip install --no-cache-dir -r requirements_base.txt && \
     pip install --no-cache-dir -r requirements_prod.txt
 
+# Install numpy for ubf_protein QCPP integration
+RUN pip install --no-cache-dir numpy
+
 # Copy ubf_protein package (backend only needs core, no QCPP)
 COPY ubf_protein/ /packages/ubf_protein/
 
