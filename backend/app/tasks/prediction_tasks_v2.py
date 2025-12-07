@@ -113,31 +113,52 @@ def create_websocket_progress_callback(prediction_id: str, total_iterations: int
     
     backend_url = os.getenv('BACKEND_URL', 'http://backend:8000')
     
-    def progress_callback(update: ProgressUpdate):
+    def progress_callback(update):
         """Emit progress update via WebSocket."""
         try:
-            # Build metrics dict including secondary structure if available
+            # Handle both public API ProgressUpdate and internal ProgressUpdate
+            # Public uses: phase, percentage
+            # Internal uses: stage, progress_percentage, current_energy, folding_rmsd, etc.
+            iteration = getattr(update, 'iteration', 0)
+            total_iter = getattr(update, 'total_iterations', total_iterations)
+            progress_pct = getattr(update, 'percentage', None) or getattr(update, 'progress_percentage', 0.0)
+            stage = getattr(update, 'phase', None) or getattr(update, 'stage', 'exploration')
+            message = getattr(update, 'message', '')
+            
+            # Get energy/rmsd from either schema format
+            best_energy = getattr(update, 'best_energy', None)
+            current_energy = getattr(update, 'current_energy', best_energy)
+            current_rmsd = getattr(update, 'current_rmsd', None)
+            folding_rmsd = getattr(update, 'folding_rmsd', current_rmsd)
+            best_rmsd = getattr(update, 'best_rmsd', current_rmsd)
+            
+            # Optional metrics (may not exist on public schema)
+            conformations = getattr(update, 'conformations_explored', 0)
+            aggressiveness = getattr(update, 'aggressiveness', None)
+            consistency = getattr(update, 'consistency', None)
+            secondary_structure = getattr(update, 'secondary_structure', None)
+            
+            # Build metrics dict
             metrics_update = {
-                "current_energy": update.current_energy,
-                "current_rmsd": update.current_rmsd,
-                "folding_rmsd": update.folding_rmsd,
-                "best_energy": update.best_energy,
-                "best_rmsd": update.best_rmsd,
-                "conformations_explored": update.conformations_explored,
+                "current_energy": current_energy,
+                "current_rmsd": current_rmsd,
+                "folding_rmsd": folding_rmsd,
+                "best_energy": best_energy,
+                "best_rmsd": best_rmsd,
+                "conformations_explored": conformations,
             }
             
             # Include secondary structure if present
-            if update.secondary_structure:
-                metrics_update["secondary_structure"] = update.secondary_structure
+            if secondary_structure:
+                metrics_update["secondary_structure"] = secondary_structure
             
-            # Update database with current progress AND total iterations
-            # This ensures the frontend always knows the actual total iterations
+            # Update database with current progress
             prediction_service.update_prediction(
                 prediction_id,
                 PredictionUpdateSchema(
-                    current_iteration=update.iteration,
-                    total_iterations=update.total_iterations,  # Update total too
-                    progress_percentage=update.progress_percentage,
+                    current_iteration=iteration,
+                    total_iterations=total_iter,
+                    progress_percentage=progress_pct,
                     metrics=sanitize_metrics(metrics_update)
                 )
             )
@@ -145,24 +166,24 @@ def create_websocket_progress_callback(prediction_id: str, total_iterations: int
             # Emit WebSocket event
             progress_payload = {
                 'prediction_id': prediction_id,
-                'iteration': update.iteration,
-                'total_iterations': update.total_iterations,
-                'progress_percentage': update.progress_percentage,
-                'current_energy': update.current_energy,
-                'current_rmsd': update.current_rmsd,
-                'folding_rmsd': update.folding_rmsd,
-                'best_energy': update.best_energy,
-                'best_rmsd': update.best_rmsd,
-                'conformations_explored': update.conformations_explored,
-                'aggressiveness': update.aggressiveness,
-                'consistency': update.consistency,
-                'stage': update.stage,
-                'message': update.message,
+                'iteration': iteration,
+                'total_iterations': total_iter,
+                'progress_percentage': progress_pct,
+                'current_energy': current_energy,
+                'current_rmsd': current_rmsd,
+                'folding_rmsd': folding_rmsd,
+                'best_energy': best_energy,
+                'best_rmsd': best_rmsd,
+                'conformations_explored': conformations,
+                'aggressiveness': aggressiveness,
+                'consistency': consistency,
+                'stage': stage,
+                'message': message,
             }
             
             # Include secondary structure in WebSocket payload if available
-            if update.secondary_structure:
-                progress_payload['secondary_structure'] = update.secondary_structure
+            if secondary_structure:
+                progress_payload['secondary_structure'] = secondary_structure
             
             with httpx.Client() as client:
                 response = client.post(
@@ -175,7 +196,7 @@ def create_websocket_progress_callback(prediction_id: str, total_iterations: int
                 )
                 
                 if response.status_code == 200:
-                    logger.debug(f"WebSocket progress emitted: {update.iteration}/{update.total_iterations}")
+                    logger.debug(f"WebSocket progress emitted: {iteration}/{total_iter}")
                 else:
                     logger.warning(f"WebSocket emission failed: {response.status_code}")
                     
