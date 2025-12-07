@@ -1,8 +1,8 @@
-# Setup Guide - Protein Prediction Platform Web Interface
+# Setup Guide - EmergentFolds
 
-This guide will help you set up and run the Protein Prediction Platform web interface.
+This guide covers local installation for developers. Most users should use the live platform directly.
 
-> **🌐 Live Production Site**: The platform is live at **https://emergentfolds.com** hosted on Hostinger VPS - you can use it immediately without any setup!
+> **🌐 Live Platform**: **https://emergentfolds.com** — no installation required
 
 ## Production vs Local Development
 

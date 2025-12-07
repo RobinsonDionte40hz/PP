@@ -1,80 +1,92 @@
-# UBF Protein System
+# UBF Protein Prediction Engine
 
-⚠️ **RESEARCH PLATFORM DISCLAIMER**: This is a research platform for exploring multi-agent parameter-space optimization for protein conformational navigation. Current performance: **7.5-10Å RMSD typical** (research phase, November 2025 validation). With quantum refinement enabled: **45-58% RMSD improvement** across tested proteins. This system validates novel optimization mechanisms, agent coordination, and energy landscape exploration - it is **NOT designed to compete with production structure prediction tools** like AlphaFold/RosettaFold (which achieve <2Å RMSD). The value lies in exploring novel computational approaches, not production-grade accuracy.
+The prediction engine powering EmergentFolds. Uses multi-agent physics-based simulation to predict protein structures from amino acid sequences.
 
-⚠️ **TERMINOLOGY CLARIFICATION**: This system uses a **consciousness-inspired metaphor** to organize exploration parameters. The term "consciousness" refers to **mathematical optimization parameters**, NOT physical consciousness in proteins. This is a design pattern for autonomous agent coordination, inspired by how conscious systems balance exploration vs exploitation.
+## How It Works
 
-⚠️ **MATHEMATICAL VALIDATION**: Comprehensive ablation studies (November 9, 2025) confirm **all mathematical components contribute significantly** to prediction performance. Energy functions are most critical (77% RMSD impact when hydrogen bonding removed), followed by QCP quantum predictions and exploration strategies. System is **mathematically sound and ready for experimental validation**.
+1. **Multi-agent exploration** — Autonomous agents search conformational space using different strategies
+2. **Energy optimization** — Molecular mechanics force field (bonds, angles, van der Waals, electrostatics, hydrogen bonds)
+3. **QCPP integration** — Quantum coherence provides physics-based stability feedback
+4. **Collective learning** — Agents share discoveries through a memory system
 
-A multi-agent protein structure prediction system using the Universal Behavioral Framework (UBF). This system uses autonomous agents with exploration parameters (metaphorically called "consciousness coordinates") to explore conformational space and predict protein structures through mapless, capability-based navigation.
+## Key Features
+
+- **Pure Python** — PyPy-compatible for 2-5x speedup
+- **Fast** — <2ms per move evaluation, predictions in seconds to minutes
+- **Checkpoint/resume** — Save and restore exploration state
+- **QCPP integration** — Real-time quantum physics guidance
+- **Adaptive configuration** — Auto-scales for protein size
+
+## Quick Start
+
+```python
+from ubf_protein.prediction_runner import PredictionRunner, PredictionConfig
+
+config = PredictionConfig(
+    sequence="MQIFVKTLTGKTITLEVEPS...",
+    agents=10,
+    iterations=500,
+)
+
+runner = PredictionRunner(config)
+results = runner.run()
+
+print(f"Best energy: {results.best_energy}")
+```
+
+Command line:
+```bash
+python test_protein.py --sequence MQIFVKT...
+python test_protein.py --pdb 1UBQ
+```
 
 ## Table of Contents
 
 - [Overview](#overview)
 - [Key Features](#key-features)
 - [QCPP Integration](#qcpp-integration)
-- [Mathematical Validation](#mathematical-validation)
 - [Architecture](#architecture)
 - [Installation](#installation)
-- [Quick Start](#quick-start)
 - [Usage Examples](#usage-examples)
 - [Configuration](#configuration)
-- [Performance Metrics](#performance-metrics)
+- [Performance](#performance)
 - [API Documentation](#api-documentation)
 - [Testing](#testing)
-- [Contributing](#contributing)
 
 ## Overview
 
-The UBF Protein System integrates quantum coherence principles with autonomous agent behavior to predict protein structures. Each agent operates in a 2D exploration parameter space (aggressiveness 0-1, consistency 0-1) that guides conformational exploration through search strategies derived from these base parameters.
-
-**What "consciousness coordinates" actually means:**
-The system uses a **consciousness-inspired metaphor** for parameter names, but these are purely **mathematical optimization parameters**:
-- **Aggressiveness** (internally scaled 3-15, normalized to 0-1): Controls exploration step size and search radius
-- **Consistency** (scaled 0.2-1.0, normalized to 0-1): Controls behavioral stability and refinement focus
-
-This is **NOT a claim about consciousness in proteins** - it's a design pattern inspired by how conscious systems balance exploration vs exploitation.
+The UBF system uses autonomous agents operating in a 2D parameter space (aggressiveness, consistency) to explore protein conformations. Each agent balances exploration vs exploitation based on these parameters.
 
 ### Key Concepts
 
-- **Exploration Parameters**: 2D parameter space (aggressiveness, consistency) that drives agent behavior
-- **Search Strategies**: Five search dimensions derived from base parameters (exploration_energy, structural_focus, hydrophobic_drive, risk_tolerance, native_state_ambition)
-- **Mapless Navigation**: O(1) move generation using capability-based filtering (no pathfinding or explicit maps)
-- **Memory System**: Experience-based learning with significance-weighted memories and shared memory pool
-- **Local Minima Detection**: Adaptive escape strategies using parameter adjustments
-- **Multi-Agent Coordination**: Parallel exploration with collective learning through shared memory
+- **Exploration Parameters**: 2D space controlling agent behavior
+- **Search Strategies**: Five dimensions derived from base parameters
+- **Mapless Navigation**: O(1) move generation (no spatial maps)
+- **Memory System**: Experience-based learning with shared discoveries
+- **Multi-Agent Coordination**: Parallel exploration with collective learning
 
-## Key Features
+## Features
 
-✅ **Pure Python Implementation** - PyPy-compatible for 2-5x performance boost  
-✅ **SOLID Architecture** - Interface-driven design with dependency inversion  
-✅ **Molecular Mechanics Energy** - AMBER-like force field with 6 energy terms  
-✅ **Structural Validation** - RMSD, GDT-TS, TM-score validation against native structures  
-✅ **Adaptive Configuration** - Automatic parameter scaling based on protein size (small/medium/large)  
-✅ **Checkpoint & Resume** - Save and restore exploration state with integrity checking  
-✅ **Real-Time Visualization** - Export trajectories and energy landscapes in multiple formats  
-✅ **Comprehensive Testing** - 999/1016 unit and integration tests passing (98.3% pass rate, Nov 9, 2025)  
-✅ **Performance Optimized** - <2ms move evaluation, <10μs memory retrieval  
-✅ **QCPP Integration** - Real-time quantum physics guidance from QCPP (October 25, 2025)  
-✅ **Geometric Mediator V2** - Percentage-based geometric pattern detection (November 9, 2025)  
-✅ **Mediator Agents** - Information relay between QCPP and agents (November 9, 2025)
+✅ **Pure Python** — PyPy-compatible for 2-5x performance  
+✅ **SOLID Architecture** — Interface-driven design  
+✅ **Molecular Mechanics Energy** — AMBER-like force field with 6 energy terms  
+✅ **Structural Validation** — RMSD, GDT-TS, TM-score against native structures  
+✅ **Adaptive Configuration** — Auto-scales for protein size  
+✅ **Checkpoint & Resume** — Save and restore exploration state  
+✅ **Visualization Export** — JSON, PDB, CSV formats  
+✅ **QCPP Integration** — Real-time quantum physics guidance  
+✅ **Geometric Patterns** — Golden ratio-based structural analysis
 
 ## QCPP Integration
 
-**Real-time quantum physics feedback for conformational exploration** (Implemented: October 25, 2025)
+The UBF system integrates with QCPP (Quantum Coherence Protein Predictor) for real-time physics-based guidance during conformational exploration.
 
-The UBF system integrates with the Quantum Coherence Protein Predictor (QCPP) to provide real-time quantum physics guidance during conformational exploration. This integration provides physics-based feedback to guide exploration parameter evolution and provides dynamic validation across thousands of conformations.
+### Integration Features
 
-**Note:** Integration provides physics-based guidance for exploration. Structure prediction accuracy in research phase (7.5-10Å RMSD typical, 45-58% improvement with quantum refinement).
-
-### Key Integration Features
-
-🔬 **Physics-Guided Parameters** - Agent exploration parameters adapt based on QCPP stability metrics  
-⚡ **Real-Time QCPP Guidance** - Move evaluation uses quantum alignment from QCPP analysis  
-🌟 **Phi Pattern Rewards** - Golden ratio geometries receive energy bonuses  
-📊 **Integrated Trajectories** - Records both UBF and QCPP metrics for correlation analysis  
-🎯 **Dynamic Parameter Adjustment** - Exploration adapts based on QCPP stability scores  
-⚙️ **Performance Monitoring** - Detailed timing and caching statistics  
+- **Physics-Guided Parameters** — Agents adapt based on QCPP stability metrics
+- **Real-Time Feedback** — Move evaluation uses quantum alignment from QCPP
+- **Phi Pattern Rewards** — Golden ratio geometries receive energy bonuses
+- **Performance Caching** — 40-85% cache hit rate for efficient computation  
 
 ### Architecture Overview
 

@@ -2,14 +2,21 @@
 
 **Release Date**: November 24, 2025  
 **Status**: Production Ready  
-**Project**: EmergentFolds - Quantum-Enhanced Protein Structure Prediction  
+**Project**: EmergentFolds — Protein Structure Prediction Platform  
 **Live Site**: **https://emergentfolds.com**
 
 ---
 
 ## 🎉 What's New in v1.0.0
 
-This is the initial release of the PP Frontend Interface, a comprehensive web application for protein structure prediction using the UBF (Universal Behavioral Field) and QCPP (Quantum Coherence Protein Predictor) systems.
+EmergentFolds v1.0.0 is a full-featured web platform for protein structure prediction. Submit a sequence, get a 3D structure in seconds to minutes, and explore results with interactive visualization.
+
+### Key Capabilities
+- **Fast predictions** — Structure prediction in 30 seconds to a few minutes
+- **Interactive 3D viewer** — Explore structures with multiple visualization modes
+- **Batch processing** — Campaign mode for systematic multi-protein screening
+- **API access** — REST API for research pipeline integration
+- **Collaboration** — Work sessions with sharing and export
 
 ### Major Features
 

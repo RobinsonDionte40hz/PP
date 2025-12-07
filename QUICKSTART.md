@@ -1,27 +1,29 @@
-# Quick Start Guide - Protein Structure Prediction
+# Quick Start Guide
 
-**PRIMARY MODULES: Quantum Refinement Engine + Real RMSD Calculations**
+Get started with EmergentFolds protein structure prediction.
 
 ---
 
-## 🌐 Fastest Way: Use the Live Site
+## 🌐 Fastest Way: Use the Live Platform
 
-**https://emergentfolds.com** - No installation required!
+**https://emergentfolds.com**
 
 1. Create an account
-2. Submit a prediction
+2. Submit a sequence
 3. Watch real-time progress
-4. View 3D results
+4. Explore the 3D structure
+
+No installation required.
 
 ---
 
-## 🖥️ CLI Installation (For automation)
+## 🖥️ Command Line (Optional)
+
+For automation and scripting:
 
 ```bash
 # Install dependencies
 pip install -e .
-
-# For UBF system (optional PyPy for 2-5x speedup)
 pip install -r ubf_protein/requirements.txt
 ```
 
@@ -29,55 +31,34 @@ pip install -r ubf_protein/requirements.txt
 
 ## 📊 CLI Usage
 
-### 1. Test Single Protein (PRIMARY MODULE)
+### Single Protein Prediction
 
 ```bash
-# Test with quantum refinement (recommended)
-python test_protein.py --pdb 1UBQ --enable-refinement
+# Predict structure for a PDB ID
+python test_protein.py --pdb 1UBQ
 
-# Quick test on small protein
-python test_protein.py --quick
-
-# Test custom sequence
+# Predict from sequence
 python test_protein.py --sequence ACDEFGHIKL
 
-# See all available proteins
+# Quick test
+python test_protein.py --quick
+
+# List available test proteins
 python test_protein.py --list
 ```
 
-**Output**:
-- Real RMSD calculations with Kabsch alignment
-- Quantum refinement RMSD improvement metrics
-- Energy landscape analysis
-- Geometric attractor patterns
-- JSON results in `results/test_results/`
-
----
-
-### 2. Systematic Testing Campaign (100+ Proteins)
+### Batch Processing
 
 ```bash
-# Test first 10 proteins with quantum refinement
-python systematic_protein_testing.py --start 0 --count 10
+# Test multiple proteins
+python systematic_protein_testing.py --count 10
 
 # Test specific protein
 python systematic_protein_testing.py --protein 1UBQ
 
-# Quick test mode (fewer configurations)
-python systematic_protein_testing.py --quick
-
-# Resume interrupted campaign
+# Resume interrupted run
 python systematic_protein_testing.py --resume
 ```
-
-**Output**:
-- `systematic_test_results/campaign_results.json` - All test data
-- `systematic_test_results/campaign_summary.json` - Statistical analysis
-- `systematic_test_results/campaign_report.txt` - Human-readable summary
-
-**Test Configurations** (6 per protein):
-1. Base optimal + quantum refinement
-2. Mediators + quantum refinement
 3. Geometric targeting + quantum refinement
 4. **Full features + quantum refinement** (most comprehensive)
 5. High agent count + quantum refinement

@@ -1,79 +1,71 @@
-# PP Platform - Quick Reference Card
+# EmergentFolds - Quick Reference
 
-## 🚀 Three Ways to Use This Platform
+## Three Ways to Use the Platform
 
-### 1. 🌐 Production Website (RECOMMENDED - NO SETUP)
-**https://emergentfolds.com** - Hosted on Hostinger VPS
+### 1. 🌐 Live Platform (Recommended)
+**https://emergentfolds.com**
 
-- ✅ Create an account and start predicting immediately
-- ✅ Full features: predictions, 3D visualization, real-time monitoring
-- ✅ Aggregation screening for risk assessment
-- ✅ Work sessions, sharing, campaigns
-- ✅ No installation required
+- Create an account and start predicting immediately
+- Full features: predictions, 3D visualization, real-time monitoring
+- Aggregation screening, campaigns, work sessions
+- No installation required
 
 **This is the primary way to use the platform.**
 
 ---
 
-### 2. 🖥️ Command Line (For scripts and automation)
-**Direct Python scripts for batch processing and integration**
+### 2. 🖥️ Command Line
+**For automation and batch processing**
 
 ```bash
-# Single protein prediction
-python test_protein.py --pdb 1UBQ --enable-refinement
+# Single prediction
+python test_protein.py --pdb 1UBQ
 
-# Systematic testing (100+ proteins)
-python systematic_protein_testing.py --start 0 --count 10
+# Batch processing
+python systematic_protein_testing.py --count 10
 
 # Quick test
 python test_protein.py --quick
 ```
 
-**Best for**: Automation, batch processing, CI/CD integration, research workflows
-
 **Documentation**: `docs/CLI_REFERENCE.md`, `QUICKSTART.md`
 
 ---
 
-### 3. 🛠️ Local Development (For developers)
-**Run your own instance for development/testing**
+### 3. 🛠️ Local Development
+**For developers**
 
 ```bash
-# Start the full application
-START_ALL.bat  # Windows
-# or
+# Start locally
 docker compose up -d
+# or: START_ALL.bat (Windows)
 
 # Access at:
 # Frontend: http://localhost:3000
-# Backend API: http://localhost:8000/docs
+# API: http://localhost:8000/docs
 ```
-
-**Best for**: Contributing to the project, customization, testing changes
 
 **Documentation**: `docs/SETUP.md`, `docs/DEVELOPER_GUIDE.md`
 
 ---
 
-### 4. 📊 Python API (For custom integration)
-**Direct access to UBF and QCPP systems**
+### 4. 📊 Python API
+**For custom integration**
 
 ```python
-from ubf_protein.multi_agent_coordinator import MultiAgentCoordinator
-from ubf_protein.quantum_refinement_engine import QuantumRefinementEngine
+from ubf_protein.prediction_runner import PredictionRunner, PredictionConfig
 
-# Run prediction programmatically
-coordinator = MultiAgentCoordinator(protein_sequence="ACDEFGH")
-results = coordinator.run_parallel_exploration(iterations=1000)
+config = PredictionConfig(
+    sequence="MQIFVKT...",
+    agents=10,
+    iterations=500,
+)
 
-# Apply quantum refinement
-engine = QuantumRefinementEngine()
-refined_results = engine.refine(results)
+runner = PredictionRunner(config)
+results = runner.run()
 ```
 
-**Best for**: Custom workflows, research experiments, integration with other Python code
-
-**Documentation**: `ubf_protein/README.md`, `ubf_protein/API.md`, `ubf_protein/EXAMPLES.md`
+**Documentation**: `ubf_protein/README.md`, `ubf_protein/API.md`
 
 ---
 

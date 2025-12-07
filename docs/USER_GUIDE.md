@@ -1,8 +1,10 @@
-# User Guide - Protein Prediction Platform
+# User Guide - EmergentFolds
 
 **🌐 Live Site**: **https://emergentfolds.com**
 
-Welcome to the Protein Prediction Platform user guide! This document will walk you through all features of the web interface, available at the live production site or your local development instance.
+EmergentFolds is a protein structure prediction platform for screening, learning, and research. Submit a sequence, get a 3D structure in seconds to minutes, and explore the results with interactive visualization.
+
+This guide walks you through all platform features.
 
 ## Table of Contents
 
