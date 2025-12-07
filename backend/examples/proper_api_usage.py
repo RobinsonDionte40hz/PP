@@ -116,7 +116,8 @@ def run_screening_example():
     )
     
     print(f"\n=== Screening Results ===")
-    print(f"Overall score: {results.overall_score:.2f}")
+    print(f"Aggregation score: {results.aggregation_score:.2f}")
+    print(f"Risk level: {results.risk_level.value}")
     print(f"Regions found: {len(results.regions)}")
     
     for region in results.regions:

@@ -98,15 +98,17 @@ class PredictionRunner(IPredictionRunner):
             )
             
             # Convert public config to internal config
+            # Map field names: public API uses native_pdb_path, internal uses pdb_file_path
             internal_config = InternalConfig(
                 sequence=self._config.sequence,
                 native_pdb=self._config.native_pdb,
-                native_pdb_path=self._config.native_pdb_path,
+                pdb_file_path=self._config.native_pdb_path,  # Map to internal name
                 agents=self._config.agents,
                 iterations=self._config.iterations,
                 enable_refinement=self._config.enable_refinement,
                 enable_mediators=self._config.enable_mediators,
-                enable_geometric_attractors=self._config.enable_geometric_attractors,
+                # enable_geometric_attractors mapped via target_geometry
+                target_geometry="octahedron" if self._config.enable_geometric_attractors else "none",
                 qcpp_config=self._config.qcpp_config,
                 output_dir=self._config.output_dir,
                 checkpoint_interval=self._config.checkpoint_interval,
@@ -116,7 +118,7 @@ class PredictionRunner(IPredictionRunner):
             self._internal_runner = InternalRunner(internal_config)
             
             # Wrap progress callback if provided
-            wrapped_callback = None
+            wrapped_callback: Optional[Callable] = None
             if progress_callback:
                 def wrapped_callback(internal_update):
                     # Convert internal ProgressUpdate to public schema
