@@ -698,13 +698,23 @@ async def verify_email_get(
     """
 )
 async def get_verification_status(
+    db: Session = Depends(get_db),
     current_user=Depends(require_auth_with_session),
 ):
     """
     Get email verification status for authenticated user.
     """
+    from app.models.user import User
+    
+    user = db.query(User).filter(User.key_id == current_user["sub"]).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found"
+        )
+    
     verification_service = EmailVerificationService()
-    status_info = verification_service.get_verification_status(current_user)
+    status_info = verification_service.get_verification_status(user)
     
     return VerificationStatusResponse(**status_info)
 
