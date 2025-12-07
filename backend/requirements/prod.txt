@@ -1,7 +1,5 @@
 # Backend Production Requirements
-# Adds production dependencies to base
-
--r base.txt
+# Additional production-only dependencies (install AFTER base.txt)
 
 # Production server
 gunicorn==23.0.0
