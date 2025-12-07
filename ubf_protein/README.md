@@ -906,9 +906,11 @@ The system automatically scales parameters based on protein size:
 
 Multi-agent systems use diversity profiles for initialization:
 
-- **Cautious** (33%): Low frequency (3-6 Hz), high coherence (0.7-1.0) - Conservative exploration
-- **Balanced** (34%): Medium frequency (6-12 Hz), medium coherence (0.4-0.7) - Balanced approach
-- **Aggressive** (33%): High frequency (12-15 Hz), low coherence (0.2-0.4) - Aggressive exploration
+- **Cautious**: Low frequency, high coherence - Conservative exploration
+- **Balanced**: Medium frequency, medium coherence - Balanced approach  
+- **Aggressive**: High frequency, low coherence - Aggressive exploration
+
+Specific distribution ratios and parameter ranges are proprietary.
 
 ### Memory System Parameters
 

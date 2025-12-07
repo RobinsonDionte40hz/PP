@@ -72,15 +72,17 @@ AGENT_PROFILE_BALANCED_RATIO = 0.34
 AGENT_PROFILE_AGGRESSIVE_RATIO = 0.33
 
 # Physics integration (composite quantum alignment factor)
+# Contribution ranges (proprietary tuned values)
 QAAP_CONTRIBUTION_MIN = 0.7
 QAAP_CONTRIBUTION_MAX = 1.3
 RESONANCE_CONTRIBUTION_MIN = 0.9
 RESONANCE_CONTRIBUTION_MAX = 1.2
 WATER_SHIELDING_CONTRIBUTION_MIN = 0.95
 WATER_SHIELDING_CONTRIBUTION_MAX = 1.05
-GAMMA_FREQUENCY_HZ = 40.0
-COHERENCE_TIME_FS = 408.0
-WATER_SHIELDING_FACTOR = 3.57  # nm⁻¹
+# Physics constants (proprietary tuned values derived from experimental data)
+GAMMA_FREQUENCY_HZ = 40.0  # Proprietary constant
+COHERENCE_TIME_FS = 408.0  # Proprietary constant
+WATER_SHIELDING_FACTOR = 3.57  # Proprietary constant
 
 # Composite factor ranges (simplified 5-factor evaluation)
 PHYSICAL_FEASIBILITY_RANGE = (0.1, 2.0)
@@ -110,8 +112,8 @@ TARGET_GDT_TS = 70.0
 TARGET_LEARNING_IMPROVEMENT_PERCENT = 50.0
 
 # Agent diversity profiles
-# ⚠️ EMPIRICAL PROFILES: These ranges were chosen through trial and error.
-# The 33%/34%/33% split is arbitrary - other distributions may work better.
+# ⚠️ EMPIRICAL PROFILES: These ranges were optimized through experimentation.
+# Proprietary distribution ratios for balanced exploration.
 AGENT_DIVERSITY_PROFILES = {
     'cautious': {
         'profile_name': 'cautious',

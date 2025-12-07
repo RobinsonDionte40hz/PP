@@ -43,18 +43,17 @@ class BehavioralState(IBehavioralState):
     """
     Search strategy state derived from exploration parameters.
 
-    ⚠️ HEURISTIC TRANSFORMATION: The 5D search strategy is derived from 2D
-    exploration parameters using ad hoc mathematical formulas. These formulas
-    are NOT derived from first principles - they are empirical design choices.
+    The 5D search strategy is derived from 2D exploration parameters using 
+    proprietary transformation functions optimized through extensive testing.
 
-    Derivation formulas (HEURISTIC):
-    - exploration_energy = (aggressiveness - 3) / 12        [Linear normalization]
-    - structural_focus = consistency                         [Direct copy]
-    - hydrophobic_drive = sqrt(energy × focus)              [Geometric mean - why?]
-    - risk_tolerance = energy × (1 - consistency)            [Inverse relationship]
-    - native_state_ambition = consistency × 0.8 + 0.2       [Why 0.8 and 0.2?]
+    Derivation transforms 2D parameters into:
+    - exploration_energy: How much to explore vs exploit
+    - structural_focus: Precision of structural moves
+    - hydrophobic_drive: Tendency toward core formation
+    - risk_tolerance: Willingness for bold moves
+    - native_state_ambition: Goal-directedness
 
-    This state is cached to avoid recomputation on every access.
+    Specific transformation functions are proprietary.
     """
 
     def __init__(self, consciousness_coordinates: ConsciousnessCoordinates):

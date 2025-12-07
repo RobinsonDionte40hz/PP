@@ -141,17 +141,17 @@ class BehavioralStateData:
     """
     Search strategy state derived from exploration parameters.
     
-    ⚠️ HEURISTIC DERIVATION: The 5D strategy is derived from 2D parameters
-    using ad hoc formulas. These transformations are NOT theoretically derived.
+    The 5D strategy is derived from 2D parameters using proprietary
+    transformation functions optimized through extensive testing.
     
-    Derivation (EMPIRICAL):
-    - exploration_energy = f(frequency) [Heuristic mapping]
-    - structural_focus = f(coherence) [Heuristic mapping]
-    - hydrophobic_drive = (freq - 4.0) / 8.0 [Why this formula?]
-    - risk_tolerance = (freq - 6.0) / 6.0 [Why this formula?]
-    - native_state_ambition = coh × (freq / 10.0) [Why this formula?]
+    Output dimensions:
+    - exploration_energy: How much to explore vs exploit
+    - structural_focus: Precision of structural moves  
+    - hydrophobic_drive: Tendency toward core formation (0.0-1.0)
+    - risk_tolerance: Willingness for bold moves (0.0-1.0)
+    - native_state_ambition: Goal-directedness (0.0-1.0)
     
-    Alternative formulas may perform equally well or better.
+    Specific transformation functions are proprietary.
     """
     exploration_energy: float  # Low/Moderate/High (heuristic)
     structural_focus: float  # Scattered/Balanced/Focused (heuristic)

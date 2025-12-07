@@ -510,7 +510,7 @@ class CapabilityBasedMoveEvaluator(IMoveEvaluator):
         This is a heuristic until full conformation prediction is available.
         QCP typically ranges from 3-8.
         """
-        # Base QCP (neutral)
+        # Base QCP (proprietary baseline)
         qcp = 4.0
         
         # Structure-forming moves increase QCP (more organized)

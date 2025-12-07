@@ -123,12 +123,7 @@ Physics-based stability analysis using quantum coherence and golden ratio patter
 - `QCProteinPipeline` — Workflow orchestration
 
 ### QCP Formula
-```python
-qcp = 4.0 + (2**n * (phi**l) * m)
-# n: Structural hierarchy (0=coil, 1=helix, 2=sheet, 3=phi-based bends)
-# l: Neighbor count (scaled 1-3)
-# m: Hydrophobicity (normalized -1 to 1)
-```
+QCP scores are calculated using a proprietary formula integrating structural hierarchy, neighbor relationships, and residue properties with golden ratio scaling. The formula produces stability metrics that guide exploration.
 
 ### Golden Ratio Integration
 - Phi angle: `2 * π / φ ≈ 137.5°`

@@ -355,9 +355,9 @@ class IMultiAgentCoordinator(ABC):
         Initialize diverse agent population.
         
         Diversity profiles:
-        - "cautious": 100% low-frequency, high-coherence agents
-        - "balanced": 33% cautious, 34% balanced, 33% aggressive
-        - "aggressive": 100% high-frequency, low-coherence agents
+        - "cautious": Conservative, low-frequency exploration
+        - "balanced": Mixed population with optimized distribution
+        - "aggressive": Bold, high-frequency exploration
         
         Args:
             count: Number of agents to create
@@ -619,12 +619,13 @@ class BehavioralState(IBehavioralState):
         """
         Create behavioral state from consciousness coordinates.
         
-        Derivation formulas:
-        - exploration_energy = (freq - 3) / 12
-        - structural_focus = coherence
-        - hydrophobic_drive = sqrt(exploration_energy × structural_focus)
-        - risk_tolerance = exploration_energy × (1 - coherence)
-        - native_state_ambition = coherence × 0.8 + 0.2
+        Derives 5D search strategy from 2D parameters using
+        proprietary transformation functions:
+        - exploration_energy
+        - structural_focus
+        - hydrophobic_drive
+        - risk_tolerance
+        - native_state_ambition
         """
         pass
     
@@ -918,9 +919,9 @@ class CapabilityBasedMoveEvaluator(IMoveEvaluator):
         Composite Factor 2: Quantum Alignment.
         
         Combines:
-        - QAAP: Quantum coherence potential (0.7-1.3)
-        - Resonance: 40 Hz gamma coupling (0.9-1.2)
-        - Water shielding: 408 fs coherence, 3.57 nm⁻¹ (0.95-1.05)
+        - QAAP: Quantum coherence potential
+        - Resonance: Gamma frequency coupling
+        - Water shielding: Coherence-based effects
         
         Returns:
             Quantum alignment score (0.5-1.5)

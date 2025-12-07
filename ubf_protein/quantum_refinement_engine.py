@@ -94,8 +94,8 @@ class QuantumRefinementEngine:
     - QCP (Quantum Consciousness Potential) from QCPP system
     - Molecular mechanics energy calculations
     - RMSD validation against native structures
-    - Water shielding effects (0.28 nm spacing)
-    - Coherence time dynamics (408 femtoseconds)
+    - Water shielding effects (proprietary spacing)
+    - Coherence time dynamics (proprietary value)
     
     Attributes:
         qcpp_adapter: QCPP integration for quantum metrics
@@ -103,9 +103,9 @@ class QuantumRefinementEngine:
         rmsd_calculator: RMSD and structure quality metrics
         phi: Golden ratio constant (1.618033988749895)
         h_bar: Planck's constant (1.0545718e-34 J·s)
-        gamma_frequency: Gamma frequency for resonance (40.0 Hz)
-        coherence_time: Coherence time (408e-15 seconds)
-        water_spacing: Water molecule spacing (0.28 nm)
+        gamma_frequency: Gamma frequency for resonance (proprietary)
+        coherence_time: Coherence time (proprietary)
+        water_spacing: Water molecule spacing (proprietary)
     
     Example:
         >>> adapter = QCPPIntegrationAdapter(predictor)
@@ -116,12 +116,12 @@ class QuantumRefinementEngine:
         >>> print(f"RMSD improved from {result.initial_rmsd:.2f}Å to {result.final_rmsd:.2f}Å")
     """
     
-    # Quantum constants (class-level for easy access and testing)
+    # Quantum constants (proprietary values - class-level for easy access and testing)
     PHI = 1.618033988749895  # Golden ratio
     H_BAR = 1.0545718e-34  # Planck's constant (J·s)
-    GAMMA_FREQUENCY = 40.0  # Hz (consciousness resonance frequency)
-    COHERENCE_TIME = 408e-15  # seconds (408 femtoseconds)
-    WATER_SPACING = 0.28  # nm (water molecule spacing for shielding)
+    GAMMA_FREQUENCY = 40.0  # Proprietary
+    COHERENCE_TIME = 408e-15  # Proprietary
+    WATER_SPACING = 0.28  # Proprietary
     
     def __init__(
         self,

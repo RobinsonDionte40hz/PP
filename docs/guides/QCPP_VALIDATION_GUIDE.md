@@ -67,13 +67,8 @@ Guide protein structure exploration using **quantum coherence principles** and *
 ```
 For each protein (1UBQ, 1LYZ, 1TIM, 1PRN, 3SSI, 2LZM):
   1. Load PDB structure
-  2. Calculate QCP values using quantum coherence formula:
-     qcp = 4.0 + (2^n × φ^l × m)
-     where:
-       n = structural hierarchy (0-3)
-       φ = golden ratio (1.618...)
-       l = neighbor count (1-3)
-       m = hydrophobicity (-1 to 1)
+  2. Calculate QCP values using proprietary quantum coherence formula:
+     (combines structural hierarchy, golden ratio, neighbor relationships, and hydrophobicity)
   3. Calculate field coherence (phase relationships)
   4. Compute stability_score = mean_qcp × (1 + mean_coherence)
 ```

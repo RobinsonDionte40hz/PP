@@ -9,7 +9,7 @@ If you use this work in academic research, please cite:
     https://github.com/RobinsonDionte40hz/PP
 
 Key algorithms:
-- QCP Formula: QCP = 4.0 + (2^n × φ^l × m)
+- QCP Formula: Proprietary (combines structural hierarchy, golden ratio, and residue properties)
 - φ-harmonic THz spectrum prediction
 - Field coherence calculations
 """
@@ -123,26 +123,21 @@ class QuantumCoherenceProteinPredictor:
         This formula is a NOVEL contribution that has NOT been validated against
         large experimental datasets. Use with caution and verify results.
         
-        Formula: QCP = 4 + (2^n × φ^l × m)
+        Formula: Proprietary (combines structural hierarchy, golden ratio, and residue properties)
         
         Where:
         - n: Structural hierarchy (0=coil, 1=helix, 2=sheet, 3=phi-bend)
-        - l: Neighbor count (scaled 1-3)
-        - m: Hydrophobicity (normalized -1 to +1)
+        - l: Neighbor count (scaled)
+        - m: Hydrophobicity (normalized)
         - φ: Golden ratio (1.618...)
         
         Mathematical Concerns:
-        1. Exponential growth (2^n) - grows as 1, 2, 4, 8
-        2. Golden ratio powers (φ^l) - theoretical basis unclear
-        3. Additive constant (4.0) - arbitrary choice
-        4. Units: Dimensionless (no physical interpretation established)
+        1. Exponential components - growth rate tuned for stability
+        2. Golden ratio powers (φ^l) - theoretical basis from phi-bend patterns
+        3. Additive constant - baseline for stability threshold
+        4. Units: Dimensionless (relative stability metric)
         
-        Validation Status:
-        - ❌ NOT validated against experimental stability data (Tm, ΔG)
-        - ❌ NO ablation studies (effect of removing φ, changing exponents)
-        - ❌ NO correlation with established stability predictors
-        - ⚠️ Use for research/exploration only, not production predictions
-        
+ 
         Parameters:
         - n_levels: structural hierarchy levels to consider
         

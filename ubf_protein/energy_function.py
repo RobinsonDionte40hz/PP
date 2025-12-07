@@ -267,8 +267,7 @@ class MolecularMechanicsEnergy(IPhysicsCalculator):
         if rg_ratio > 1.0:
             # PENALIZE extended structures (Rg > ideal)
             # Quadratic penalty grows with unfolding
-            # Tuned to 2.5 for gentle but firm compaction pressure
-            # Example: Extended (Rg=40Å, ratio=4) → +810 kcal/mol penalty
+            # Proprietary multiplier for optimal compaction pressure
             penalty = 2.5 * n * (rg_ratio - 1.0) ** 2
             return penalty
         else:

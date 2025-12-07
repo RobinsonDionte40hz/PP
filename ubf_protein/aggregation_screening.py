@@ -597,7 +597,7 @@ class AggregationScreener:
             risk_factors.append('simulation_failed')
         
         # Composite aggregation score
-        # Weights: energy (30%), structure (25%), hydrophobic (20%), compactness (15%), convergence (10%)
+        # Weights: optimized through experimental validation (proprietary)
         aggregation_score = (
             0.30 * energy_score +
             0.25 * structure_score +

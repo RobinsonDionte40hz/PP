@@ -101,7 +101,7 @@ class QAAPCalculator(IQAAPCalculator):
 
     def calculate_qaap_potential(self, conformation: Conformation) -> float:
         """
-        Calculate quantum potential: QCP = 4 + (2^n × φ^l × m)
+        Calculate quantum potential using proprietary QCP formula.
 
         This is the core quantum amino acid potential calculation.
 

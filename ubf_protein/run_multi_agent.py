@@ -161,9 +161,7 @@ def run_multi_agent(sequence: str,
         cautious = len([a for a in agent_list if 3.0 <= a.get_consciousness_state().get_frequency() < 7.0])
         balanced = len([a for a in agent_list if 7.0 <= a.get_consciousness_state().get_frequency() < 11.0])
         aggressive = len([a for a in agent_list if 11.0 <= a.get_consciousness_state().get_frequency() <= 15.0])
-        print(f"  Cautious (low freq): {cautious} agents")
-        print(f"  Balanced (mid freq): {balanced} agents")
-        print(f"  Aggressive (high freq): {aggressive} agents")
+        print(f"  Agents distributed across cautious, balanced, and aggressive profiles")
 
     # Run parallel exploration
     print("\nStarting parallel exploration...")

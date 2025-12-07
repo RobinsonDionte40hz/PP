@@ -132,7 +132,7 @@ class IQAAPCalculator(IPhysicsCalculator):
 
     @abstractmethod
     def calculate_qaap_potential(self, conformation: 'Conformation') -> float:
-        """Calculate quantum potential: QCP = 4 + (2^n × φ^l × m)"""
+        """Calculate quantum potential using proprietary QCP formula"""
         pass
 
 class IResonanceCoupling(IPhysicsCalculator):
@@ -148,7 +148,7 @@ class IWaterShielding(IPhysicsCalculator):
 
     @abstractmethod
     def calculate_shielding(self, conformation: 'Conformation') -> float:
-        """Calculate water shielding with 408 fs coherence time, 3.57 nm⁻¹ factor"""
+        """Calculate water shielding using proprietary coherence parameters"""
         pass
 
 # ============================================================================
@@ -259,7 +259,7 @@ class IMultiAgentCoordinator(ABC):
 
     @abstractmethod
     def initialize_agents(self, count: int, diversity_profile: str) -> List[IProteinAgent]:
-        """Initialize agents with diversity: 33% cautious, 34% balanced, 33% aggressive"""
+        """Initialize agents with diversity profile distribution"""
         pass
 
     @abstractmethod

@@ -9,7 +9,7 @@ parallel protein conformational exploration using consciousness-inspired
 parameter spaces.
 
 Key innovations include:
-- Diverse agent population management (33% cautious, 34% balanced, 33% aggressive)
+- Diverse agent population management with optimized distribution ratios
 - Shared memory pool with significance-based filtering
 - Parallel exploration with thread-safe coordination
 - Adaptive configuration based on protein size
@@ -198,11 +198,11 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
 
     def initialize_agents(self, count: int, diversity_profile: str = "balanced", native_structure: Optional[Any] = None) -> List[IProteinAgent]:
         """
-        Initialize agents with diversity: 33% cautious, 34% balanced, 33% aggressive.
+        Initialize agents with diverse behavioral profiles.
 
         Args:
             count: Number of agents to initialize
-            diversity_profile: Diversity profile to use ("balanced" uses standard ratios)
+            diversity_profile: Diversity profile ("balanced" uses optimized ratios)
             native_structure: Optional native structure for RMSD validation
 
         Returns:

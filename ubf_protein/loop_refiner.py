@@ -11,16 +11,15 @@ on quantum coherence (QCP) values:
 
 Key Concepts:
     - G(φ,t) Evolution: Time-dependent golden ratio scaling
-      Formula: G(φ,t) = exp(-t/τ_c) × φ
-      where τ_c = 408 fs (coherence time)
-    - Temporal Evolution: 100 timesteps from 0 to 1 picosecond
+      (proprietary formula using quantum coherence principles)
+    - Temporal Evolution: Multi-step sampling across picosecond timescale
     - Energy Selection: Choose conformation with lowest energy at each step
     - Smooth Interpolation: Gradual transition from extended to compact
 
 Design Principles:
     - Pure Python implementation (PyPy-optimized)
     - Immutable data models (LoopRegion dataclass)
-    - Physics-grounded coherence time (408 fs)
+    - Physics-grounded coherence time (proprietary)
     - Adaptive strategy selection based on QCP
 """
 
@@ -55,9 +54,9 @@ class LoopRefiner:
     
     Attributes:
         phi: Golden ratio constant (1.618033988749895)
-        coherence_time_fs: Quantum coherence time in femtoseconds (408 fs)
-        max_time_ps: Maximum simulation time in picoseconds (1.0 ps)
-        num_timesteps: Number of temporal evolution steps (100)
+        coherence_time_fs: Quantum coherence time in femtoseconds (proprietary)
+        max_time_ps: Maximum simulation time in picoseconds
+        num_timesteps: Number of temporal evolution steps
         energy_calculator: Optional energy calculator for scoring conformations
     
     Example:
@@ -85,9 +84,9 @@ class LoopRefiner:
         Args:
             energy_calculator: Optional energy calculator for conformation scoring
         """
-        # Golden ratio and quantum constants
+        # Golden ratio and quantum constants (proprietary values)
         self.phi = 1.618033988749895
-        self.coherence_time_fs = 408.0  # femtoseconds
+        self.coherence_time_fs = 408.0  # proprietary
         self.max_time_ps = 1.0  # picoseconds
         self.num_timesteps = 100
         
@@ -171,8 +170,7 @@ class LoopRefiner:
         """
         Apply time-dependent golden ratio evolution to loop.
         
-        Formula: G(φ,t) = exp(-t/τ_c) × φ
-        where τ_c = 408 fs (coherence time)
+        Uses proprietary G(φ,t) temporal evolution formula.
         
         Evolution strategy:
         1. Generate 100 timesteps from 0 to 1 ps
@@ -193,7 +191,7 @@ class LoopRefiner:
             >>> refined_coords = refiner.apply_g_phi_t_evolution(loop, qcp_values)
         """
         # Convert coherence time to picoseconds
-        coherence_time_ps = self.coherence_time_fs / 1000.0  # 0.408 ps
+        coherence_time_ps = self.coherence_time_fs / 1000.0  # proprietary
         
         # Generate timesteps (0 to max_time_ps)
         timesteps = [

@@ -3,8 +3,8 @@ Quantum-guided hydrophobic core packing optimizer.
 
 This module implements hydrophobic core optimization using water exclusion
 zones and QCP-weighted force constants. Hydrophobic residues pack at optimal
-distances determined by water molecule spacing (0.28 nm), creating preferred
-packing intervals at 2.8Å.
+distances determined by quantum-derived water molecule spacing, creating preferred
+packing intervals.
 
 Key Concepts:
     - Water Exclusion Zones: Hydrophobic residues exclude water, creating
@@ -47,11 +47,11 @@ class HydrophobicCorePacker:
     guide hydrophobic residues to optimal packing geometries.
     
     Attributes:
-        water_spacing_nm: Water molecule spacing in nanometers (0.28 nm)
-        water_spacing_angstrom: Water spacing in Ångströms (2.8 Å)
-        base_force_constant: Base force constant for packing (10.0 kcal/mol/Ř)
-        ideal_contact_distance: Ideal hydrophobic contact distance (6.0 Å)
-        min_sequence_separation: Minimum residue separation for contacts (5)
+        water_spacing_nm: Water molecule spacing in nanometers (proprietary)
+        water_spacing_angstrom: Water spacing in Ångströms (proprietary)
+        base_force_constant: Base force constant for packing (proprietary)
+        ideal_contact_distance: Ideal hydrophobic contact distance (proprietary)
+        min_sequence_separation: Minimum residue separation for contacts
     
     Example:
         >>> packer = HydrophobicCorePacker()
@@ -64,9 +64,9 @@ class HydrophobicCorePacker:
     
     def __init__(self):
         """Initialize hydrophobic core packer with physics constants."""
-        # Water spacing from quantum coherence theory
-        self.water_spacing_nm = 0.28  # nanometers
-        self.water_spacing_angstrom = 2.8  # Ångströms (0.28 nm × 10)
+        # Water spacing from quantum coherence theory (proprietary values)
+        self.water_spacing_nm = 0.28  # proprietary
+        self.water_spacing_angstrom = 2.8  # proprietary
         
         # Packing parameters
         self.base_force_constant = 10.0  # kcal/mol/Ř
@@ -162,8 +162,8 @@ class HydrophobicCorePacker:
         """
         Calculate optimal distances based on water spacing.
         
-        Water molecules create discrete spacing at 0.28 nm intervals,
-        leading to preferred packing distances at multiples of 2.8Å.
+        Water molecules create discrete spacing at quantum-derived intervals,
+        leading to preferred packing distances at multiples of water spacing.
         This method is primarily for analysis - actual optimization
         happens in quantum_hydrophobic_packing().
         
@@ -177,7 +177,7 @@ class HydrophobicCorePacker:
             >>> packer = HydrophobicCorePacker()
             >>> pairs = [(0, 5), (1, 6), (2, 7)]
             >>> zones = packer.calculate_water_exclusion_zones(pairs)
-            >>> # All distances should be multiples of 2.8Å
+            >>> # All distances should be multiples of water spacing
             >>> for dist in zones.values():
             ...     assert dist % 2.8 < 0.01 or (dist % 2.8) > 2.79
         """

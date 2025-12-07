@@ -158,13 +158,11 @@ def main():
     agent_count = 20
     coordinator.initialize_agents(
         count=agent_count,
-        diversity_profile="balanced"  # 33% cautious, 34% balanced, 33% aggressive
+        diversity_profile="balanced"  # Optimized distribution across profiles
     )
     
     print(f"\nInitialized {agent_count} agents with diversity profile: balanced")
-    print(f"  Cautious agents (low freq, high coh): ~7 agents")
-    print(f"  Balanced agents (mid freq, mid coh): ~7 agents")
-    print(f"  Aggressive agents (high freq, low coh): ~6 agents")
+    print(f"  Agents distributed across cautious, balanced, and aggressive profiles")
     
     # Run parallel exploration
     iterations = 500

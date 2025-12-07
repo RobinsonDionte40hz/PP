@@ -63,7 +63,7 @@ class QCPPMetrics:
     
     def __post_init__(self):
         """Validate metrics are in expected ranges."""
-        # QCP typically ranges from 3-8 based on formula: 4 + (2^n × φ^l × m)
+        # QCP typically ranges from 3-8 based on proprietary formula
         if not (0.0 <= self.qcp_score <= 20.0):
             raise ValueError(f"qcp_score {self.qcp_score} outside expected range [0, 20]")
         
@@ -485,9 +485,9 @@ class QCPPIntegrationAdapter:
         """
         Calculate simplified QCP score based on geometry.
         
-        Full QCP calculation: QCP = 4 + (2^n × φ^l × m)
-        This simplified version estimates QCP from coordinate compactness
-        and spatial distribution.
+        QCP calculation uses proprietary formula integrating structure and
+        golden ratio patterns. This simplified version estimates QCP from 
+        coordinate compactness and spatial distribution.
         
         Args:
             coords: Array of atomic coordinates (N x 3)
@@ -496,18 +496,18 @@ class QCPPIntegrationAdapter:
             QCP score (typically 3-8)
         """
         if len(coords) == 0:
-            return 4.0  # Base energy level
+            return 4.0  # Proprietary baseline
         
         # Calculate radius of gyration (compactness measure)
         centroid = np.mean(coords, axis=0)
         distances = np.linalg.norm(coords - centroid, axis=1)
         rg = np.sqrt(np.mean(distances ** 2))
         
-        # Calculate spatial organization (relates to n in QCP formula)
-        # More organized = higher n = higher QCP
+        # Calculate spatial organization (relates to structural hierarchy)
+        # More organized = higher structural level = higher QCP
         organization = 1.0 / (1.0 + rg / 10.0)
         
-        # Estimate QCP: base (4.0) + structural contribution
+        # Estimate QCP using proprietary formula
         qcp = 4.0 + organization * 2.0 * (self.phi ** 1.5)
         
         return float(qcp)
