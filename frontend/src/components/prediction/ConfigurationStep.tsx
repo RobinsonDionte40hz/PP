@@ -22,6 +22,7 @@ import { ExpandMore as ExpandMoreIcon } from '@mui/icons-material';
 interface ConfigurationStepProps {
   formData: {
     iterations?: number;
+    agents?: number;
     consciousness_level?: number;
     consistency?: number;
     enable_qcpp?: boolean;
