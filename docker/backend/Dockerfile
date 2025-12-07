@@ -17,11 +17,12 @@ COPY backend/requirements/prod.txt ./requirements_prod.txt
 RUN pip install --no-cache-dir -r requirements_base.txt && \
     pip install --no-cache-dir -r requirements_prod.txt
 
-# Copy ubf_protein package and install (backend only needs core, no QCPP)
+# Copy ubf_protein package (backend only needs core, no QCPP)
 COPY ubf_protein/ /packages/ubf_protein/
 
-# Install ubf_protein as a proper Python package (core only - no heavy deps)
-RUN pip install --no-cache-dir -e /packages/ubf_protein
+# Add /packages to PYTHONPATH so ubf_protein can be imported directly
+# This is simpler and more reliable than pip install -e for this structure
+ENV PYTHONPATH="/packages:${PYTHONPATH}"
 
 # Copy backend code
 COPY backend/ .

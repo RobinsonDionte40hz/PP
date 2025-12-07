@@ -18,15 +18,15 @@ COPY backend/requirements/prod.txt ./requirements_prod.txt
 RUN pip install --no-cache-dir -r requirements_base.txt && \
     pip install --no-cache-dir -r requirements_prod.txt
 
-# Copy ubf_protein package and install with worker extras (includes QCPP dependencies)
+# Copy ubf_protein package and QCPP module
 COPY ubf_protein/ /packages/ubf_protein/
 COPY src/ /packages/src/
 
-# Install ubf_protein as a proper Python package with worker dependencies
-RUN pip install --no-cache-dir -e /packages/ubf_protein[worker]
+# Install worker dependencies (QCPP needs numpy, scipy, biopython, etc.)
+RUN pip install --no-cache-dir numpy scipy biopython pandas scikit-learn matplotlib
 
-# Set up QCPP module path (src/ contains quantum_coherence_proteins)
-ENV PYTHONPATH=/packages
+# Add /packages to PYTHONPATH so ubf_protein and src can be imported directly
+ENV PYTHONPATH="/packages:${PYTHONPATH}"
 
 # Copy backend code
 COPY backend/ .
