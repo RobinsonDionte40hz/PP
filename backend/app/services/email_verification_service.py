@@ -31,7 +31,7 @@ class EmailVerificationError(Exception):
 class EmailVerificationService:
     """Service for managing email verification"""
     
-    TOKEN_LENGTH = 64  # Length of verification token
+    TOKEN_LENGTH = 32  # Length in bytes - token_urlsafe(32) produces ~43 char string
     
     def __init__(self, db: Optional[Session] = None):
         self._db = db
