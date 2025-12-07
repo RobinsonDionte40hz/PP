@@ -14,7 +14,6 @@ import {
   keyframes,
 } from '@mui/material';
 import {
-  CheckCircle,
   Error as ErrorIcon,
   MarkEmailRead as VerifiedIcon,
 } from '@mui/icons-material';

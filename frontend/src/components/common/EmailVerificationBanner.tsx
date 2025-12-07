@@ -69,7 +69,7 @@ const EmailVerificationBanner: React.FC<EmailVerificationBannerProps> = ({
 
   const handleSendVerification = () => {
     if (hasEmail) {
-      sendMutation.mutate();
+      sendMutation.mutate(undefined);
     } else {
       setShowEmailInput(true);
     }

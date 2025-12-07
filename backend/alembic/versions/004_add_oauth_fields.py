@@ -10,8 +10,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '004_add_oauth_fields'
-down_revision = '003_add_email_verification'
+revision = '004'
+down_revision = '003'
 branch_labels = None
 depends_on = None
 
