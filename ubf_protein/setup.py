@@ -32,8 +32,10 @@ setup(
     author_email="dionterobinson.biorxiv@gmail.com",
     url="https://emergentfolds.com",
     
-    # Package discovery - find ubf_protein and all subpackages
-    packages=find_packages(exclude=["tests", "tests.*", "examples", "experiments"]),
+    # Package discovery - the ubf_protein package is the current directory
+    # When installed from /packages/ubf_protein/, we need to map "ubf_protein" to "."
+    package_dir={"ubf_protein": "."},
+    packages=["ubf_protein", "ubf_protein.api"],
     
     # Python version
     python_requires=">=3.8",
