@@ -508,8 +508,8 @@ const SummaryTab: React.FC<SummaryTabProps> = ({ prediction }) => {
           >
             <Typography variant="body2">
               <strong>Risk Level: </strong>
-              {prediction.metrics.screening.risk_level?.charAt(0).toUpperCase() + 
-               prediction.metrics.screening.risk_level?.slice(1) || 'Unknown'}
+              {(prediction.metrics.screening.risk_level ?? 'unknown').charAt(0).toUpperCase() + 
+               (prediction.metrics.screening.risk_level ?? 'unknown').slice(1)}
               {' — '}
               {prediction.metrics.screening.passes_screening 
                 ? 'Protein is likely to fold stably' 

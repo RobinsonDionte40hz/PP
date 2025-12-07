@@ -93,6 +93,7 @@ export interface PredictionResponse {
       compactness_score?: number;
       secondary_structure_pct?: number;
       radius_of_gyration?: number;
+      error?: string;  // Present if screening failed
     };
   };
 }
