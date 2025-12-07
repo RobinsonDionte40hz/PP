@@ -20,6 +20,8 @@ const Settings = lazy(() => import('../pages/Settings'));
 const Login = lazy(() => import('../pages/Login'));
 const Register = lazy(() => import('../pages/Register'));
 const AggregationScreening = lazy(() => import('../pages/AggregationScreening'));
+const OAuthCallback = lazy(() => import('../pages/OAuthCallback'));
+const VerifyEmail = lazy(() => import('../pages/VerifyEmail'));
 
 // Suspense wrapper for lazy-loaded components
 const withSuspense = (Component: React.LazyExoticComponent<React.ComponentType<any>>) => (
@@ -69,6 +71,32 @@ export const router = createBrowserRouter([
         element: (
           <ErrorBoundary>
             {withPublicSuspense(Register)}
+          </ErrorBoundary>
+        ),
+      },
+      // OAuth callback routes (public)
+      {
+        path: '/auth/:provider/callback',
+        element: (
+          <ErrorBoundary>
+            {withSuspense(OAuthCallback)}
+          </ErrorBoundary>
+        ),
+      },
+      // Email verification route (public)
+      {
+        path: '/verify-email',
+        element: (
+          <ErrorBoundary>
+            {withSuspense(VerifyEmail)}
+          </ErrorBoundary>
+        ),
+      },
+      {
+        path: '/verify-email/:token',
+        element: (
+          <ErrorBoundary>
+            {withSuspense(VerifyEmail)}
           </ErrorBoundary>
         ),
       },

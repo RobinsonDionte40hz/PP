@@ -17,6 +17,7 @@ import SystemConfigTab from '../components/settings/SystemConfigTab';
 import VisualizationTab from '../components/settings/VisualizationTab';
 import NotificationsTab from '../components/settings/NotificationsTab';
 import AdvancedTab from '../components/settings/AdvancedTab';
+import AccountTab from '../components/settings/AccountTab';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -211,14 +212,20 @@ const Settings: React.FC = () => {
           scrollButtons="auto"
           allowScrollButtonsMobile
         >
-          <Tab label="System Configuration" id="settings-tab-0" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }} />
-          <Tab label="Visualization" id="settings-tab-1" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }} />
-          <Tab label="Notifications" id="settings-tab-2" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }} />
-          <Tab label="Advanced" id="settings-tab-3" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }} />
+          <Tab label="Account" id="settings-tab-0" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }} />
+          <Tab label="System Configuration" id="settings-tab-1" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }} />
+          <Tab label="Visualization" id="settings-tab-2" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }} />
+          <Tab label="Notifications" id="settings-tab-3" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }} />
+          <Tab label="Advanced" id="settings-tab-4" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }} />
         </Tabs>
 
-        {/* System Configuration Tab */}
+        {/* Account Tab */}
         <TabPanel value={tabValue} index={0}>
+          <AccountTab />
+        </TabPanel>
+
+        {/* System Configuration Tab */}
+        <TabPanel value={tabValue} index={1}>
           <SystemConfigTab
             settings={settings.system}
             onChange={(key, value) => handleSettingChange('system', key, value)}
@@ -226,7 +233,7 @@ const Settings: React.FC = () => {
         </TabPanel>
 
         {/* Visualization Tab */}
-        <TabPanel value={tabValue} index={1}>
+        <TabPanel value={tabValue} index={2}>
           <VisualizationTab
             settings={settings.visualization}
             onChange={(key, value) => handleSettingChange('visualization', key, value)}
@@ -234,7 +241,7 @@ const Settings: React.FC = () => {
         </TabPanel>
 
         {/* Notifications Tab */}
-        <TabPanel value={tabValue} index={2}>
+        <TabPanel value={tabValue} index={3}>
           <NotificationsTab
             settings={settings.notifications}
             onChange={(key, value) => handleSettingChange('notifications', key, value)}
@@ -242,7 +249,7 @@ const Settings: React.FC = () => {
         </TabPanel>
 
         {/* Advanced Tab */}
-        <TabPanel value={tabValue} index={3}>
+        <TabPanel value={tabValue} index={4}>
           <AdvancedTab
             settings={settings.advanced}
             onChange={(key, value) => handleSettingChange('advanced', key, value)}

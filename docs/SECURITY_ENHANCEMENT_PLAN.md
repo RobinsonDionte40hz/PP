@@ -1,7 +1,7 @@
 # Security Enhancement Plan - EmergentFolds
 
 **Created**: December 7, 2025  
-**Status**: In Progress  
+**Status**: ✅ COMPLETE  
 **Priority**: High
 
 ---
@@ -24,7 +24,7 @@ This document outlines the implementation plan for enhancing security and usage 
 | Phase 2: Email Verification | ✅ **COMPLETE** | Require email verification |
 | Phase 3: CAPTCHA | ✅ **COMPLETE** | Bot protection on registration |
 | Phase 4: OAuth | ✅ **COMPLETE** | Google/GitHub social login |
-| Phase 5: Frontend | 🔲 Not Started | UI for quotas and OAuth |
+| Phase 5: Frontend | ✅ **COMPLETE** | UI for quotas and OAuth |
 
 ---
 
@@ -320,32 +320,58 @@ password_hash = Column(String(255), nullable=True)  # Now nullable for OAuth use
 
 ---
 
-### Phase 5: Frontend Updates (Week 3-4)
+### Phase 5: Frontend Updates (Week 3-4) ✅ COMPLETE
 
 **Goal**: Expose new features to users
 
-#### Task 5.1: Quota Display
+**Implemented Files**:
+- `frontend/src/types/quota.ts` - Quota types and tier configuration
+- `frontend/src/types/oauth.ts` - OAuth and verification types
+- `frontend/src/services/quotaService.ts` - Quota API service
+- `frontend/src/services/oauthService.ts` - OAuth and verification API service
+- `frontend/src/components/common/QuotaDisplay.tsx` - Quota status display (compact/full)
+- `frontend/src/components/common/EmailVerificationBanner.tsx` - Email verification banner
+- `frontend/src/components/common/OAuthButtons.tsx` - Google/GitHub login buttons
+- `frontend/src/components/common/ReCaptcha.tsx` - reCAPTCHA v3 integration
+- `frontend/src/components/settings/AccountTab.tsx` - Account settings with OAuth linking
+- `frontend/src/pages/OAuthCallback.tsx` - OAuth callback handler
+- `frontend/src/pages/VerifyEmail.tsx` - Email verification page
+- Updated `frontend/src/pages/Login.tsx` - Added OAuth buttons
+- Updated `frontend/src/pages/Register.tsx` - Added OAuth buttons and CAPTCHA
+- Updated `frontend/src/pages/Dashboard.tsx` - Added quota display and verification banner
+- Updated `frontend/src/pages/Settings.tsx` - Added Account tab
+- Updated `frontend/src/components/layout/Header.tsx` - Added compact quota display
+- Updated `frontend/src/routes/index.tsx` - Added OAuth callback and verify-email routes
 
-- Show quota status in dashboard header
-- "5/10 predictions today"
+#### Task 5.1: Quota Display ✅
+
+- Show quota status in dashboard header (compact view)
+- Full quota display in dashboard and settings
+- Progress bars with color coding (green/yellow/red)
 - Warning when approaching limit
-- Upgrade prompt when limit reached
+- Reset time countdown
 
-#### Task 5.2: Email Verification UI
+#### Task 5.2: Email Verification UI ✅
 
-- Show banner for unverified users
-- Verification success/error pages
-- Resend verification button
+- Banner for unverified users on dashboard
+- Verification success/error pages (`/verify-email/:token`)
+- Resend verification button with cooldown
+- Email input dialog for users without email
 
-#### Task 5.3: OAuth Buttons
+#### Task 5.3: OAuth Buttons ✅
 
-- Add "Sign in with Google" button
-- Add "Sign in with GitHub" button
+- "Continue with Google" button on login/register
+- "Continue with GitHub" button on login/register
+- OAuth callback page with loading/success/error states
 - Account settings: link/unlink OAuth accounts
+- Set password option for OAuth-only users
 
-#### Task 5.4: CAPTCHA Widget
+#### Task 5.4: CAPTCHA Widget ✅
 
-- Invisible reCAPTCHA on registration form
+- Invisible reCAPTCHA v3 integration
+- `useCaptcha` hook for form integration
+- CAPTCHA notice component for compliance
+- Automatic token generation on form submit
 
 ---
 

@@ -28,6 +28,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useNotification } from '../hooks/useNotification';
 import { useThemeStore } from '../store/themeStore';
 import { getAuthErrorMessage } from '../utils/authErrors';
+import OAuthButtons from '../components/common/OAuthButtons';
 import type { LoginRequest } from '../types/auth';
 
 // Animations
@@ -489,6 +490,9 @@ const Login: React.FC = () => {
               </Button>
             </Box>
           </form>
+
+          {/* OAuth Login Buttons */}
+          <OAuthButtons />
 
           {/* Registration Link */}
           <Box sx={{ mt: 3, textAlign: 'center' }}>

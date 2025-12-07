@@ -28,6 +28,8 @@ import { useAuth } from '../hooks/useAuth';
 import { useNotification } from '../hooks/useNotification';
 import { useThemeStore } from '../store/themeStore';
 import { getAuthErrorMessage } from '../utils/authErrors';
+import OAuthButtons from '../components/common/OAuthButtons';
+import { useCaptcha, CaptchaNotice } from '../components/common/ReCaptcha';
 import type { RegisterRequest } from '../types/auth';
 
 // Animations
@@ -72,6 +74,7 @@ const Register: React.FC = () => {
   const { register, login, isLoading } = useAuth();
   const { showSuccess, showError, showInfo, showWarning } = useNotification();
   const { mode, toggleTheme } = useThemeStore();
+  const { execute: executeCaptcha, isEnabled: captchaEnabled } = useCaptcha();
   
   // Form state
   const [formData, setFormData] = useState<RegisterFormData>({
@@ -253,11 +256,25 @@ const Register: React.FC = () => {
     setIsSubmitting(true);
 
     try {
+      // Execute CAPTCHA if enabled
+      let captchaToken: string | null = null;
+      if (captchaEnabled) {
+        try {
+          captchaToken = await executeCaptcha('register');
+        } catch (captchaError) {
+          console.error('CAPTCHA error:', captchaError);
+          showError('CAPTCHA verification failed. Please try again.', 'Verification Error');
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
       // Register user
       const registerData: RegisterRequest = {
         username: formData.username,
         password: formData.password,
         email: formData.email || undefined,
+        captcha_token: captchaToken || undefined,
       };
       
       await register(registerData);
@@ -640,8 +657,14 @@ const Register: React.FC = () => {
                   'Create Account'
                 )}
               </Button>
+
+              {/* CAPTCHA Notice */}
+              <CaptchaNotice />
             </Box>
           </form>
+
+          {/* OAuth Registration Buttons */}
+          <OAuthButtons dividerText="Or sign up with" />
 
           {/* Login Link */}
           <Box sx={{ mt: 3, textAlign: 'center' }}>

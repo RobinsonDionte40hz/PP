@@ -16,6 +16,8 @@ import {
 } from '../components/dashboard';
 import { DashboardSkeleton } from '../components/common/skeletons';
 import { animationStyles } from '../utils/animations';
+import QuotaDisplay from '../components/common/QuotaDisplay';
+import EmailVerificationBanner from '../components/common/EmailVerificationBanner';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -100,6 +102,9 @@ const Dashboard: React.FC = () => {
 
   return (
     <Box sx={{ p: 3, ...animationStyles.fadeIn }}>
+      {/* Email Verification Banner */}
+      <EmailVerificationBanner />
+
       {/* Header */}
       <Box mb={4} sx={animationStyles.fadeInDown}>
         <Typography variant="h4" fontWeight="bold" gutterBottom>
@@ -112,8 +117,11 @@ const Dashboard: React.FC = () => {
 
       {/* Main Grid */}
       <Stack spacing={3}>
-        {/* Quick Actions & System Status Row */}
+        {/* Quota Display & Quick Actions & System Status Row */}
         <Box display="flex" flexDirection={{ xs: 'column', md: 'row' }} gap={3}>
+          <Box flex={1}>
+            <QuotaDisplay variant="full" />
+          </Box>
           <Box flex={1}>
             <QuickActionsCard onNavigate={navigate} />
           </Box>

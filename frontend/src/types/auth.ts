@@ -9,8 +9,14 @@ export interface User {
   key_id: string;
   username: string;
   email?: string;
+  email_verified?: boolean;
+  role?: string;
+  account_tier?: 'free' | 'pro' | 'enterprise';
   created_at: string;
   last_login?: string;
+  // OAuth linked accounts
+  google_id?: string;
+  github_id?: string;
 }
 
 /**
@@ -39,6 +45,7 @@ export interface RegisterRequest {
   username: string;
   password: string;
   email?: string;
+  captcha_token?: string;
 }
 
 /**

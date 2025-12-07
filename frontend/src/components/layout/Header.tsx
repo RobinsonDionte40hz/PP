@@ -13,6 +13,7 @@ import { useNavigate } from 'react-router-dom';
 import { useThemeStore } from '../../store/themeStore.ts';
 import { useAuth } from '../../hooks/useAuth';
 import KeyboardShortcutsDialog from '../common/KeyboardShortcutsDialog';
+import QuotaDisplay from '../common/QuotaDisplay';
 
 interface HeaderProps {
   onMenuClick: () => void;
@@ -111,6 +112,13 @@ export default function Header({ onMenuClick }: HeaderProps) {
           color="success" 
           sx={{ mr: 2, display: { xs: 'none', md: 'flex' } }}
         />
+
+        {/* Quota Display - Only show for authenticated users */}
+        {isAuthenticated && (
+          <Box sx={{ mr: 2, display: { xs: 'none', md: 'flex' } }}>
+            <QuotaDisplay variant="compact" showTier={true} />
+          </Box>
+        )}
         
         {/* Keyboard Shortcuts Help - Hidden on mobile */}
         <Tooltip title="Keyboard shortcuts (Ctrl+/)">

@@ -16,6 +16,12 @@ export { default as EventLog } from './common/EventLog';
 export { default as ErrorAlert } from './common/ErrorAlert';
 export { default as ConfirmDialog } from './common/ConfirmDialog';
 
+// Security & Auth Components
+export { default as QuotaDisplay } from './common/QuotaDisplay';
+export { default as EmailVerificationBanner } from './common/EmailVerificationBanner';
+export { default as OAuthButtons } from './common/OAuthButtons';
+export { default as ReCaptcha, useCaptcha, CaptchaNotice } from './common/ReCaptcha';
+
 // Re-export types
 export type { PredictionStatus } from './common/PredictionStatusBadge';
 export type { QualityLevel } from './common/QualityBadge';
