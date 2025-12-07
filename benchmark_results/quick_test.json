@@ -1,0 +1,355 @@
+{
+  "system_info": {
+    "python_version": "3.12.10 (tags/v3.12.10:0cc8128, Apr  8 2025, 12:21:36) [MSC v.1943 64 bit (AMD64)]",
+    "python_implementation": "CPython",
+    "platform": "Windows-11-10.0.26100-SP0",
+    "processor": "Intel64 Family 6 Model 126 Stepping 5, GenuineIntel",
+    "timestamp": "2025-12-06T20:48:53.421099",
+    "benchmark_version": "1.0.0"
+  },
+  "benchmark_mode": "quick",
+  "performance_metrics": {
+    "move_evaluation_latency_ms": 3.295234799999889,
+    "memory_retrieval_us": 41.85411999987991,
+    "agent_memory_mb": 0.057990074157714844,
+    "throughput_conf_per_sec": 165.3913723855322,
+    "latency_target_ms": 2.0,
+    "retrieval_target_us": 10.0,
+    "memory_target_mb": 50.0,
+    "throughput_target": 5000.0,
+    "pass_fail": {
+      "move_evaluation_latency": false,
+      "memory_retrieval": false,
+      "agent_memory": true,
+      "throughput": false
+    }
+  },
+  "prediction_results": [
+    {
+      "pdb_id": "1CRN",
+      "protein_name": "Crambin",
+      "sequence": "TTCCPSIVARSNFNVCRLPGTPEAICATYTGCIIIPGATCPGDYAN",
+      "sequence_length": 46,
+      "fold_type": "unknown",
+      "config": {
+        "agents": 10,
+        "iterations": 50,
+        "qcpp_config": "default",
+        "enable_refinement": false,
+        "enable_mediators": false,
+        "diversity": "balanced"
+      },
+      "success": true,
+      "error_message": null,
+      "initial_energy": -304.57559876520713,
+      "final_energy": -345.9296368760164,
+      "energy_improvement": 41.354038110809256,
+      "best_rmsd": 6.88851154311441,
+      "folding_rmsd": 17.76368552910538,
+      "gdt_ts_score": 25.000000000000004,
+      "tm_score": 0.1644182459659105,
+      "quality_assessment": "poor",
+      "conformations_explored": 500,
+      "unique_structures": 342,
+      "exploration_time_seconds": 12.564602851867676,
+      "refinement_time_seconds": null,
+      "total_time_seconds": 12.618441900000107,
+      "throughput_conf_per_sec": 39.79433380384778,
+      "refinement_applied": false,
+      "refinement_initial_rmsd": null,
+      "refinement_final_rmsd": null,
+      "refinement_improvement_percent": null,
+      "qcpp_enabled": true,
+      "qcpp_total_analyses": 23,
+      "qcpp_cache_hit_rate": 0.0,
+      "qcpp_avg_time_ms": 6.70511826224949,
+      "qcp_score": null,
+      "qaap_alignment": null,
+      "resonance_40hz": null,
+      "geometric_analysis": {
+        "golden_ratio_percentage": 5.02092050209205,
+        "phi_pattern_count": 108,
+        "platonic_similarities": {
+          "tetrahedron": 0.8769338520947785,
+          "cube": 0.9769338520947785,
+          "octahedron": 0.9269338520947785,
+          "dodecahedron": 0.9469338520947785,
+          "icosahedron": 0.9069338520947785
+        },
+        "symmetry_metrics": {
+          "rotational": 0.9730661479052215,
+          "local": 0.918573165800688,
+          "radius_of_gyration": 10.472911842983711,
+          "asphericity": 0.19751827857955565
+        },
+        "metadata": {
+          "conformation_hash": "8c69dd957ab6dc65",
+          "timestamp": 1765075753.052285,
+          "num_residues": 46
+        }
+      },
+      "mediator_stats": null,
+      "final_aggressiveness": null,
+      "final_consistency": null,
+      "best_coords_included": false
+    },
+    {
+      "pdb_id": "1VII",
+      "protein_name": "Villin Headpiece",
+      "sequence": "MLSDEDFKAVFGMTRSAFANLPLWKQQNLKKEKGLF",
+      "sequence_length": 36,
+      "fold_type": "unknown",
+      "config": {
+        "agents": 10,
+        "iterations": 50,
+        "qcpp_config": "default",
+        "enable_refinement": false,
+        "enable_mediators": false,
+        "diversity": "balanced"
+      },
+      "success": true,
+      "error_message": null,
+      "initial_energy": -253.89297172204306,
+      "final_energy": -272.4600131365147,
+      "energy_improvement": 18.567041414471646,
+      "best_rmsd": 6.258301114401474,
+      "folding_rmsd": 10.000812335355908,
+      "gdt_ts_score": 27.083333333333336,
+      "tm_score": 0.1232735648249472,
+      "quality_assessment": "poor",
+      "conformations_explored": 500,
+      "unique_structures": 365,
+      "exploration_time_seconds": 4.029913663864136,
+      "refinement_time_seconds": null,
+      "total_time_seconds": 4.055527000000438,
+      "throughput_conf_per_sec": 124.07213695009249,
+      "refinement_applied": false,
+      "refinement_initial_rmsd": null,
+      "refinement_final_rmsd": null,
+      "refinement_improvement_percent": null,
+      "qcpp_enabled": true,
+      "qcpp_total_analyses": 19,
+      "qcpp_cache_hit_rate": 5.263157894736842,
+      "qcpp_avg_time_ms": 2.3544085653204667,
+      "qcp_score": null,
+      "qaap_alignment": null,
+      "resonance_40hz": null,
+      "geometric_analysis": {
+        "golden_ratio_percentage": 3.497813866333541,
+        "phi_pattern_count": 56,
+        "platonic_similarities": {
+          "tetrahedron": 0.8899120376336959,
+          "cube": 0.9899120376336958,
+          "octahedron": 0.9399120376336959,
+          "dodecahedron": 0.9599120376336959,
+          "icosahedron": 0.9199120376336959
+        },
+        "symmetry_metrics": {
+          "rotational": 0.9600879623663041,
+          "local": 0.9703794557562859,
+          "radius_of_gyration": 10.802129092585526,
+          "asphericity": 0.23820734594683263
+        },
+        "metadata": {
+          "conformation_hash": "620f8474201367e2",
+          "timestamp": 1765075757.1461778,
+          "num_residues": 36
+        }
+      },
+      "mediator_stats": null,
+      "final_aggressiveness": null,
+      "final_consistency": null,
+      "best_coords_included": false
+    }
+  ],
+  "prediction_summary": {
+    "total": 2,
+    "successful": 2,
+    "failed": 0,
+    "energy_stats": {
+      "mean": -309.19482500626555,
+      "min": -345.9296368760164,
+      "max": -272.4600131365147
+    },
+    "rmsd_stats": {
+      "mean": 6.573406328757942,
+      "min": 6.258301114401474,
+      "max": 6.88851154311441,
+      "below_2A": 0,
+      "below_4A": 0
+    },
+    "timing_stats": {
+      "mean_seconds": 8.336984450000273,
+      "min_seconds": 4.055527000000438,
+      "max_seconds": 12.618441900000107,
+      "total_seconds": 16.673968900000546
+    },
+    "throughput_stats": {
+      "mean_conf_per_sec": 81.93323537697013
+    },
+    "quality_distribution": {
+      "poor": 2
+    }
+  },
+  "screening_results": [
+    {
+      "sequence_name": "stable_alpha",
+      "sequence": "AEEEKKKKEEEEKKKKEEEEKKKK",
+      "sequence_length": 24,
+      "expected_risk": "low",
+      "config": {
+        "iterations": 50,
+        "agents": 2,
+        "enable_qcpp": false
+      },
+      "success": true,
+      "error_message": null,
+      "aggregation_score": 0.9774907291442806,
+      "risk_level": "low",
+      "risk_factors": [],
+      "passes_screening": true,
+      "energy_score": 1.0,
+      "structure_score": 1.0,
+      "hydrophobic_score": 1.0,
+      "convergence_score": 1.0,
+      "compactness_score": 0.8499381942952039,
+      "final_energy": -179.79933493013692,
+      "secondary_structure_pct": 65.625,
+      "hydrophobic_clustering": 0.0,
+      "radius_of_gyration": 10.601336595020113,
+      "convergence_iterations": 50,
+      "num_unique_conformations": 0,
+      "conformations": [],
+      "screening_time_ms": 602.6027202606201,
+      "iterations_used": 50,
+      "risk_prediction_correct": true
+    },
+    {
+      "sequence_name": "hydrophobic_stretch",
+      "sequence": "VVVVVVVVVVVVVVVVVVVVVVVV",
+      "sequence_length": 24,
+      "expected_risk": "critical",
+      "config": {
+        "iterations": 50,
+        "agents": 2,
+        "enable_qcpp": false
+      },
+      "success": true,
+      "error_message": null,
+      "aggregation_score": 0.9365930660196412,
+      "risk_level": "critical",
+      "risk_factors": [
+        "poly-valine",
+        "extremely_hydrophobic",
+        "no_charged_residues",
+        "long_hydrophobic_stretch_24"
+      ],
+      "passes_screening": false,
+      "energy_score": 1.0,
+      "structure_score": 1.0,
+      "hydrophobic_score": 0.7921377070220034,
+      "convergence_score": 1.0,
+      "compactness_score": 0.85443683076827,
+      "final_energy": -178.54991858320577,
+      "secondary_structure_pct": 65.625,
+      "hydrophobic_clustering": 13.11793439466995,
+      "radius_of_gyration": 10.542943186337872,
+      "convergence_iterations": 50,
+      "num_unique_conformations": 0,
+      "conformations": [],
+      "screening_time_ms": 421.2758541107178,
+      "iterations_used": 50,
+      "risk_prediction_correct": true
+    },
+    {
+      "sequence_name": "balanced",
+      "sequence": "ACDEFGHIKLMNPQRSTVWY",
+      "sequence_length": 20,
+      "expected_risk": "moderate",
+      "config": {
+        "iterations": 50,
+        "agents": 2,
+        "enable_qcpp": false
+      },
+      "success": true,
+      "error_message": null,
+      "aggregation_score": 0.75,
+      "risk_level": "low",
+      "risk_factors": [
+        "poor_structure_formation"
+      ],
+      "passes_screening": true,
+      "energy_score": 1.0,
+      "structure_score": 0.0,
+      "hydrophobic_score": 1.0,
+      "convergence_score": 1.0,
+      "compactness_score": 1.0,
+      "final_energy": -161.3438675362977,
+      "secondary_structure_pct": 0.0,
+      "hydrophobic_clustering": 7.416128161348723,
+      "radius_of_gyration": 5.429552513782514,
+      "convergence_iterations": 50,
+      "num_unique_conformations": 0,
+      "conformations": [],
+      "screening_time_ms": 445.878267288208,
+      "iterations_used": 50,
+      "risk_prediction_correct": false
+    },
+    {
+      "sequence_name": "charged_only",
+      "sequence": "RKDERKDERKDERKDERKDE",
+      "sequence_length": 20,
+      "expected_risk": "low",
+      "config": {
+        "iterations": 50,
+        "agents": 2,
+        "enable_qcpp": false
+      },
+      "success": true,
+      "error_message": null,
+      "aggregation_score": 0.9724718924842556,
+      "risk_level": "low",
+      "risk_factors": [],
+      "passes_screening": true,
+      "energy_score": 1.0,
+      "structure_score": 0.9230769230769229,
+      "hydrophobic_score": 1.0,
+      "convergence_score": 1.0,
+      "compactness_score": 0.9446844114335003,
+      "final_energy": -150.71405315221168,
+      "secondary_structure_pct": 57.692307692307686,
+      "hydrophobic_clustering": 0.0,
+      "radius_of_gyration": 8.81892608613222,
+      "convergence_iterations": 50,
+      "num_unique_conformations": 0,
+      "conformations": [],
+      "screening_time_ms": 238.20233345031738,
+      "iterations_used": 50,
+      "risk_prediction_correct": true
+    }
+  ],
+  "screening_summary": {
+    "total": 4,
+    "successful": 4,
+    "failed": 0,
+    "risk_distribution": {
+      "low": 3,
+      "critical": 1
+    },
+    "passing_screening": 3,
+    "timing_stats": {
+      "mean_ms": 426.9897937774658,
+      "min_ms": 238.20233345031738,
+      "max_ms": 602.6027202606201,
+      "total_ms": 1707.9591751098633
+    },
+    "prediction_accuracy": {
+      "total_with_expected": 4,
+      "correct": 3,
+      "accuracy_pct": 75.0
+    }
+  },
+  "total_runtime_seconds": 25.46050430000014,
+  "total_proteins_tested": 2,
+  "total_sequences_screened": 4
+}

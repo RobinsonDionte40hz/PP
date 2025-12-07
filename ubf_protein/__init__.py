@@ -24,5 +24,6 @@ from .prediction_runner import (
     ProgressUpdate,
     run_prediction,
     get_optimal_settings,
+    get_fast_settings,
     get_quick_test_settings,
 )

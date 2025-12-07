@@ -25,6 +25,7 @@ interface FormData {
   sequence: string;
   native_pdb_id?: string;
   iterations?: number;
+  agents?: number;
   consciousness_level?: number;
   consistency?: number;
   enable_qcpp?: boolean;
@@ -43,6 +44,7 @@ const PredictionForm: React.FC = () => {
   const [formData, setFormData] = useState<FormData>({
     sequence: '',
     iterations: 1000,
+    agents: 10,
     consciousness_level: 8.0,
     consistency: 0.6,
     enable_qcpp: true,
@@ -69,7 +71,7 @@ const PredictionForm: React.FC = () => {
         sequence: formData.sequence,
         configuration: {
           iterations: formData.iterations || 1000,
-          agents: 10, // Default value
+          agents: formData.agents || 10,
           diversity: 'balanced', // Default value
           enable_checkpointing: true,
           checkpoint_interval: formData.checkpoint_interval || 100,

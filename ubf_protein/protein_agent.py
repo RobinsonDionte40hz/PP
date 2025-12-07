@@ -1192,7 +1192,9 @@ class ProteinAgent(IProteinAgent):
     def _check_steric_clashes(self, coords: List[Tuple[float, float, float]], 
                              min_distance: float = 2.0) -> bool:
         """
-        Check for steric clashes between non-adjacent residues.
+        Check for steric clashes between non-adjacent residues using spatial hashing.
+        
+        Uses cell-based spatial partitioning for O(N) average case instead of O(N²).
         
         Args:
             coords: CA coordinates to check
@@ -1202,19 +1204,80 @@ class ProteinAgent(IProteinAgent):
             True if geometry is valid (no clashes), False if clashes detected
         """
         n = len(coords)
+        if n < 4:
+            return True  # Too small to have non-adjacent clashes
+        
+        # Use spatial hashing for large proteins (>50 residues)
+        if n > 50:
+            return self._check_steric_clashes_spatial(coords, min_distance)
+        
+        # For small proteins, use direct O(N²) check (still fast)
+        min_dist_sq = min_distance * min_distance
         for i in range(n):
+            xi, yi, zi = coords[i]
             for j in range(i + 2, n):  # Skip adjacent residues (i+1)
-                dx = coords[j][0] - coords[i][0]
-                dy = coords[j][1] - coords[i][1]
-                dz = coords[j][2] - coords[i][2]
-                dist = math.sqrt(dx*dx + dy*dy + dz*dz)
+                xj, yj, zj = coords[j]
+                dx = xj - xi
+                dy = yj - yi
+                dz = zj - zi
+                dist_sq = dx*dx + dy*dy + dz*dz
                 
-                if dist < min_distance:
-                    logger.debug(
-                        f"Steric clash detected: CA{i}-CA{j} distance = {dist:.2f}Å "
-                        f"(threshold: {min_distance:.2f}Å)"
-                    )
+                if dist_sq < min_dist_sq:
                     return False
+        
+        return True
+    
+    def _check_steric_clashes_spatial(self, coords: List[Tuple[float, float, float]], 
+                                       min_distance: float) -> bool:
+        """
+        Spatial hash-based clash detection for large proteins.
+        O(N) average case complexity using cell-based partitioning.
+        """
+        n = len(coords)
+        cell_size = min_distance * 2.0  # Cells larger than clash radius
+        min_dist_sq = min_distance * min_distance
+        
+        # Build spatial hash (atom index -> cell)
+        cells: Dict[Tuple[int, int, int], List[int]] = {}
+        
+        for i in range(n):
+            cx = int(coords[i][0] / cell_size)
+            cy = int(coords[i][1] / cell_size)
+            cz = int(coords[i][2] / cell_size)
+            cell_key = (cx, cy, cz)
+            
+            if cell_key not in cells:
+                cells[cell_key] = []
+            cells[cell_key].append(i)
+        
+        # Check each atom against atoms in neighboring cells only
+        for i in range(n):
+            xi, yi, zi = coords[i]
+            cx = int(xi / cell_size)
+            cy = int(yi / cell_size)
+            cz = int(zi / cell_size)
+            
+            # Check 27 neighboring cells (3x3x3 cube)
+            for dx in [-1, 0, 1]:
+                for dy in [-1, 0, 1]:
+                    for dz in [-1, 0, 1]:
+                        neighbor_cell = (cx + dx, cy + dy, cz + dz)
+                        if neighbor_cell not in cells:
+                            continue
+                        
+                        for j in cells[neighbor_cell]:
+                            # Only check j > i+1 (skip self and adjacent)
+                            if j <= i + 1:
+                                continue
+                            
+                            xj, yj, zj = coords[j]
+                            ddx = xj - xi
+                            ddy = yj - yi
+                            ddz = zj - zi
+                            dist_sq = ddx*ddx + ddy*ddy + ddz*ddz
+                            
+                            if dist_sq < min_dist_sq:
+                                return False
         
         return True
 
@@ -1762,55 +1825,94 @@ class ProteinAgent(IProteinAgent):
         """
         Resolve steric clashes between non-adjacent atoms.
         
+        Optimized with spatial hashing for O(N) average case per iteration.
         Uses iterative repulsion to push clashing atoms apart while maintaining
         bond lengths with adjacent residues.
         """
         new_coords = list(coords)
         min_distance = 2.5  # Minimum allowed CA-CA distance for non-bonded atoms
         max_iterations = 10
+        n = len(new_coords)
+        
+        if n < 4:
+            return new_coords  # Too small to have non-adjacent clashes
+        
+        min_dist_sq = min_distance * min_distance
+        cell_size = min_distance * 2.0
         
         for iteration in range(max_iterations):
             clashes_found = False
             
-            for i in range(len(new_coords)):
-                for j in range(i + 2, len(new_coords)):  # Skip adjacent (i+1)
-                    p1 = new_coords[i]
-                    p2 = new_coords[j]
-                    
-                    dist = self._distance(p1, p2)
-                    
-                    if dist < min_distance:
-                        clashes_found = True
-                        
-                        # Push atoms apart along their connecting vector
-                        if dist < 0.1:
-                            # Too close - use random direction
-                            direction = (
-                                random.uniform(-1, 1),
-                                random.uniform(-1, 1),
-                                random.uniform(-1, 1)
-                            )
-                        else:
-                            direction = (
-                                (p2[0] - p1[0]) / dist,
-                                (p2[1] - p1[1]) / dist,
-                                (p2[2] - p1[2]) / dist
-                            )
-                        
-                        # Calculate how much to push apart
-                        push = (min_distance - dist) * 0.5
-                        
-                        # Move both atoms away from each other
-                        new_coords[i] = (
-                            p1[0] - direction[0] * push,
-                            p1[1] - direction[1] * push,
-                            p1[2] - direction[2] * push
-                        )
-                        new_coords[j] = (
-                            p2[0] + direction[0] * push,
-                            p2[1] + direction[1] * push,
-                            p2[2] + direction[2] * push
-                        )
+            # Build spatial hash for current coordinates
+            cells: Dict[Tuple[int, int, int], List[int]] = {}
+            for i in range(n):
+                cx = int(new_coords[i][0] / cell_size)
+                cy = int(new_coords[i][1] / cell_size)
+                cz = int(new_coords[i][2] / cell_size)
+                cell_key = (cx, cy, cz)
+                if cell_key not in cells:
+                    cells[cell_key] = []
+                cells[cell_key].append(i)
+            
+            # Check and resolve clashes using spatial hash
+            for i in range(n):
+                p1 = new_coords[i]
+                cx = int(p1[0] / cell_size)
+                cy = int(p1[1] / cell_size)
+                cz = int(p1[2] / cell_size)
+                
+                # Check 27 neighboring cells
+                for dx in [-1, 0, 1]:
+                    for dy in [-1, 0, 1]:
+                        for dz in [-1, 0, 1]:
+                            neighbor_cell = (cx + dx, cy + dy, cz + dz)
+                            if neighbor_cell not in cells:
+                                continue
+                            
+                            for j in cells[neighbor_cell]:
+                                if j <= i + 1:  # Skip self and adjacent
+                                    continue
+                                
+                                p2 = new_coords[j]
+                                ddx = p2[0] - p1[0]
+                                ddy = p2[1] - p1[1]
+                                ddz = p2[2] - p1[2]
+                                dist_sq = ddx*ddx + ddy*ddy + ddz*ddz
+                                
+                                if dist_sq < min_dist_sq:
+                                    clashes_found = True
+                                    dist = math.sqrt(dist_sq)
+                                    
+                                    # Push atoms apart along their connecting vector
+                                    if dist < 0.1:
+                                        # Too close - use random direction
+                                        direction = (
+                                            random.uniform(-1, 1),
+                                            random.uniform(-1, 1),
+                                            random.uniform(-1, 1)
+                                        )
+                                        norm = math.sqrt(sum(x*x for x in direction))
+                                        if norm > 0:
+                                            direction = (direction[0]/norm, direction[1]/norm, direction[2]/norm)
+                                    else:
+                                        direction = (ddx / dist, ddy / dist, ddz / dist)
+                                    
+                                    # Calculate how much to push apart
+                                    push = (min_distance - dist) * 0.5
+                                    
+                                    # Move both atoms away from each other
+                                    new_coords[i] = (
+                                        p1[0] - direction[0] * push,
+                                        p1[1] - direction[1] * push,
+                                        p1[2] - direction[2] * push
+                                    )
+                                    new_coords[j] = (
+                                        p2[0] + direction[0] * push,
+                                        p2[1] + direction[1] * push,
+                                        p2[2] + direction[2] * push
+                                    )
+                                    # Update p1 for subsequent checks in this iteration
+                                    p1 = new_coords[i]
             
             # Re-fix bond lengths after clash resolution
             new_coords = self._maintain_bond_lengths(new_coords)
@@ -1827,6 +1929,8 @@ class ProteinAgent(IProteinAgent):
         """
         Check if coordinates have severe steric clashes OR invalid bond lengths.
         
+        Optimized with spatial hashing for O(N) average case complexity.
+        
         Args:
             coords: List of CA coordinates
             threshold: Minimum distance in Angstroms for non-adjacent atoms (default 2.0A)
@@ -1838,35 +1942,42 @@ class ProteinAgent(IProteinAgent):
         """
         n = len(coords)
         
-        # Check bond lengths between adjacent residues
+        # Check bond lengths between adjacent residues (O(N))
+        min_bond_sq = min_bond * min_bond
+        max_bond_sq = max_bond * max_bond
         for i in range(n - 1):
-            bond_dist = math.sqrt(sum((a - b) ** 2 for a, b in zip(coords[i], coords[i+1])))
-            if bond_dist < min_bond or bond_dist > max_bond:
+            xi, yi, zi = coords[i]
+            xj, yj, zj = coords[i+1]
+            dx = xj - xi
+            dy = yj - yi
+            dz = zj - zi
+            bond_dist_sq = dx*dx + dy*dy + dz*dz
+            if bond_dist_sq < min_bond_sq or bond_dist_sq > max_bond_sq:
                 return True  # Invalid bond length
         
-        # Check for clashes between non-adjacent residues
-        for i in range(n):
-            for j in range(i + 2, n):
-                dist = math.sqrt(sum((a - b) ** 2 for a, b in zip(coords[i], coords[j])))
-                if dist < threshold:
-                    return True
-        return False
+        # Check for clashes using spatial hash (optimized)
+        # Returns False if valid (no clashes), True if clashes found
+        return not self._check_steric_clashes(coords, threshold)
 
     # Vector math utilities
     def _distance(self, p1: Tuple[float, float, float], p2: Tuple[float, float, float]) -> float:
-        """Calculate Euclidean distance between two points."""
-        return math.sqrt(sum((a - b) ** 2 for a, b in zip(p1, p2)))
+        """Calculate Euclidean distance between two points (optimized)."""
+        dx = p2[0] - p1[0]
+        dy = p2[1] - p1[1]
+        dz = p2[2] - p1[2]
+        return math.sqrt(dx*dx + dy*dy + dz*dz)
 
     def _vector_subtract(self, p1: Tuple[float, float, float], p2: Tuple[float, float, float]) -> Tuple[float, float, float]:
         """Subtract two vectors."""
         return (p1[0] - p2[0], p1[1] - p2[1], p1[2] - p2[2])
 
     def _normalize_vector(self, v: Tuple[float, float, float]) -> Tuple[float, float, float]:
-        """Normalize a vector."""
-        length = math.sqrt(sum(x ** 2 for x in v))
+        """Normalize a vector (optimized)."""
+        length = math.sqrt(v[0]*v[0] + v[1]*v[1] + v[2]*v[2])
         if length == 0:
-            return (0, 0, 0)
-        return (v[0] / length, v[1] / length, v[2] / length)
+            return (0.0, 0.0, 0.0)
+        inv_length = 1.0 / length
+        return (v[0] * inv_length, v[1] * inv_length, v[2] * inv_length)
 
     def _rotate_point_around_axis(self, point: Tuple[float, float, float],
                                  axis_point: Tuple[float, float, float],

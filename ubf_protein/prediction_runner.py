@@ -237,6 +237,12 @@ def get_optimal_settings(sequence_length: int) -> Dict[str, Any]:
     
     These settings are tuned from extensive testing to balance
     exploration quality with runtime.
+    
+    Expected runtimes (after optimization):
+    - Small (<50 residues): ~30 seconds
+    - Medium (50-100): ~1-2 minutes
+    - Large (100-150): ~3-5 minutes
+    - Very large (>150): ~5-10 minutes
     """
     if sequence_length < 50:
         # Small proteins: More iterations per agent, fewer agents
@@ -250,6 +256,23 @@ def get_optimal_settings(sequence_length: int) -> Dict[str, Any]:
     else:
         # Very large: Maximum resources
         return {"agents": 50, "iterations": 300, "category": "very_large"}
+
+
+def get_fast_settings(sequence_length: int) -> Dict[str, Any]:
+    """
+    Get fast settings for rapid screening (3-5x faster than optimal).
+    
+    Use this for initial screening before running full predictions.
+    Expected runtimes: 1-3 minutes for most proteins.
+    """
+    if sequence_length < 50:
+        return {"agents": 10, "iterations": 100, "category": "small"}
+    elif sequence_length < 100:
+        return {"agents": 15, "iterations": 100, "category": "medium"}
+    elif sequence_length < 150:
+        return {"agents": 20, "iterations": 100, "category": "large"}
+    else:
+        return {"agents": 25, "iterations": 150, "category": "very_large"}
 
 
 def get_quick_test_settings(sequence_length: int) -> Dict[str, Any]:

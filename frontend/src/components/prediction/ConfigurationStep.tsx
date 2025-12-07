@@ -146,6 +146,26 @@ const ConfigurationStep: React.FC<ConfigurationStepProps> = ({ formData, onChang
         </Typography>
 
         <Stack spacing={3}>
+          {/* Agents */}
+          <FormControl fullWidth>
+            <FormLabel>
+              Agents: {formData.agents || 10}
+            </FormLabel>
+            <Slider
+              value={formData.agents || 10}
+              onChange={(_, value) => onChange({ agents: value as number })}
+              min={1}
+              max={50}
+              step={1}
+              marks={[
+                { value: 1, label: '1' },
+                { value: 10, label: '10' },
+                { value: 25, label: '25' },
+                { value: 50, label: '50' },
+              ]}
+              valueLabelDisplay="auto"
+            />
+          </FormControl>
           {/* Iterations */}
           <FormControl fullWidth>
             <FormLabel>
