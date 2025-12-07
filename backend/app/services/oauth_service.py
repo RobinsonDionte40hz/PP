@@ -116,8 +116,8 @@ class OAuthService:
         if not OAuthService.is_google_enabled():
             raise ValueError("Google OAuth is not configured")
         
-        redirect = redirect_uri or getattr(settings, 'GOOGLE_REDIRECT_URI', 
-            f"{settings.FRONTEND_URL}/auth/google/callback")
+        redirect = redirect_uri or getattr(settings, 'GOOGLE_REDIRECT_URI', None) or \
+            f"{settings.FRONTEND_URL}/auth/google/callback"
         
         client = AsyncOAuth2Client(
             client_id=settings.GOOGLE_CLIENT_ID,
@@ -129,6 +129,7 @@ class OAuthService:
         url, _ = client.create_authorization_url(
             OAuthConfig.GOOGLE_AUTHORIZE_URL,
             state=state,
+            redirect_uri=redirect,
             access_type="offline",
             prompt="select_account"
         )
@@ -233,8 +234,8 @@ class OAuthService:
         if not OAuthService.is_github_enabled():
             raise ValueError("GitHub OAuth is not configured")
         
-        redirect = redirect_uri or getattr(settings, 'GITHUB_REDIRECT_URI',
-            f"{settings.FRONTEND_URL}/auth/github/callback")
+        redirect = redirect_uri or getattr(settings, 'GITHUB_REDIRECT_URI', None) or \
+            f"{settings.FRONTEND_URL}/auth/github/callback"
         
         client = AsyncOAuth2Client(
             client_id=settings.GITHUB_CLIENT_ID,
@@ -245,7 +246,8 @@ class OAuthService:
         
         url, _ = client.create_authorization_url(
             OAuthConfig.GITHUB_AUTHORIZE_URL,
-            state=state
+            state=state,
+            redirect_uri=redirect
         )
         
         return url
