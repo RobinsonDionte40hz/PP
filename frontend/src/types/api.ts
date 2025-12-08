@@ -30,7 +30,7 @@ export interface PredictionResponse {
   id: string;
   protein_sequence: string;
   sequence: string;
-  status: 'pending' | 'running' | 'paused' | 'completed' | 'failed' | 'cancelled';
+  status: 'pending' | 'queued' | 'running' | 'paused' | 'completed' | 'failed' | 'cancelled';
   created_at: string;
   started_at?: string;
   completed_at?: string;
