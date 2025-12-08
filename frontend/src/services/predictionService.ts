@@ -103,6 +103,23 @@ export const predictionService = {
     }
   },
 
+  // Get queue status for a prediction
+  async getQueueStatus(id: string): Promise<{
+    prediction_id: string;
+    status: string;
+    queue_position: number;
+    total_queued: number;
+    estimated_wait_minutes: number;
+    message: string;
+  }> {
+    try {
+      const response = await api.get(`/predictions/${id}/queue-status`);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  },
+
   // Error handler
   handleError(error: unknown): ApiError {
     if (typeof error === 'object' && error !== null && 'response' in error) {

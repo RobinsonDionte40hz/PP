@@ -17,9 +17,9 @@ export function usePrediction(id: string) {
     queryKey: predictionKeys.detail(id),
     queryFn: () => predictionService.getPrediction(id),
     refetchInterval: (query) => {
-      // Keep refetching while prediction is running
+      // Keep refetching while prediction is running or queued
       const data = query.state.data;
-      if (data?.status === 'running' || data?.status === 'pending') {
+      if (data?.status === 'running' || data?.status === 'pending' || data?.status === 'queued') {
         return 5000; // 5 seconds
       }
       return false;

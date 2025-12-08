@@ -314,6 +314,43 @@ async def stop_prediction(
 
 
 @router.get(
+    "/{prediction_id}/queue-status",
+    summary="Get queue status",
+    description="Get the queue position and estimated wait time for a prediction"
+)
+async def get_queue_status(
+    prediction_id: str = Path(..., description="Prediction ID"),
+    user: Dict[str, Any] = Depends(require_auth_with_session),
+):
+    """
+    Get queue status for a prediction.
+    
+    Returns:
+    - queue_position: Position in the queue (1 = next to run, 0 = running)
+    - estimated_wait_minutes: Estimated minutes until processing starts
+    - total_queued: Total number of predictions in queue
+    - status: Current prediction status
+    """
+    user_id = get_user_id(user)
+    prediction = prediction_service.get_prediction(prediction_id, user_id=user_id)
+    
+    if not prediction:
+        raise HTTPException(status_code=404, detail="Prediction not found")
+    
+    # Get queue information
+    queue_info = prediction_service.get_queue_position(prediction_id)
+    
+    return {
+        "prediction_id": prediction_id,
+        "status": prediction.status,
+        "queue_position": queue_info["queue_position"],
+        "total_queued": queue_info["total_queued"],
+        "estimated_wait_minutes": queue_info["estimated_wait_minutes"],
+        "message": queue_info["message"]
+    }
+
+
+@router.get(
     "/{prediction_id}/checkpoint",
     summary="Download checkpoint",
     description="Download the latest checkpoint file for a prediction"

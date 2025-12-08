@@ -337,6 +337,96 @@ class PredictionService:
             return prediction
         finally:
             db.close()
+    
+    def get_queue_position(self, prediction_id: str) -> Dict[str, Any]:
+        """
+        Get queue position and estimated wait time for a prediction.
+        
+        Returns:
+            Dictionary with queue_position, total_queued, estimated_wait_minutes, and message
+        """
+        db = self._get_db()
+        try:
+            # Get the target prediction
+            prediction = db.query(Prediction).filter(Prediction.id == prediction_id).first()
+            
+            if not prediction:
+                return {
+                    "queue_position": 0,
+                    "total_queued": 0,
+                    "estimated_wait_minutes": 0,
+                    "message": "Prediction not found"
+                }
+            
+            # If prediction is running or completed, no queue position
+            if prediction.status == PredictionStatus.RUNNING.value:
+                return {
+                    "queue_position": 0,
+                    "total_queued": 0,
+                    "estimated_wait_minutes": 0,
+                    "message": "Your prediction is currently being processed"
+                }
+            
+            if prediction.status in [PredictionStatus.COMPLETED.value, PredictionStatus.FAILED.value, PredictionStatus.STOPPED.value]:
+                return {
+                    "queue_position": 0,
+                    "total_queued": 0,
+                    "estimated_wait_minutes": 0,
+                    "message": "Prediction has finished"
+                }
+            
+            # Count predictions ahead in queue (pending/queued status, created before this one)
+            queued_statuses = [PredictionStatus.PENDING.value, PredictionStatus.QUEUED.value]
+            
+            # Get running predictions count
+            running_count = db.query(Prediction).filter(
+                Prediction.status == PredictionStatus.RUNNING.value
+            ).count()
+            
+            # Get predictions queued before this one
+            ahead_count = db.query(Prediction).filter(
+                Prediction.status.in_(queued_statuses),
+                Prediction.created_at < prediction.created_at
+            ).count()
+            
+            # Get total queued predictions
+            total_queued = db.query(Prediction).filter(
+                Prediction.status.in_(queued_statuses)
+            ).count()
+            
+            # Queue position: 1 = next to run (after currently running finishes)
+            queue_position = ahead_count + 1
+            
+            # Estimate wait time based on average processing time
+            # Average ~2 minutes per small protein, ~5 minutes for medium
+            # If there's a running prediction, add its estimated remaining time
+            avg_time_per_prediction = 3  # minutes
+            
+            estimated_wait = ahead_count * avg_time_per_prediction
+            
+            # If something is running, add estimated time for it
+            if running_count > 0:
+                estimated_wait += 2  # Add ~2 minutes for current running prediction
+            
+            # Generate user-friendly message
+            if queue_position == 1 and running_count == 0:
+                message = "Your prediction will start processing shortly"
+            elif queue_position == 1:
+                message = "Your prediction is next in line"
+            elif queue_position <= 3:
+                message = f"Your prediction will start soon ({queue_position} ahead in queue)"
+            else:
+                message = f"Position {queue_position} of {total_queued} in queue"
+            
+            return {
+                "queue_position": queue_position,
+                "total_queued": total_queued,
+                "estimated_wait_minutes": estimated_wait,
+                "message": message
+            }
+            
+        finally:
+            db.close()
 
 
 # Global service instance

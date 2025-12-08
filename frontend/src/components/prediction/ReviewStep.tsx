@@ -7,12 +7,18 @@ import {
   Stack,
   alpha,
   useTheme,
+  Alert,
+  AlertTitle,
+  Divider,
 } from '@mui/material';
 import {
   Check as CheckIcon,
   Science as ScienceIcon,
   Speed as SpeedIcon,
   Tune as TuneIcon,
+  Queue as QueueIcon,
+  Schedule as ScheduleIcon,
+  Info as InfoIcon,
 } from '@mui/icons-material';
 
 interface ReviewStepProps {
@@ -264,6 +270,55 @@ const ReviewStep: React.FC<ReviewStepProps> = ({ formData }) => {
               QCPP integration is disabled. The prediction will use UBF-only optimization.
             </Typography>
           )}
+        </Paper>
+
+        {/* Queue System Information */}
+        <Paper
+          variant="outlined"
+          sx={{
+            p: 3,
+            backgroundColor: alpha(theme.palette.warning.main, 0.05),
+            borderColor: alpha(theme.palette.warning.main, 0.3),
+          }}
+        >
+          <Box display="flex" alignItems="center" gap={1} mb={2}>
+            <QueueIcon color="warning" />
+            <Typography variant="subtitle1" fontWeight="bold">
+              Queue-Based Processing
+            </Typography>
+          </Box>
+
+          <Alert severity="info" icon={<InfoIcon />} sx={{ mb: 2 }}>
+            <AlertTitle>How Our Queue System Works</AlertTitle>
+            <Typography variant="body2" paragraph>
+              To ensure fair access and optimal performance, predictions are processed through a first-come, first-served queue system.
+            </Typography>
+            <Stack spacing={1}>
+              <Box display="flex" alignItems="flex-start" gap={1}>
+                <ScheduleIcon fontSize="small" color="action" sx={{ mt: 0.3 }} />
+                <Typography variant="body2">
+                  <strong>Queue Position:</strong> After submission, you'll see your position in the queue and estimated wait time.
+                </Typography>
+              </Box>
+              <Box display="flex" alignItems="flex-start" gap={1}>
+                <QueueIcon fontSize="small" color="action" sx={{ mt: 0.3 }} />
+                <Typography variant="body2">
+                  <strong>Processing Order:</strong> Jobs are processed one at a time in the order they were submitted.
+                </Typography>
+              </Box>
+              <Box display="flex" alignItems="flex-start" gap={1}>
+                <SpeedIcon fontSize="small" color="action" sx={{ mt: 0.3 }} />
+                <Typography variant="body2">
+                  <strong>Real-time Updates:</strong> Monitor your prediction's progress live once it starts processing.
+                </Typography>
+              </Box>
+            </Stack>
+          </Alert>
+
+          <Typography variant="caption" color="text.secondary">
+            💡 Tip: Smaller sequences (30-150 residues) typically complete faster. During peak hours, 
+            queue times may be longer.
+          </Typography>
         </Paper>
 
         {/* Estimated Time */}

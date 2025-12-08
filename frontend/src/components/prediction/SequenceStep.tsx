@@ -13,6 +13,7 @@ import {
   CloudUpload as UploadIcon,
   Science as ScienceIcon,
   CheckCircle,
+  Info as InfoIcon,
 } from '@mui/icons-material';
 
 interface SequenceStepProps {
@@ -200,9 +201,25 @@ const SequenceStep: React.FC<SequenceStepProps> = ({ formData, onChange }) => {
       <Typography variant="h6" fontWeight="bold" gutterBottom>
         Protein Sequence
       </Typography>
-      <Typography variant="body2" color="text.secondary" mb={3}>
+      <Typography variant="body2" color="text.secondary" mb={2}>
         Enter the amino acid sequence in single-letter code format
       </Typography>
+
+      {/* Server Capacity Notice */}
+      <Alert 
+        severity="info" 
+        icon={<InfoIcon />}
+        sx={{ mb: 3 }}
+      >
+        <Typography variant="body2" fontWeight="medium" gutterBottom>
+          Optimized for Small to Medium Proteins
+        </Typography>
+        <Typography variant="caption" display="block">
+          Our current server infrastructure is optimized for sequences up to ~200 amino acids. 
+          Larger proteins may experience longer processing times or timeouts. 
+          For best results, we recommend sequences between 30-150 residues.
+        </Typography>
+      </Alert>
 
       {/* Sequence Input */}
       <TextField
@@ -296,9 +313,17 @@ const SequenceStep: React.FC<SequenceStepProps> = ({ formData, onChange }) => {
 
       {/* Info Alert */}
       {formData.sequence.length > 0 && !sequenceError && (
-        <Alert severity="success" sx={{ mt: 3 }}>
+        <Alert 
+          severity={formData.sequence.length > 200 ? 'warning' : 'success'} 
+          sx={{ mt: 3 }}
+        >
           Sequence validated: {formData.sequence.length} amino acids
           {formData.native_pdb_id && ` • Native structure: ${formData.native_pdb_id}`}
+          {formData.sequence.length > 200 && (
+            <Typography variant="caption" display="block" sx={{ mt: 0.5 }}>
+              ⚠️ Large sequence detected. Processing may take longer due to server capacity limits.
+            </Typography>
+          )}
         </Alert>
       )}
     </Box>

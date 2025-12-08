@@ -24,6 +24,8 @@ import {
   Download as DownloadIcon,
   ArrowBack as BackIcon,
   MonitorHeart as MonitorIcon,
+  Queue as QueueIcon,
+  Schedule as ScheduleIcon,
 } from '@mui/icons-material';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -45,10 +47,12 @@ const ActivePredictionsList: React.FC = () => {
   
   const { data: predictions, isLoading, error } = usePredictions({ status: 'running' });
   const { data: pendingPredictions } = usePredictions({ status: 'pending' });
+  const { data: queuedPredictions } = usePredictions({ status: 'queued' });
   
   const activePredictions = [
     ...(predictions || []),
     ...(pendingPredictions || []),
+    ...(queuedPredictions || []),
   ];
 
   if (isLoading) {
@@ -118,6 +122,8 @@ const ActivePredictionsList: React.FC = () => {
             ? (prediction.current_iteration / prediction.total_iterations) * 100
             : 0;
           
+          const isPending = prediction.status === 'pending' || prediction.status === 'queued';
+          
           return (
             <Grid size={{ xs: 12, md: 6, lg: 4 }} key={prediction.id}>
               <Card
@@ -138,9 +144,10 @@ const ActivePredictionsList: React.FC = () => {
                       {prediction.id.slice(0, 8)}...
                     </Typography>
                     <Chip
-                      label={prediction.status}
+                      label={isPending ? 'In Queue' : prediction.status}
                       size="small"
                       color={prediction.status === 'running' ? 'success' : 'warning'}
+                      icon={isPending ? <QueueIcon /> : undefined}
                     />
                   </Box>
                   
@@ -148,29 +155,45 @@ const ActivePredictionsList: React.FC = () => {
                     Sequence: {prediction.sequence?.slice(0, 20)}...
                   </Typography>
                   
-                  <Box mb={1}>
-                    <Box display="flex" justifyContent="space-between" mb={0.5}>
-                      <Typography variant="caption" color="text.secondary">
-                        Progress
-                      </Typography>
-                      <Typography variant="caption" fontWeight="bold">
-                        {progress.toFixed(1)}%
+                  {isPending ? (
+                    <Box mb={1}>
+                      <Box display="flex" alignItems="center" gap={1} mb={0.5}>
+                        <ScheduleIcon fontSize="small" color="warning" />
+                        <Typography variant="caption" color="text.secondary">
+                          Waiting in queue...
+                        </Typography>
+                      </Box>
+                      <Typography variant="caption" color="text.secondary" display="block">
+                        Click to view queue position
                       </Typography>
                     </Box>
-                    <LinearProgress
-                      variant="determinate"
-                      value={progress}
-                      sx={{ height: 6, borderRadius: 3 }}
-                    />
-                  </Box>
+                  ) : (
+                    <Box mb={1}>
+                      <Box display="flex" justifyContent="space-between" mb={0.5}>
+                        <Typography variant="caption" color="text.secondary">
+                          Progress
+                        </Typography>
+                        <Typography variant="caption" fontWeight="bold">
+                          {progress.toFixed(1)}%
+                        </Typography>
+                      </Box>
+                      <LinearProgress
+                        variant="determinate"
+                        value={progress}
+                        sx={{ height: 6, borderRadius: 3 }}
+                      />
+                    </Box>
+                  )}
                   
-                  <Typography variant="caption" color="text.secondary">
-                    Iteration {prediction.current_iteration?.toLocaleString() || 0} / {prediction.total_iterations?.toLocaleString() || 0}
-                  </Typography>
+                  {!isPending && (
+                    <Typography variant="caption" color="text.secondary">
+                      Iteration {prediction.current_iteration?.toLocaleString() || 0} / {prediction.total_iterations?.toLocaleString() || 0}
+                    </Typography>
+                  )}
                 </CardContent>
                 <CardActions>
                   <Button size="small" color="primary">
-                    View Details
+                    {isPending ? 'View Queue Status' : 'View Details'}
                   </Button>
                 </CardActions>
               </Card>
@@ -218,6 +241,14 @@ const LiveMonitoring: React.FC = () => {
     queryFn: () => predictionService.getPrediction(id!),
     enabled: !!id,
     refetchInterval: 5000, // Fallback polling if WebSocket fails
+  });
+
+  // Fetch queue status for pending/queued predictions
+  const { data: queueStatus } = useQuery({
+    queryKey: ['queue-status', id],
+    queryFn: () => predictionService.getQueueStatus(id!),
+    enabled: !!id && (prediction?.status === 'pending' || prediction?.status === 'queued'),
+    refetchInterval: 10000, // Poll every 10 seconds
   });
 
   // WebSocket connection
@@ -424,6 +455,78 @@ const LiveMonitoring: React.FC = () => {
         <Alert severity="warning" sx={{ mb: 2 }}>
           Real-time connection lost. Using fallback polling...
         </Alert>
+      )}
+
+      {/* Queue Status Display for Pending/Queued Predictions */}
+      {(prediction.status === 'pending' || prediction.status === 'queued') && (
+        <Paper
+          elevation={2}
+          sx={{
+            p: 3,
+            mb: 3,
+            background: `linear-gradient(135deg, ${alpha(
+              theme.palette.warning.main,
+              0.1
+            )} 0%, ${alpha(theme.palette.background.paper, 1)} 100%)`,
+            border: `1px solid ${alpha(theme.palette.warning.main, 0.3)}`,
+          }}
+        >
+          <Box display="flex" alignItems="center" gap={2} mb={2}>
+            <QueueIcon color="warning" fontSize="large" />
+            <Box>
+              <Typography variant="h6" fontWeight="bold">
+                In Queue
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {queueStatus?.message || 'Waiting to be processed...'}
+              </Typography>
+            </Box>
+          </Box>
+          
+          <Stack direction="row" spacing={3} flexWrap="wrap">
+            <Box>
+              <Typography variant="caption" color="text.secondary" display="block">
+                Queue Position
+              </Typography>
+              <Box display="flex" alignItems="center" gap={1}>
+                <Typography variant="h4" fontWeight="bold" color="warning.main">
+                  {queueStatus?.queue_position || '—'}
+                </Typography>
+                {queueStatus?.total_queued && queueStatus.total_queued > 0 && (
+                  <Typography variant="body2" color="text.secondary">
+                    of {queueStatus.total_queued}
+                  </Typography>
+                )}
+              </Box>
+            </Box>
+            
+            <Box>
+              <Typography variant="caption" color="text.secondary" display="block">
+                Estimated Wait
+              </Typography>
+              <Box display="flex" alignItems="center" gap={1}>
+                <ScheduleIcon color="action" fontSize="small" />
+                <Typography variant="h5" fontWeight="bold">
+                  {queueStatus?.estimated_wait_minutes !== undefined
+                    ? queueStatus.estimated_wait_minutes <= 0
+                      ? 'Starting soon'
+                      : queueStatus.estimated_wait_minutes < 1
+                        ? '< 1 min'
+                        : `~${queueStatus.estimated_wait_minutes} min`
+                    : '—'}
+                </Typography>
+              </Box>
+            </Box>
+          </Stack>
+          
+          <Alert severity="info" sx={{ mt: 2 }} icon={false}>
+            <Typography variant="caption">
+              💡 Predictions are processed in the order they were submitted. 
+              Your position may change as other predictions complete. 
+              You can leave this page and return later — we'll keep your spot!
+            </Typography>
+          </Alert>
+        </Paper>
       )}
 
       {/* Completion Alert */}
