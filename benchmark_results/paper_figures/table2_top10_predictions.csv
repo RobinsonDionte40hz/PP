@@ -1,0 +1,11 @@
+pdb_id,protein_name,sequence_length,best_rmsd,gdt_ts_score,tm_score,execution_time_seconds
+2ZTA,2ZTA,31,0.51,8.87,0.03,2.84
+2EVQ,2EVQ,12,2.09,64.58,0.08,1.49
+1AB9,1AB9,10,3.5,47.5,0.04,1.33
+1L2Y,Trp-cage,20,3.65,37.5,0.01,2.09
+2JOF,2JOF,20,3.73,37.5,0.01,1.86
+2KK7,2KK7,52,3.81,1.44,0.03,4.56
+1VII,Villin,36,4.06,29.17,0.12,2.94
+1YRF,1YRF,35,4.74,35.71,0.17,6.81
+1ENH,Engrailed,54,5.04,38.43,0.3,5.82
+1ROP,Repressor of Primer,56,5.38,13.39,0.11,4.65

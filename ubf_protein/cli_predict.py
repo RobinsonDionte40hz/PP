@@ -189,7 +189,7 @@ def create_cli_progress_callback():
     """Create a progress callback for CLI output."""
     last_update_time = [time.time()]
     
-    def callback(update: ProgressUpdate):
+    def callback(update):
         # Only print every 2 seconds to avoid spam
         current_time = time.time()
         if current_time - last_update_time[0] < 2.0 and update.progress_percentage < 100:
@@ -231,12 +231,15 @@ def run_protein_test(sequence: str, pdb_file: Optional[Path] = None, pdb_id: Opt
                      custom_agents: Optional[int] = None, custom_iterations: Optional[int] = None,
                      target_geometry: str = 'none', enable_mediators: bool = False, 
                      mediator_count: int = 2, enable_refinement: bool = False,
-                     enable_hierarchical: bool = False) -> dict:
+                     enable_hierarchical: bool = False, save_to_benchmark: bool = False) -> dict:
     """
     Run complete protein test using unified PredictionRunner.
     
     This function uses the SAME code path as the website backend,
     ensuring consistent results between CLI and web interface.
+    
+    Args:
+        save_to_benchmark: If True, save results to benchmark_results/50_protein_benchmark.json
     """
     
     print("\n" + "="*70)
@@ -246,12 +249,20 @@ def run_protein_test(sequence: str, pdb_file: Optional[Path] = None, pdb_id: Opt
     
     # Get optimal settings for display
     settings = get_optimal_settings(len(sequence))
-    num_agents = custom_agents or settings['agents']
-    iterations = custom_iterations or settings['iterations']
+    num_agents = custom_agents or settings.agents
+    iterations = custom_iterations or settings.iterations
+    
+    # Determine category
+    if len(sequence) < 50:
+        category = "Small"
+    elif len(sequence) < 150:
+        category = "Medium"
+    else:
+        category = "Large"
     
     print(f"\n📊 Test Configuration:")
     print(f"  - Sequence Length: {len(sequence)} residues")
-    print(f"  - Protein Category: {settings['category']}")
+    print(f"  - Protein Category: {category}")
     print(f"  - Agents: {num_agents}")
     print(f"  - Iterations: {iterations} per agent")
     print(f"  - Total Conformations: {num_agents * iterations:,}")
@@ -279,22 +290,13 @@ def run_protein_test(sequence: str, pdb_file: Optional[Path] = None, pdb_id: Opt
     config = PredictionConfig(
         sequence=sequence,
         native_pdb=pdb_id,
-        pdb_file_path=str(pdb_file) if pdb_file else None,
+        native_pdb_path=str(pdb_file) if pdb_file else None,
         agents=num_agents,
         iterations=iterations,
-        diversity="balanced",
         qcpp_config="default",
-        qcpp_frequency=20,
-        cache_size=10000,
         enable_refinement=enable_refinement,
         enable_mediators=enable_mediators,
-        mediator_count=mediator_count,
-        target_geometry=target_geometry,
-        enable_hierarchical_folding=enable_hierarchical,
-        enable_checkpointing=False,  # Disable for CLI tests
-        output_dir=None,  # We'll handle output manually
-        save_pdb=False,
-        save_trajectory=False
+        enable_geometric_attractors=(target_geometry != 'none')
     )
     
     print(f"\n🚀 Starting prediction (PredictionRunner)...")
@@ -420,6 +422,65 @@ def print_results_summary(results: PredictionResults, exp_data: Optional[dict], 
             print("⚠️  Exploration may need more iterations")
     
     print("="*70)
+    
+    # Save to benchmark file if requested
+    if save_to_benchmark and pdb_id:
+        save_to_benchmark_file(pdb_id, results, config)
+    
+    return None  # No return value needed
+
+
+def save_to_benchmark_file(pdb_id: str, results: PredictionResults, config: PredictionConfig):
+    """Save results to the 50-protein benchmark JSON file."""
+    benchmark_file = Path("benchmark_results/50_protein_benchmark.json")
+    benchmark_file.parent.mkdir(parents=True, exist_ok=True)
+    
+    # Load existing results
+    if benchmark_file.exists():
+        with open(benchmark_file, 'r') as f:
+            data = json.load(f)
+    else:
+        data = {
+            "metadata": {
+                "created": datetime.now().isoformat(),
+                "total_proteins": 50,
+                "configuration": {
+                    "iterations": 1000,
+                    "mediators": 3,
+                    "enable_qcpp": True,
+                    "enable_refinement": True,
+                }
+            },
+            "results": {}
+        }
+    
+    # Add this protein's results
+    data["results"][pdb_id] = {
+        "timestamp": datetime.now().isoformat(),
+        "sequence_length": results.sequence_length,
+        "best_energy": results.best_energy,
+        "rmsd": results.best_rmsd if results.best_rmsd != float('inf') else None,
+        "gdt_ts": results.gdt_ts_score,
+        "tm_score": results.tm_score,
+        "qcp_mean": results.mean_qcp,
+        "qcp_field_coherence": results.field_coherence,
+        "total_conformations": results.total_conformations,
+        "execution_time": results.total_time_seconds,
+        "refinement_used": config.enable_refinement,
+        "mediators_used": config.enable_mediators,
+        "mediator_count": config.mediator_count,
+    }
+    
+    # Update metadata
+    data["metadata"]["completed_count"] = len(data["results"])
+    data["metadata"]["last_updated"] = datetime.now().isoformat()
+    
+    # Save
+    with open(benchmark_file, 'w') as f:
+        json.dump(data, f, indent=2, default=str)
+    
+    print(f"\n✅ Saved to benchmark file: {benchmark_file}")
+    print(f"   Progress: {len(data['results'])}/50 proteins completed\n")
 
 
 def save_results(results: PredictionResults, pdb_id: Optional[str], 
@@ -446,7 +507,7 @@ def save_results(results: PredictionResults, pdb_id: Optional[str],
         'protein_info': {
             'pdb_id': pdb_id,
             'sequence_length': results.sequence_length,
-            'category': get_optimal_settings(results.sequence_length)['category']
+            'category': "Small" if results.sequence_length < 50 else "Medium" if results.sequence_length < 150 else "Large"
         },
         'test_config': {
             'num_agents': config.agents,
@@ -616,6 +677,8 @@ NOTE: This CLI uses PredictionRunner, the SAME code path as the website backend.
                         help='Enable hierarchical folding with progressive search confinement')
     parser.add_argument('--list', action='store_true', help='List available test proteins')
     parser.add_argument('--quick', action='store_true', help='Quick test on Villin (35 residues)')
+    parser.add_argument('--benchmark', action='store_true',
+                        help='Save results to 50-protein benchmark file (benchmark_results/50_protein_benchmark.json)')
     
     args = parser.parse_args()
     
@@ -676,7 +739,8 @@ NOTE: This CLI uses PredictionRunner, the SAME code path as the website backend.
             enable_mediators=args.enable_mediators,
             mediator_count=args.mediator_count,
             enable_refinement=args.enable_refinement,
-            enable_hierarchical=args.enable_hierarchical
+            enable_hierarchical=args.enable_hierarchical,
+            save_to_benchmark=args.benchmark
         )
     
     # Test with custom sequence

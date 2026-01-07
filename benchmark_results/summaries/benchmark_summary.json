@@ -1,0 +1,15 @@
+{
+  "total_proteins": 50,
+  "successful": 48,
+  "failed": 2,
+  "mean_execution_time": 23.87633403142293,
+  "mean_conformations_per_second": 175.66888747426265,
+  "mean_energy": 0.0,
+  "mean_rmsd": 14.297616753378888,
+  "proteins_by_size": {
+    "small (<50)": 15,
+    "medium (50-150)": 31,
+    "large (150+)": 2
+  },
+  "timestamp": "2026-01-07T11:29:09.503095"
+}

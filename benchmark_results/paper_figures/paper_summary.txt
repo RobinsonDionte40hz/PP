@@ -1,0 +1,35 @@
+================================================================================
+BENCHMARK RESULTS SUMMARY FOR BIORXIV PAPER
+================================================================================
+
+OVERALL STATISTICS
+--------------------------------------------------------------------------------
+Total proteins tested: 48
+Success rate: 100%
+Size range: 10-244 residues
+
+PREDICTION ACCURACY (RMSD)
+--------------------------------------------------------------------------------
+Mean RMSD: 14.30 ± 18.21 Å
+Median RMSD: 10.65 Å
+Min RMSD: 0.51 Å
+Max RMSD: 99.10 Å
+
+QUALITY DISTRIBUTION
+--------------------------------------------------------------------------------
+Fair (10-15Å): 20 proteins (41.7%)
+Good (5-10Å): 13 proteins (27.1%)
+Excellent (<5Å): 8 proteins (16.7%)
+Poor (>15Å): 7 proteins (14.6%)
+
+COMPUTATIONAL PERFORMANCE
+--------------------------------------------------------------------------------
+Mean execution time: 23.9 ± 64.2 seconds
+Median execution time: 6.0 seconds
+Mean throughput: 175.7 conformations/second
+
+STRUCTURAL SIMILARITY METRICS
+--------------------------------------------------------------------------------
+Mean GDT-TS: 14.92 ± 13.87
+Mean TM-score: 0.097 ± 0.055
+
