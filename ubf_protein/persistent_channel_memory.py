@@ -40,34 +40,34 @@ logger = logging.getLogger(__name__)
 PHI = (1 + math.sqrt(5)) / 2
 
 # Amino acid properties for channel prediction
+# Using corrected Chou-Fasman propensities from literature
+# P > 1.0 means favors that structure, P < 1.0 means disfavors
 AMINO_ACID_PROPERTIES = {
-    # Hydrophobic - tend toward low frequency (core, sheet)
-    'I': {'hydrophobicity': 4.5, 'charge': 0, 'size': 'large', 'preferred_channel': 7.0},
-    'V': {'hydrophobicity': 4.2, 'charge': 0, 'size': 'medium', 'preferred_channel': 7.0},
-    'L': {'hydrophobicity': 3.8, 'charge': 0, 'size': 'large', 'preferred_channel': 7.0},
-    'F': {'hydrophobicity': 2.8, 'charge': 0, 'size': 'large', 'preferred_channel': 7.0},
-    'C': {'hydrophobicity': 2.5, 'charge': 0, 'size': 'small', 'preferred_channel': 7.0},
-    'M': {'hydrophobicity': 1.9, 'charge': 0, 'size': 'large', 'preferred_channel': 7.0},
-    'A': {'hydrophobicity': 1.8, 'charge': 0, 'size': 'small', 'preferred_channel': 10.0},
+    # Strong helix formers
+    'A': {'hydrophobicity': 1.8, 'helix_prop': 1.42, 'sheet_prop': 0.83, 'turn_prop': 0.66},
+    'E': {'hydrophobicity': -3.5, 'helix_prop': 1.51, 'sheet_prop': 0.37, 'turn_prop': 0.74},
+    'L': {'hydrophobicity': 3.8, 'helix_prop': 1.21, 'sheet_prop': 1.30, 'turn_prop': 0.59},
+    'M': {'hydrophobicity': 1.9, 'helix_prop': 1.45, 'sheet_prop': 1.05, 'turn_prop': 0.60},
+    'K': {'hydrophobicity': -3.9, 'helix_prop': 1.16, 'sheet_prop': 0.74, 'turn_prop': 1.01},
+    'R': {'hydrophobicity': -4.5, 'helix_prop': 0.98, 'sheet_prop': 0.93, 'turn_prop': 0.95},
+    'Q': {'hydrophobicity': -3.5, 'helix_prop': 1.11, 'sheet_prop': 1.10, 'turn_prop': 0.98},
+    'H': {'hydrophobicity': -3.2, 'helix_prop': 1.00, 'sheet_prop': 0.87, 'turn_prop': 0.95},
     
-    # Polar - tend toward medium frequency (helix, surface)
-    'W': {'hydrophobicity': -0.9, 'charge': 0, 'size': 'large', 'preferred_channel': 10.0},
-    'Y': {'hydrophobicity': -1.3, 'charge': 0, 'size': 'large', 'preferred_channel': 10.0},
-    'T': {'hydrophobicity': -0.7, 'charge': 0, 'size': 'medium', 'preferred_channel': 10.0},
-    'S': {'hydrophobicity': -0.8, 'charge': 0, 'size': 'small', 'preferred_channel': 10.0},
-    'H': {'hydrophobicity': -3.2, 'charge': 0.5, 'size': 'large', 'preferred_channel': 10.0},
-    'N': {'hydrophobicity': -3.5, 'charge': 0, 'size': 'medium', 'preferred_channel': 10.0},
-    'Q': {'hydrophobicity': -3.5, 'charge': 0, 'size': 'large', 'preferred_channel': 10.0},
+    # Strong sheet formers
+    'V': {'hydrophobicity': 4.2, 'helix_prop': 1.06, 'sheet_prop': 1.70, 'turn_prop': 0.50},
+    'I': {'hydrophobicity': 4.5, 'helix_prop': 1.08, 'sheet_prop': 1.60, 'turn_prop': 0.47},
+    'Y': {'hydrophobicity': -1.3, 'helix_prop': 0.69, 'sheet_prop': 1.47, 'turn_prop': 1.14},
+    'F': {'hydrophobicity': 2.8, 'helix_prop': 1.13, 'sheet_prop': 1.38, 'turn_prop': 0.60},
+    'W': {'hydrophobicity': -0.9, 'helix_prop': 1.08, 'sheet_prop': 1.37, 'turn_prop': 0.96},
+    'T': {'hydrophobicity': -0.7, 'helix_prop': 0.83, 'sheet_prop': 1.19, 'turn_prop': 0.96},
+    'C': {'hydrophobicity': 2.5, 'helix_prop': 0.70, 'sheet_prop': 1.19, 'turn_prop': 1.19},
     
-    # Charged - tend toward high frequency (surface, turns)
-    'K': {'hydrophobicity': -3.9, 'charge': 1, 'size': 'large', 'preferred_channel': 12.0},
-    'R': {'hydrophobicity': -4.5, 'charge': 1, 'size': 'large', 'preferred_channel': 12.0},
-    'D': {'hydrophobicity': -3.5, 'charge': -1, 'size': 'medium', 'preferred_channel': 12.0},
-    'E': {'hydrophobicity': -3.5, 'charge': -1, 'size': 'large', 'preferred_channel': 12.0},
-    
-    # Special - high frequency (breaks, flexibility)
-    'P': {'hydrophobicity': -1.6, 'charge': 0, 'size': 'medium', 'preferred_channel': 15.0},  # Helix breaker
-    'G': {'hydrophobicity': -0.4, 'charge': 0, 'size': 'tiny', 'preferred_channel': 12.0},   # Flexible
+    # Turn/coil formers (helix/sheet breakers)
+    'N': {'hydrophobicity': -3.5, 'helix_prop': 0.67, 'sheet_prop': 0.89, 'turn_prop': 1.56},
+    'G': {'hydrophobicity': -0.4, 'helix_prop': 0.57, 'sheet_prop': 0.75, 'turn_prop': 1.56},
+    'P': {'hydrophobicity': -1.6, 'helix_prop': 0.57, 'sheet_prop': 0.55, 'turn_prop': 1.52},
+    'D': {'hydrophobicity': -3.5, 'helix_prop': 1.01, 'sheet_prop': 0.54, 'turn_prop': 1.46},
+    'S': {'hydrophobicity': -0.8, 'helix_prop': 0.77, 'sheet_prop': 0.75, 'turn_prop': 1.43},
 }
 
 # Channel to structure mapping
@@ -139,6 +139,9 @@ class StructuralBlueprint:
     helix_regions: List[Tuple[int, int]] = field(default_factory=list)
     sheet_regions: List[Tuple[int, int]] = field(default_factory=list)
     
+    # Global bias: 'helix', 'sheet', or 'neutral'
+    global_bias: str = 'neutral'
+    
     # Progress tracking
     iteration_count: int = 0
     best_alignment_score: float = 0.0
@@ -181,6 +184,54 @@ class BlueprintGenerator:
         self.channel_structures = CHANNEL_TO_STRUCTURE
         self.phi = PHI
     
+    def _calculate_global_bias(self, sequence: str) -> str:
+        """
+        Calculate global structural bias from sequence composition.
+        
+        Uses patterns that strongly indicate helix vs sheet proteins:
+        - Proline content (breaks helices)
+        - Alternating hydrophobic pattern (sheets)
+        - Charged residue clusters (helices - surface)
+        
+        Returns 'helix', 'sheet', or 'neutral'
+        """
+        n = len(sequence)
+        if n < 10:
+            return 'neutral'
+        
+        # Count Pro (helix breaker)
+        pro_count = sequence.count('P')
+        pro_fraction = pro_count / n
+        
+        # Count strong helix formers: E, A, L, M (high P_alpha, low P_beta)
+        helix_strong = sum(1 for aa in sequence if aa in 'EALM')
+        helix_frac = helix_strong / n
+        
+        # Count strong sheet formers: V, I, Y (high P_beta)
+        sheet_strong = sum(1 for aa in sequence if aa in 'VIY')
+        sheet_frac = sheet_strong / n
+        
+        # Alternating hydrophobic pattern (strong sheet indicator)
+        alternating_count = 0
+        hydrophobic = set('VILFY')
+        for i in range(n - 4):
+            if (sequence[i] in hydrophobic and 
+                sequence[i+2] in hydrophobic and 
+                sequence[i+4] in hydrophobic):
+                alternating_count += 1
+        alt_frac = alternating_count / (n - 4) if n > 4 else 0
+        
+        # Scoring
+        helix_score = helix_frac * 2 - pro_fraction * 3
+        sheet_score = sheet_frac * 2 + alt_frac * 5
+        
+        if sheet_score > helix_score + 0.1:
+            return 'sheet'
+        elif helix_score > sheet_score + 0.1:
+            return 'helix'
+        else:
+            return 'neutral'
+    
     def generate_blueprint(self, sequence: str) -> StructuralBlueprint:
         """
         Generate structural blueprint from amino acid sequence.
@@ -192,6 +243,9 @@ class BlueprintGenerator:
         4. Pattern detection for helix/sheet regions
         """
         blueprint = StructuralBlueprint(sequence=sequence)
+        
+        # Calculate global structural bias
+        blueprint.global_bias = self._calculate_global_bias(sequence)
         
         # Step 1: Assign initial channel targets based on amino acid properties
         for i, aa in enumerate(sequence):
@@ -210,38 +264,58 @@ class BlueprintGenerator:
         logger.info(
             f"Generated blueprint: {len(sequence)} residues, "
             f"{len(blueprint.helix_regions)} helix regions, "
-            f"{len(blueprint.sheet_regions)} sheet regions"
+            f"{len(blueprint.sheet_regions)} sheet regions, "
+            f"bias={blueprint.global_bias}"
         )
         
         return blueprint
     
     def _predict_residue_target(self, idx: int, aa: str, sequence: str) -> ResidueTarget:
-        """Predict target channel for a single residue"""
+        """
+        Predict target channel for a single residue using Chou-Fasman propensities.
+        
+        Uses actual secondary structure propensities rather than simple
+        hydrophobicity mapping.
+        """
         props = self.aa_properties.get(aa, {
-            'hydrophobicity': 0, 'charge': 0, 'size': 'medium', 'preferred_channel': 10.0
+            'hydrophobicity': 0, 'charge': 0, 'size': 'medium', 
+            'helix_prop': 1.0, 'sheet_prop': 1.0, 'turn_prop': 1.0
         })
         
-        # Base channel from amino acid preference
-        base_channel = props['preferred_channel']
+        helix_prop: float = float(props.get('helix_prop', 1.0))
+        sheet_prop: float = float(props.get('sheet_prop', 1.0))
+        turn_prop: float = float(props.get('turn_prop', 1.0))
         
-        # Adjust based on position (termini tend toward flexibility)
         n = len(sequence)
-        if idx < 5 or idx >= n - 5:
-            # Terminal regions - more flexible
-            base_channel = max(12.0, base_channel)
-            confidence = 0.4
-            reason = "terminal_flexibility"
-        elif props['charge'] != 0:
-            # Charged residues - surface preference
-            confidence = 0.6
-            reason = "charge_surface"
-        elif props['hydrophobicity'] > 2.0:
-            # Strongly hydrophobic - core preference
-            confidence = 0.7
-            reason = "hydrophobic_core"
-        else:
+        
+        # Terminal regions favor turns/coils
+        if idx < 4 or idx >= n - 4:
+            base_channel = 12.0  # Turn
+            target_ss = 'T'
             confidence = 0.5
-            reason = "sequence_based"
+            reason = "terminal"
+        # Use propensities to determine most likely structure
+        elif helix_prop > sheet_prop and helix_prop > turn_prop and helix_prop > 1.1:
+            base_channel = 10.0  # Helix
+            target_ss = 'H'
+            confidence = min(0.8, 0.4 + (helix_prop - 1.0) * 0.5)
+            reason = f"helix_prop_{helix_prop:.2f}"
+        elif sheet_prop > helix_prop and sheet_prop > turn_prop and sheet_prop > 1.1:
+            base_channel = 7.0   # Sheet
+            target_ss = 'E'
+            confidence = min(0.8, 0.4 + (sheet_prop - 1.0) * 0.5)
+            reason = f"sheet_prop_{sheet_prop:.2f}"
+        elif turn_prop > 1.2:
+            base_channel = 12.0  # Turn
+            target_ss = 'T'
+            confidence = min(0.7, 0.4 + (turn_prop - 1.0) * 0.3)
+            reason = f"turn_prop_{turn_prop:.2f}"
+        else:
+            # Ambiguous - use coil
+            base_channel = 12.0
+            target_ss = 'C'
+            confidence = 0.4
+            reason = "ambiguous"
         
         # Get structure parameters for this channel
         struct_params = self.channel_structures.get(base_channel, {
@@ -252,7 +326,7 @@ class BlueprintGenerator:
             residue_idx=idx,
             amino_acid=aa,
             target_channel=base_channel,
-            target_ss=struct_params['ss'],
+            target_ss=target_ss,
             target_phi=struct_params['phi'],
             target_psi=struct_params['psi'],
             confidence=confidence,
@@ -261,126 +335,291 @@ class BlueprintGenerator:
     
     def _detect_helix_regions(self, blueprint: StructuralBlueprint) -> List[Tuple[int, int]]:
         """
-        Detect potential helix nucleation sites.
+        Detect helix regions using classic Chou-Fasman algorithm.
         
-        Helix-favorable: A, L, E, M, Q, K (high helix propensity)
-        Helix-breakers: P, G (break helix)
-        Need 5+ consecutive high-propensity for nucleation.
-        
-        More conservative than before to avoid over-predicting helix.
+        Classic rules (not preference-based):
+        1. Nucleation: 4+ residues out of 6 with P_alpha >= 1.03 (formers)
+        2. Extension: Continue while running average P_alpha >= 1.0
+        3. Termination: P_alpha < 1.0 for 4+ consecutive residues
+        4. Proline breaks helix (except at N-terminus of helix)
         """
-        helix_favorable = set('ALEMQK')  # Strong helix formers
-        helix_moderate = set('RFWY')     # Moderate helix formers
-        helix_breaker = set('PG')        # Break helices
-        sheet_prefer = set('VIT')        # These prefer sheet over helix
+        sequence = blueprint.sequence
+        n = len(sequence)
         
+        HELIX_FORMER = 1.03   # P_alpha threshold for helix former
+        HELIX_INDIF = 1.0     # Indifferent threshold
+        HELIX_BREAKER = 0.7   # Strong helix breakers: P, G
+        
+        # Get helix propensities
+        helix_scores = []
+        for aa in sequence:
+            props = self.aa_properties.get(aa, {'helix_prop': 1.0})
+            helix_scores.append(props.get('helix_prop', 1.0))
+        
+        # Mark helix formers (P_alpha >= 1.03)
+        is_former = [p >= HELIX_FORMER for p in helix_scores]
+        
+        # Find nucleation sites: 4+ formers in a window of 6
+        nucleation_sites = []
+        for i in range(n - 5):
+            window = is_former[i:i+6]
+            formers = sum(window)
+            # Check for helix breakers (P anywhere, G at position 2+)
+            has_breaker = 'P' in sequence[i:i+6]
+            
+            if formers >= 4 and not has_breaker:
+                nucleation_sites.append(i)
+        
+        # Extend and merge regions
         regions = []
-        in_region = False
-        start = 0
-        score = 0
-        window_scores = []  # Track scores in sliding window
+        used = set()
         
-        for i, target in enumerate(blueprint.residue_targets):
-            aa = target.amino_acid
+        for nuc in nucleation_sites:
+            if nuc in used:
+                continue
             
-            # Score this residue
-            if aa in helix_favorable:
-                residue_score = 2
-            elif aa in helix_moderate:
-                residue_score = 1
-            elif aa in helix_breaker:
-                residue_score = -4  # Strong penalty
-            elif aa in sheet_prefer:
-                residue_score = -1  # Weak penalty
-            else:
-                residue_score = 0
+            start = nuc
+            end = nuc + 5  # Initial nucleation is 6 residues
             
-            window_scores.append(residue_score)
+            # Extend left while helix-favorable
+            while start > 0:
+                if sequence[start-1] == 'P':
+                    break
+                # Extend if P_alpha >= 1.0
+                if helix_scores[start-1] >= HELIX_INDIF:
+                    start -= 1
+                else:
+                    break
             
-            # Use sliding window of 5 residues
-            if len(window_scores) > 5:
-                window_scores.pop(0)
+            # Extend right while helix-favorable
+            while end < n - 1:
+                if sequence[end+1] == 'P':
+                    break
+                if helix_scores[end+1] >= HELIX_INDIF:
+                    end += 1
+                else:
+                    break
             
-            window_sum = sum(window_scores)
+            # Mark as used
+            for i in range(start, end + 1):
+                used.add(i)
             
-            # More conservative threshold: need strong signal
-            if not in_region and window_sum >= 6 and len(window_scores) >= 5:
-                in_region = True
-                start = i - len(window_scores) + 1
-            elif in_region and window_sum < 2:
-                in_region = False
-                if i - start >= 5:  # Minimum length 5
-                    regions.append((start, i - 1))
-                window_scores = []
+            # Only keep if avg propensity > 1.0
+            avg_prop = sum(helix_scores[start:end+1]) / (end - start + 1)
+            if avg_prop >= HELIX_INDIF and end - start >= 3:
+                regions.append((start, end))
         
-        # Handle region at end
-        if in_region and len(blueprint.sequence) - start >= 5:
-            regions.append((start, len(blueprint.sequence) - 1))
-        
-        return regions
+        return self._merge_regions(regions)
     
     def _detect_sheet_regions(self, sequence: str, blueprint: StructuralBlueprint) -> List[Tuple[int, int]]:
         """
-        Detect potential beta-sheet nucleation sites.
+        Detect sheet regions using classic Chou-Fasman algorithm.
         
-        Sheet-favorable: V, I, Y, F, W, T, C (high sheet propensity)
-        Also look for alternating hydrophobic patterns (i, i+2).
-        
-        More aggressive sheet detection to balance helix bias.
+        Classic rules:
+        1. Nucleation: 3+ residues out of 5 with P_beta >= 1.05 (formers)
+        2. Extension: Continue while running average P_beta >= 1.0
+        3. Termination: P_beta < 1.0 for 4+ consecutive residues
+        4. Alternating hydrophobic pattern is strong sheet indicator
         """
-        sheet_favorable = set('VIYFWTC')
-        sheet_strong = set('VIT')  # Very strong sheet preference
+        n = len(sequence)
         
+        SHEET_FORMER = 1.05   # P_beta threshold for sheet former
+        SHEET_INDIF = 1.0     # Indifferent threshold
+        
+        # Get sheet propensities
+        sheet_scores = []
+        for aa in sequence:
+            props = self.aa_properties.get(aa, {'sheet_prop': 1.0})
+            sheet_scores.append(props.get('sheet_prop', 1.0))
+        
+        # Mark sheet formers (P_beta >= 1.05)
+        is_former = [p >= SHEET_FORMER for p in sheet_scores]
+        
+        # Find nucleation sites: 3+ formers in a window of 5
+        nucleation_sites = []
+        for i in range(n - 4):
+            window = is_former[i:i+5]
+            formers = sum(window)
+            
+            if formers >= 3:
+                nucleation_sites.append(i)
+        
+        # Also detect alternating hydrophobic pattern (strong sheet indicator)
+        # V, I, L, F, Y all have P_beta >= 1.2
+        beta_sheet = set('VILFY')
+        for i in range(n - 4):
+            # i, i+2, i+4 all hydrophobic = strong alternating pattern
+            if (sequence[i] in beta_sheet and 
+                sequence[i+2] in beta_sheet and
+                sequence[i+4] in beta_sheet):
+                if i not in nucleation_sites:
+                    nucleation_sites.append(i)
+        
+        nucleation_sites.sort()
+        
+        # Extend and merge
         regions = []
-        window_scores = []
-        in_region = False
-        start = 0
+        used = set()
         
-        for i, aa in enumerate(sequence):
-            # Score based on sheet propensity
-            if aa in sheet_strong:
-                score = 3
-            elif aa in sheet_favorable:
-                score = 2
-            elif aa == 'P':  # Proline can be in sheets
-                score = 0
-            elif aa == 'G':  # Glycine flexible
-                score = -1
+        for nuc in nucleation_sites:
+            if nuc in used:
+                continue
+            
+            start = nuc
+            end = nuc + 4  # Initial nucleation is 5 residues
+            
+            # Extend left while sheet-favorable
+            while start > 0:
+                if sheet_scores[start-1] >= SHEET_INDIF:
+                    start -= 1
+                else:
+                    break
+            
+            # Extend right while sheet-favorable  
+            while end < n - 1:
+                if sheet_scores[end+1] >= SHEET_INDIF:
+                    end += 1
+                else:
+                    break
+            
+            for i in range(start, end + 1):
+                used.add(i)
+            
+            # Only keep if avg propensity >= 1.0
+            avg_prop = sum(sheet_scores[start:end+1]) / (end - start + 1)
+            if avg_prop >= SHEET_INDIF and end - start >= 2:
+                regions.append((start, end))
+        
+        return self._merge_regions(regions)
+    
+    def _merge_regions(self, regions: List[Tuple[int, int]]) -> List[Tuple[int, int]]:
+        """Merge overlapping or adjacent regions."""
+        if not regions:
+            return []
+        
+        regions = sorted(regions)
+        merged = [regions[0]]
+        
+        for start, end in regions[1:]:
+            last_start, last_end = merged[-1]
+            # Merge if overlapping or adjacent (within 2 residues)
+            if start <= last_end + 2:
+                merged[-1] = (last_start, max(last_end, end))
             else:
-                score = 0
-            
-            # Check for alternating pattern (classic sheet signature)
-            # In sheets, hydrophobics often alternate: i, i+2
-            if i >= 2:
-                prev_aa = sequence[i-2]
-                if aa in sheet_favorable and prev_aa in sheet_favorable:
-                    score += 1  # Bonus for alternating pattern
-            
-            window_scores.append(score)
-            if len(window_scores) > 4:
-                window_scores.pop(0)
-            
-            window_sum = sum(window_scores)
-            
-            # Start sheet region when we see strong sheet signal
-            if not in_region and window_sum >= 6 and len(window_scores) >= 3:
-                in_region = True
-                start = max(0, i - len(window_scores) + 1)
-            elif in_region and window_sum < 2:
-                if i - start >= 3:
-                    regions.append((start, i - 1))
-                in_region = False
-                window_scores = []
+                merged.append((start, end))
         
-        if in_region and len(sequence) - start >= 3:
-            regions.append((start, len(sequence) - 1))
+        return merged
+    
+    def _resolve_conflicts(self, blueprint: StructuralBlueprint):
+        """
+        Resolve conflicts between helix and sheet regions.
         
-        return regions
+        Strategy: Look at the ENTIRE overlap region and compare:
+        - Count of residues with helix_prop > 1.03 (helix formers)
+        - Count of residues with sheet_prop > 1.05 (sheet formers)
+        
+        Whichever has more formers in the overlap wins.
+        """
+        sequence = blueprint.sequence
+        n = len(sequence)
+        
+        if not blueprint.helix_regions and not blueprint.sheet_regions:
+            return
+        
+        # Calculate per-residue propensity scores
+        helix_scores = []
+        sheet_scores = []
+        for aa in sequence:
+            props = self.aa_properties.get(aa, {'helix_prop': 1.0, 'sheet_prop': 1.0})
+            helix_scores.append(props.get('helix_prop', 1.0))
+            sheet_scores.append(props.get('sheet_prop', 1.0))
+        
+        # Mark initial claims with region info
+        helix_regions_set = []  # (start, end, set of indices)
+        for start, end in blueprint.helix_regions:
+            helix_regions_set.append((start, end, set(range(start, end + 1))))
+        
+        sheet_regions_set = []
+        for start, end in blueprint.sheet_regions:
+            sheet_regions_set.append((start, end, set(range(start, end + 1))))
+        
+        # Build final assignments
+        final_assignments = ['C'] * n
+        
+        # For each helix/sheet pair that overlaps, decide who wins the overlap
+        resolved_helix = set()  # residues that helix wins
+        resolved_sheet = set()  # residues that sheet wins
+        
+        # Get global bias (use attribute if set, otherwise neutral)
+        global_bias = getattr(blueprint, 'global_bias', 'neutral')
+        
+        for h_start, h_end, h_indices in helix_regions_set:
+            for s_start, s_end, s_indices in sheet_regions_set:
+                overlap = h_indices & s_indices
+                if not overlap:
+                    continue
+                
+                # Count formers in the overlap region
+                helix_formers = sum(1 for i in overlap if helix_scores[i] >= 1.03)
+                sheet_formers = sum(1 for i in overlap if sheet_scores[i] >= 1.05)
+                
+                # Apply global bias for tie-breaking
+                if helix_formers == sheet_formers:
+                    if global_bias == 'sheet':
+                        resolved_sheet.update(overlap)
+                    else:
+                        resolved_helix.update(overlap)  # helix wins ties by default
+                elif helix_formers > sheet_formers:
+                    resolved_helix.update(overlap)
+                else:
+                    resolved_sheet.update(overlap)
+        
+        # Now assign all residues
+        for i in range(n):
+            # Check if in any helix region
+            in_helix = any(i in h_set for _, _, h_set in helix_regions_set)
+            in_sheet = any(i in s_set for _, _, s_set in sheet_regions_set)
+            
+            if i in resolved_helix:
+                final_assignments[i] = 'H'
+            elif i in resolved_sheet:
+                final_assignments[i] = 'E'
+            elif in_helix and not in_sheet:
+                final_assignments[i] = 'H'
+            elif in_sheet and not in_helix:
+                final_assignments[i] = 'E'
+        
+        # Rebuild regions from assignments
+        new_helix = []
+        new_sheet = []
+        
+        i = 0
+        while i < n:
+            if final_assignments[i] == 'H':
+                start = i
+                while i < n and final_assignments[i] == 'H':
+                    i += 1
+                if i - start >= 4:  # Min helix length
+                    new_helix.append((start, i - 1))
+            elif final_assignments[i] == 'E':
+                start = i
+                while i < n and final_assignments[i] == 'E':
+                    i += 1
+                if i - start >= 3:  # Min sheet length
+                    new_sheet.append((start, i - 1))
+            else:
+                i += 1
+        
+        blueprint.helix_regions = new_helix
+        blueprint.sheet_regions = new_sheet
     
     def _refine_targets(self, blueprint: StructuralBlueprint):
-        """Refine targets based on detected secondary structure regions"""
+        """Refine targets based on detected secondary structure regions."""
         
-        # Strengthen helix targets in helix regions
+        # First resolve conflicts between helix and sheet
+        self._resolve_conflicts(blueprint)
+        
+        # Apply helix targets
         for start, end in blueprint.helix_regions:
             for i in range(start, min(end + 1, len(blueprint.residue_targets))):
                 target = blueprint.residue_targets[i]
@@ -391,7 +630,7 @@ class BlueprintGenerator:
                 target.confidence = min(0.8, target.confidence + 0.2)
                 target.reason = f"helix_region_{start}-{end}"
         
-        # Strengthen sheet targets in sheet regions
+        # Apply sheet targets
         for start, end in blueprint.sheet_regions:
             for i in range(start, min(end + 1, len(blueprint.residue_targets))):
                 target = blueprint.residue_targets[i]
