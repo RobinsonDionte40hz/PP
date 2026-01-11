@@ -101,6 +101,10 @@ class PredictionConfig:
     enable_hierarchical_folding: bool = False
     hierarchical_aggressive: bool = False  # Use aggressive anchoring if True
     
+    # Archive-inspired improvements (from crypto/consciousness research)
+    use_log_energy: bool = True  # Logarithmic energy landscape for scale-invariant stuck detection
+    independent_agents_ratio: float = 0.3  # Fraction of agents ignoring shared memory (30%)
+    
     # Checkpointing
     enable_checkpointing: bool = True
     checkpoint_dir: Optional[str] = None
@@ -696,6 +700,9 @@ class PredictionRunner:
             enable_checkpointing=self.config.enable_checkpointing,
             checkpoint_dir=checkpoint_dir or "./checkpoints",
             enable_hierarchical_folding=self.config.enable_hierarchical_folding,
+            # Archive-inspired features
+            independent_agents_ratio=getattr(self.config, 'independent_agents_ratio', 0.3),
+            use_log_energy=getattr(self.config, 'use_log_energy', True),
         )
         
         # Initialize agents

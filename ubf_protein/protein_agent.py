@@ -76,7 +76,9 @@ class ProteinAgent(IProteinAgent):
                  qcpp_analysis_frequency: int = 5,
                  enable_thz_recording: bool = False,
                  coordinator: Optional[Any] = None,
-                 target_geometry: str = 'none'):
+                 target_geometry: str = 'none',
+                 use_log_energy: bool = True,
+                 use_discrete_states: bool = True):
         """
         Initialize protein agent with consciousness coordinates and protein sequence.
 
@@ -94,10 +96,67 @@ class ProteinAgent(IProteinAgent):
             enable_thz_recording: Enable THz signature recording at local minima (for determinism research, default: False)
             coordinator: Optional coordinator reference for global QCPP registry access (cross-agent sharing)
             target_geometry: Target Platonic solid geometry for active agent guidance (default: 'none')
+            use_log_energy: Use logarithmic energy landscape for scale-invariant stuck detection (default: True)
+            use_discrete_states: Use discrete frequency states [4, 7, 10, 12, 15] Hz (archive insight, default: True)
         """
         # Create adaptive config if not provided
         if adaptive_config is None:
             adaptive_config = self._create_default_adaptive_config(protein_sequence)
+        
+        # Store log energy flag
+        self._use_log_energy = use_log_energy
+        
+        # Store discrete states flag (archive insight: use resonant frequencies)
+        self._use_discrete_states = use_discrete_states
+        self._discrete_state_manager = None
+        if use_discrete_states:
+            try:
+                from .discrete_states import DiscreteStateManager
+                self._discrete_state_manager = DiscreteStateManager(
+                    initial_frequency=initial_frequency,
+                    enable_discrete=True
+                )
+                logger.info(f"Discrete states ENABLED (starting at {self._discrete_state_manager.state_name})")
+            except ImportError:
+                logger.warning("discrete_states module not available - using continuous frequencies")
+                self._use_discrete_states = False
+        
+        # Initialize multi-channel evaluator (archive insight: V-I-R pattern)
+        self._multi_channel_evaluator = None
+        try:
+            from .multi_channel import MultiChannelEvaluator
+            self._multi_channel_evaluator = MultiChannelEvaluator(
+                voltage_weight=0.5,  # Energy quality
+                current_weight=0.3,  # Gradient/direction
+                resistance_weight=0.2  # Stability
+            )
+            logger.info("Multi-channel evaluator ENABLED (V-I-R pattern)")
+        except ImportError:
+            logger.warning("multi_channel module not available")
+        
+        # Initialize channel-action mapper (framework math: frequency -> structure)
+        self._channel_action_mapper = None
+        try:
+            from .channel_action_mapper import ChannelActionMapper
+            self._channel_action_mapper = ChannelActionMapper()
+            logger.info("Channel-action mapper ENABLED (frequency -> structural guidance)")
+        except ImportError:
+            logger.warning("channel_action_mapper module not available")
+        
+        # Initialize persistent channel memory (cumulative structural blueprint)
+        self._persistent_channel_memory = None
+        try:
+            from .persistent_channel_memory import create_persistent_channel_memory
+            self._persistent_channel_memory = create_persistent_channel_memory(protein_sequence)
+            stats = self._persistent_channel_memory.get_stats()
+            logger.info(
+                f"Persistent channel memory ENABLED "
+                f"({stats['helix_regions']} helix regions, {stats['sheet_regions']} sheet regions)"
+            )
+        except ImportError:
+            logger.warning("persistent_channel_memory module not available")
+        except Exception as e:
+            logger.warning(f"Failed to initialize persistent channel memory: {e}")
         
         # Store QCPP integration reference and analysis frequency
         self._qcpp_integration = qcpp_integration
@@ -140,8 +199,11 @@ class ProteinAgent(IProteinAgent):
         # Initialize memory system
         self._memory = MemorySystem()
 
-        # Initialize local minima detector
-        self._local_minima_detector = LocalMinimaDetector(adaptive_config)
+        # Initialize local minima detector with archive-inspired log energy option
+        self._local_minima_detector = LocalMinimaDetector(
+            adaptive_config, 
+            use_log_energy=self._use_log_energy
+        )
 
         # Initialize structural validator
         self._validator = StructuralValidation()
@@ -457,6 +519,22 @@ class ProteinAgent(IProteinAgent):
                         new_conformation = self._current_conformation
                         energy_change = 0.0
                         rmsd_change = 0.0
+                    
+                    # Update persistent channel memory with outcome feedback
+                    # This is how the blueprint LEARNS which targets are correct
+                    if self._persistent_channel_memory is not None and best_move is not None:
+                        try:
+                            energy_improved = energy_change < 0
+                            for res_idx in best_move.target_residues:
+                                if res_idx < len(new_conformation.phi_angles):
+                                    self._persistent_channel_memory.update_from_outcome(
+                                        residue_idx=res_idx,
+                                        new_phi=new_conformation.phi_angles[res_idx],
+                                        new_psi=new_conformation.psi_angles[res_idx],
+                                        energy_improved=energy_improved
+                                    )
+                        except Exception as e:
+                            logger.debug(f"Error updating persistent memory: {e}")
 
                     # Calculate significance (simplified)
                     significance = self._calculate_outcome_significance(energy_change, rmsd_change, success)
@@ -582,8 +660,18 @@ class ProteinAgent(IProteinAgent):
                 current_coords.frequency, current_coords.coherence
             )
 
-            # Apply escape adjustment to consciousness coordinates
-            new_frequency = max(3.0, min(15.0, current_coords.frequency + escape_strategy['frequency_adjustment']))
+            # Archive insight: Use discrete state jumps if enabled
+            if self._use_discrete_states and self._discrete_state_manager is not None:
+                # Record stuck and get suggested escape state
+                self._discrete_state_manager.record_stuck()
+                new_frequency = self._discrete_state_manager.suggest_escape_state()
+                self._discrete_state_manager.update_frequency(new_frequency, reason="escape")
+                logger.debug(f"Discrete state jump: {current_coords.frequency:.1f} -> {new_frequency:.1f} Hz ({self._discrete_state_manager.state_name})")
+            else:
+                # Continuous escape adjustment
+                new_frequency = max(3.0, min(15.0, current_coords.frequency + escape_strategy['frequency_adjustment']))
+            
+            # Coherence is always adjusted continuously (Q-factor modulation)
             new_coherence = max(0.2, min(1.0, current_coords.coherence + escape_strategy['coherence_adjustment']))
 
             # Directly update coordinates (since ConsciousnessState doesn't have set_coordinates)
@@ -664,6 +752,33 @@ class ProteinAgent(IProteinAgent):
 
         # Update best metrics (only if conformation is valid - no severe clashes)
         conformation_valid = not self._has_severe_clashes(list(outcome.new_conformation.atom_coordinates))
+        
+        # Multi-channel evaluation (archive insight: V-I-R pattern)
+        if self._multi_channel_evaluator is not None:
+            try:
+                # Calculate energy variance from recent history
+                energy_var = 0.0
+                if len(self._local_minima_detector.energy_history) >= 3:
+                    import statistics
+                    energy_var = statistics.variance(self._local_minima_detector.energy_history[-10:])
+                
+                # Get structural quality (simplified - use clash check)
+                struct_quality = 1.0 if conformation_valid else 0.3
+                
+                channel_score = self._multi_channel_evaluator.evaluate(
+                    energy=outcome.new_conformation.energy,
+                    energy_variance=energy_var,
+                    structural_quality=struct_quality
+                )
+                
+                # Use channel guidance for discrete state management
+                if self._discrete_state_manager is not None and channel_score.combined_score < 0.3:
+                    # Good combined score - record progress
+                    self._discrete_state_manager.record_progress(
+                        -outcome.energy_change if outcome.energy_change else 0.0
+                    )
+            except Exception as e:
+                logger.debug(f"Multi-channel evaluation error: {e}")
         
         if outcome.new_conformation.energy < self._best_energy and conformation_valid:
             self._best_energy = outcome.new_conformation.energy
@@ -1034,43 +1149,118 @@ class ProteinAgent(IProteinAgent):
             logger.debug(f"Move {move.move_id} rejected due to steric clashes")
             return self._current_conformation  # Return unchanged conformation
 
-        # Update phi/psi angles for target residues (moderate changes)
-        # Apply soft bias toward favorable Ramachandran regions
+        # Update phi/psi angles for target residues
+        # Use channel-action mapper if available (framework math: frequency -> structure)
         new_phi = list(self._current_conformation.phi_angles)
         new_psi = list(self._current_conformation.psi_angles)
         
-        # Target regions (alpha-helix and beta-sheet centers)
-        helix_phi, helix_psi = -60.0, -45.0
-        sheet_phi, sheet_psi = -135.0, 135.0
+        # Try PERSISTENT channel-guided angle selection (cumulative structural blueprint)
+        channel_guided = False
+        if self._persistent_channel_memory is not None:
+            try:
+                # Get current consciousness state for coherence
+                current_coords = self._consciousness.get_coordinates()
+                coherence = current_coords.coherence
+                
+                # Apply persistent blueprint bias to target residues
+                for i in move.target_residues:
+                    if i < len(new_phi):
+                        # Get persistent bias toward target structure
+                        phi_bias, psi_bias, confidence = self._persistent_channel_memory.get_move_bias(
+                            residue_idx=i,
+                            current_phi=new_phi[i],
+                            current_psi=new_psi[i],
+                            coherence=coherence
+                        )
+                        
+                        # Apply bias with some random exploration
+                        # Bias is CUMULATIVE - each iteration moves closer to target
+                        random_phi = random.uniform(-10, 10)  # Reduced from 15 to let bias dominate
+                        random_psi = random.uniform(-10, 10)
+                        
+                        new_phi[i] += random_phi + phi_bias
+                        new_psi[i] += random_psi + psi_bias
+                
+                channel_guided = True
+                logger.debug(
+                    f"Persistent blueprint guidance applied to {len(move.target_residues)} residues "
+                    f"(coherence: {coherence:.2f})"
+                )
+            except Exception as e:
+                logger.debug(f"Persistent channel guidance failed, trying single-step: {e}")
         
-        for i in move.target_residues:
-            if i < len(new_phi):
-                # Random angle change with soft bias toward favorable regions
-                delta_phi = random.uniform(-15, 15)
-                delta_psi = random.uniform(-15, 15)
+        # Fallback to single-step channel-action mapper if available
+        if not channel_guided and self._channel_action_mapper is not None:
+            try:
+                # Get current consciousness state for coherence
+                current_coords = self._consciousness.get_coordinates()
+                coherence = current_coords.coherence
                 
-                # Add gentle bias toward helix region (stronger bias = 0.3, weaker = 0.1)
-                # This helps keep angles in detectable secondary structure ranges
-                bias_strength = 0.15
-                helix_pull_phi = (helix_phi - new_phi[i]) * bias_strength
-                helix_pull_psi = (helix_psi - new_psi[i]) * bias_strength
+                # Calculate neighbor counts for channel analysis
+                neighbor_counts = self._calculate_neighbor_counts(new_coords)
                 
-                # Clamp the pull to not overwhelm random exploration
-                helix_pull_phi = max(-5, min(5, helix_pull_phi))
-                helix_pull_psi = max(-5, min(5, helix_pull_psi))
+                # Get channel-guided move
+                from .channel_action_mapper import create_channel_guided_move
+                channel_move = create_channel_guided_move(
+                    mapper=self._channel_action_mapper,
+                    sequence=self._protein_sequence,
+                    secondary_structure=self._current_conformation.secondary_structure,
+                    neighbor_counts=neighbor_counts,
+                    phi_angles=new_phi,
+                    psi_angles=new_psi,
+                    coherence=coherence,
+                    energy_gradient=None
+                )
                 
-                new_phi[i] += delta_phi + helix_pull_phi
-                new_psi[i] += delta_psi + helix_pull_psi
-                
-                # Wrap angles to stay in valid range [-180, 180]
-                while new_phi[i] > 180:
-                    new_phi[i] -= 360
-                while new_phi[i] < -180:
-                    new_phi[i] += 360
-                while new_psi[i] > 180:
-                    new_psi[i] -= 360
-                while new_psi[i] < -180:
-                    new_psi[i] += 360
+                # Apply channel-guided angles if confident
+                if channel_move['confidence'] > 0.25 and channel_move['new_angles']:
+                    for res_idx, angles in channel_move['new_angles'].items():
+                        if res_idx < len(new_phi):
+                            new_phi[res_idx] = angles['phi']
+                            new_psi[res_idx] = angles['psi']
+                    channel_guided = True
+                    logger.debug(
+                        f"Single-step channel-guided move: {channel_move['move_type']} "
+                        f"(confidence: {channel_move['confidence']:.2f})"
+                    )
+            except Exception as e:
+                logger.debug(f"Single-step channel guidance failed, using fallback: {e}")
+        
+        # Fallback: Apply soft bias toward favorable Ramachandran regions
+        if not channel_guided:
+            # Target regions (alpha-helix and beta-sheet centers)
+            helix_phi, helix_psi = -60.0, -45.0
+            sheet_phi, sheet_psi = -135.0, 135.0
+            
+            for i in move.target_residues:
+                if i < len(new_phi):
+                    # Random angle change with soft bias toward favorable regions
+                    delta_phi = random.uniform(-15, 15)
+                    delta_psi = random.uniform(-15, 15)
+                    
+                    # Add gentle bias toward helix region (stronger bias = 0.3, weaker = 0.1)
+                    # This helps keep angles in detectable secondary structure ranges
+                    bias_strength = 0.15
+                    helix_pull_phi = (helix_phi - new_phi[i]) * bias_strength
+                    helix_pull_psi = (helix_psi - new_psi[i]) * bias_strength
+                    
+                    # Clamp the pull to not overwhelm random exploration
+                    helix_pull_phi = max(-5, min(5, helix_pull_phi))
+                    helix_pull_psi = max(-5, min(5, helix_pull_psi))
+                    
+                    new_phi[i] += delta_phi + helix_pull_phi
+                    new_psi[i] += delta_psi + helix_pull_psi
+        
+        # Wrap angles to stay in valid range [-180, 180] for all residues
+        for i in range(len(new_phi)):
+            while new_phi[i] > 180:
+                new_phi[i] -= 360
+            while new_phi[i] < -180:
+                new_phi[i] += 360
+            while new_psi[i] > 180:
+                new_psi[i] -= 360
+            while new_psi[i] < -180:
+                new_psi[i] += 360
 
         # Create new conformation with preliminary energy
         new_conformation = Conformation(
@@ -1188,6 +1378,41 @@ class ProteinAgent(IProteinAgent):
                 new_conformation.tm_score = None
 
         return new_conformation
+
+    def _calculate_neighbor_counts(self, coords: List[Tuple[float, float, float]], 
+                                   cutoff: float = 8.0) -> List[int]:
+        """
+        Calculate number of neighboring residues for each position.
+        
+        Used by channel-action mapper to determine structural environment (l parameter).
+        
+        Args:
+            coords: CA coordinates
+            cutoff: Distance cutoff for neighbor counting (default 8.0 Å)
+        
+        Returns:
+            List of neighbor counts per residue
+        """
+        n = len(coords)
+        neighbor_counts = [0] * n
+        cutoff_sq = cutoff * cutoff
+        
+        for i in range(n):
+            xi, yi, zi = coords[i]
+            count = 0
+            for j in range(n):
+                if i == j:
+                    continue
+                xj, yj, zj = coords[j]
+                dx = xj - xi
+                dy = yj - yi
+                dz = zj - zi
+                dist_sq = dx*dx + dy*dy + dz*dz
+                if dist_sq < cutoff_sq:
+                    count += 1
+            neighbor_counts[i] = count
+        
+        return neighbor_counts
 
     def _check_steric_clashes(self, coords: List[Tuple[float, float, float]], 
                              min_distance: float = 2.0) -> bool:
@@ -2158,6 +2383,18 @@ class ProteinAgent(IProteinAgent):
         # Add THz signature count if available
         if hasattr(self, '_thz_signature_history'):
             metrics["thz_signatures_recorded"] = len(self._thz_signature_history)
+        
+        # Add persistent channel memory stats if available
+        if self._persistent_channel_memory is not None:
+            try:
+                pcm_stats = self._persistent_channel_memory.get_stats()
+                metrics["blueprint_helix_regions"] = pcm_stats['helix_regions']
+                metrics["blueprint_sheet_regions"] = pcm_stats['sheet_regions']
+                metrics["blueprint_best_alignment"] = pcm_stats['best_alignment']
+                metrics["blueprint_guidance_count"] = pcm_stats['guidance_applications']
+                metrics["blueprint_successes"] = pcm_stats['successful_alignments']
+            except Exception:
+                pass
             
         return metrics
     

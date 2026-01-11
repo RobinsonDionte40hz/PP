@@ -3,11 +3,15 @@ Local minima detection and escape system for UBF protein system.
 
 This module implements adaptive local minima detection using moving averages
 and multiple escape strategies to help agents escape stuck states.
+
+Archive insight: Logarithmic energy landscape is scale-invariant (like impedance matching).
+Linear energy fails across scales, log energy works at all scales.
 """
 
+import math
+import statistics
 from typing import List, Optional, Dict, Any
 from enum import Enum
-import statistics
 
 from .models import AdaptiveConfig
 
@@ -28,14 +32,16 @@ class LocalMinimaDetector:
     providing appropriate escape strategies based on the situation.
     """
 
-    def __init__(self, adaptive_config: AdaptiveConfig):
+    def __init__(self, adaptive_config: AdaptiveConfig, use_log_energy: bool = True):
         """
         Initialize local minima detector with adaptive configuration.
 
         Args:
             adaptive_config: Configuration with size-appropriate parameters
+            use_log_energy: Use logarithmic energy transformation for scale-invariant detection
         """
         self.adaptive_config = adaptive_config
+        self._use_log_energy = use_log_energy
 
         # Energy history tracking
         self.energy_history: List[float] = []
@@ -77,9 +83,20 @@ class LocalMinimaDetector:
         if len(self.energy_history) < self.window_size:
             return False
 
-        # Calculate energy variation (standard deviation of recent energies)
+        # Calculate energy variation
+        # Archive insight: Logarithmic energy is scale-invariant (like impedance matching)
+        # Linear energy fails across scales, log energy works at all scales
         try:
-            energy_variation = statistics.stdev(self.energy_history)
+            if self._use_log_energy:
+                # Transform to log scale for scale-invariant detection
+                # Use absolute values and add small offset to handle negative energies
+                min_energy = min(self.energy_history)
+                offset = abs(min_energy) + 1.0 if min_energy <= 0 else 0.0
+                log_energies = [math.log(e + offset + 1.0) for e in self.energy_history]
+                energy_variation = statistics.stdev(log_energies)
+            else:
+                # Traditional linear energy variance
+                energy_variation = statistics.stdev(self.energy_history)
         except statistics.StatisticsError:
             # All energies are the same
             energy_variation = 0.0
@@ -121,11 +138,13 @@ class LocalMinimaDetector:
             strategy = EscapeStrategy.LARGE_JUMP_BIAS
 
         # Generate strategy parameters
+        # Archive insight: Stronger Q-factor (coherence) reduction helps escape
+        # From TEMPERATURE_DEPENDENCE_THEORY.md: Q-factor controls resonance width
         if strategy == EscapeStrategy.FREQUENCY_BOOST:
             return {
                 'strategy': strategy.value,
                 'frequency_adjustment': 1.0,  # Boost exploration energy
-                'coherence_adjustment': 0.0,
+                'coherence_adjustment': -0.1,  # Also reduce Q-factor slightly
                 'behavioral_hints': {
                     'risk_tolerance_boost': 0.2,
                     'exploration_energy_boost': 0.3
@@ -135,32 +154,32 @@ class LocalMinimaDetector:
             return {
                 'strategy': strategy.value,
                 'frequency_adjustment': 0.5,
-                'coherence_adjustment': -0.1,  # Reduce structural focus
+                'coherence_adjustment': -0.2,  # Stronger Q-factor reduction (was -0.1)
                 'behavioral_hints': {
-                    'structural_focus_reduction': 0.2,
-                    'hydrophobic_drive_boost': 0.1
+                    'structural_focus_reduction': 0.3,  # Increased
+                    'hydrophobic_drive_boost': 0.15   # Increased
                 }
             }
         elif strategy == EscapeStrategy.LARGE_JUMP_BIAS:
             return {
                 'strategy': strategy.value,
                 'frequency_adjustment': 0.8,
-                'coherence_adjustment': -0.05,
+                'coherence_adjustment': -0.1,  # Increased (was -0.05)
                 'behavioral_hints': {
-                    'large_jump_preference': 0.5,
-                    'risk_tolerance_boost': 0.3
+                    'large_jump_preference': 0.6,  # Increased
+                    'risk_tolerance_boost': 0.4    # Increased
                 }
             }
-        else:  # COMBINED_ADJUSTMENT
+        else:  # COMBINED_ADJUSTMENT - very stuck, aggressive escape
             return {
                 'strategy': strategy.value,
                 'frequency_adjustment': 1.5,  # Major boost
-                'coherence_adjustment': -0.15,  # Major reduction
+                'coherence_adjustment': -0.3,  # Major Q-factor reduction (was -0.15)
                 'behavioral_hints': {
-                    'risk_tolerance_boost': 0.4,
-                    'exploration_energy_boost': 0.4,
-                    'structural_focus_reduction': 0.3,
-                    'large_jump_preference': 0.7
+                    'risk_tolerance_boost': 0.5,        # Increased
+                    'exploration_energy_boost': 0.5,    # Increased
+                    'structural_focus_reduction': 0.4,  # Increased
+                    'large_jump_preference': 0.8        # Increased
                 }
             }
 

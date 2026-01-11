@@ -134,6 +134,12 @@ class PredictionConfig:
     temperature: float = 1.0
     exploration_weight: float = 0.3
     
+    # Archive-inspired improvements (from crypto/consciousness research)
+    # These features were discovered through the impedance matching and multi-scale
+    # exploration insights documented in docs/archive/
+    use_log_energy: bool = True  # Logarithmic energy landscape (scale-invariant stuck detection)
+    independent_agents_ratio: float = 0.3  # Fraction of agents ignoring shared memory (30%)
+    
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for serialization."""
         return asdict(self)

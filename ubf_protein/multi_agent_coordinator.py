@@ -67,7 +67,9 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
                  refinement_rmsd_threshold: float = 5.0,
                  refinement_config: Optional[Any] = None,
                  enable_hierarchical_folding: bool = False,
-                 hierarchical_config: Optional[Any] = None):
+                 hierarchical_config: Optional[Any] = None,
+                 independent_agents_ratio: float = 0.3,
+                 use_log_energy: bool = True):
         """
         Initialize multi-agent coordinator with protein sequence.
 
@@ -89,10 +91,16 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
             refinement_config: Optional RefinementConfig instance for customization (uses default if None)
             enable_hierarchical_folding: Whether to enable hierarchical folding with anchoring (default: False)
             hierarchical_config: Optional HierarchicalFoldingConfig instance (uses default if None)
+            independent_agents_ratio: Fraction of agents ignoring shared memory (default: 0.3 = 30%)
+            use_log_energy: Use logarithmic energy landscape for scale-invariant stuck detection (default: True)
         """
         self._protein_sequence = protein_sequence
         self._agents: List[IProteinAgent] = []
         self._shared_memory_pool: ISharedMemoryPool = SharedMemoryPool()
+        
+        # Archive-inspired parameters
+        self._independent_agents_ratio = independent_agents_ratio
+        self._use_log_energy = use_log_energy
         
         # Mediator Agent configuration (Task 10.1)
         self._enable_mediators = enable_mediators
@@ -228,6 +236,10 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
             agent_configs = [(diversity_profile, count)]
 
         self._agents = []
+        agent_index = 0
+        total_count = sum(pc for _, pc in agent_configs)
+        num_independent = int(total_count * self._independent_agents_ratio)
+        
         for profile_name, profile_count in agent_configs:
             if profile_name not in AGENT_DIVERSITY_PROFILES:
                 raise ValueError(f"Unknown diversity profile: {profile_name}")
@@ -245,6 +257,10 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
                     profile['coherence_range'][1]
                 )
 
+                # Archive insight: Some agents should be independent explorers
+                # They ignore shared memory to find new regions (crypto attack lesson)
+                is_independent = agent_index < num_independent
+
                 # Create agent with adaptive configuration
                 # Task 7: Pass QCPP integration to agents during initialization
                 # Task 8: Pass coordinator reference for global QCPP registry
@@ -260,11 +276,19 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
                     qcpp_analysis_frequency=self._qcpp_analysis_frequency,
                     enable_thz_recording=self._enable_thz_recording,  # Pass THz recording flag
                     coordinator=self,  # Pass coordinator for global QCPP registry access
-                    target_geometry=self._target_geometry  # NEW: Pass geometric target
+                    target_geometry=self._target_geometry,  # NEW: Pass geometric target
+                    use_log_energy=self._use_log_energy,  # Archive: logarithmic energy
                 )
+                
+                # Mark agent as independent if selected (ignores shared memory)
+                agent._use_shared_memory = not is_independent
+                if is_independent:
+                    logger.info(f"Agent {agent_index} configured as INDEPENDENT explorer")
 
                 self._agents.append(agent)
+                agent_index += 1
 
+        logger.info(f"Initialized {len(self._agents)} agents ({num_independent} independent, {len(self._agents) - num_independent} collaborative)")
         return self._agents
     
     def initialize_hierarchical_folding(self) -> 'Any':

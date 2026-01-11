@@ -112,6 +112,9 @@ class PredictionRunner(IPredictionRunner):
                 qcpp_config=self._config.qcpp_config,
                 output_dir=self._config.output_dir,
                 checkpoint_interval=self._config.checkpoint_interval,
+                # Archive-inspired features (pass through to internal runner)
+                use_log_energy=getattr(self._config, 'use_log_energy', True),
+                independent_agents_ratio=getattr(self._config, 'independent_agents_ratio', 0.3),
             )
             
             # Create internal runner

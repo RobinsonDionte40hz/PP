@@ -231,7 +231,8 @@ def run_protein_test(sequence: str, pdb_file: Optional[Path] = None, pdb_id: Opt
                      custom_agents: Optional[int] = None, custom_iterations: Optional[int] = None,
                      target_geometry: str = 'none', enable_mediators: bool = False, 
                      mediator_count: int = 2, enable_refinement: bool = False,
-                     enable_hierarchical: bool = False, save_to_benchmark: bool = False) -> dict:
+                     enable_hierarchical: bool = False, save_to_benchmark: bool = False,
+                     use_log_energy: bool = True, independent_agents_ratio: float = 0.3) -> dict:
     """
     Run complete protein test using unified PredictionRunner.
     
@@ -240,6 +241,8 @@ def run_protein_test(sequence: str, pdb_file: Optional[Path] = None, pdb_id: Opt
     
     Args:
         save_to_benchmark: If True, save results to benchmark_results/50_protein_benchmark.json
+        use_log_energy: Use logarithmic energy landscape for scale-invariant stuck detection
+        independent_agents_ratio: Fraction of agents that explore independently (crypto attack insight)
     """
     
     print("\n" + "="*70)
@@ -276,6 +279,9 @@ def run_protein_test(sequence: str, pdb_file: Optional[Path] = None, pdb_id: Opt
         print(f"  - ⚛️ Quantum Refinement: ENABLED")
     if enable_hierarchical:
         print(f"  - 🔗 Hierarchical Folding: ENABLED")
+    # Archive-inspired features
+    print(f"  - 📐 Log Energy Landscape: {'ENABLED' if use_log_energy else 'DISABLED'}")
+    print(f"  - 🔓 Independent Agents: {independent_agents_ratio*100:.0f}% ({int(num_agents * independent_agents_ratio)} agents)")
     
     # Load experimental data if available
     exp_data = None
@@ -296,7 +302,10 @@ def run_protein_test(sequence: str, pdb_file: Optional[Path] = None, pdb_id: Opt
         qcpp_config="default",
         enable_refinement=enable_refinement,
         enable_mediators=enable_mediators,
-        enable_geometric_attractors=(target_geometry != 'none')
+        enable_geometric_attractors=(target_geometry != 'none'),
+        # Archive-inspired features
+        use_log_energy=use_log_energy,
+        independent_agents_ratio=independent_agents_ratio,
     )
     
     print(f"\n🚀 Starting prediction (PredictionRunner)...")
@@ -326,42 +335,49 @@ def print_results_summary(results: PredictionResults, exp_data: Optional[dict], 
     
     # Structural exploration
     print(f"\n🔬 STRUCTURAL EXPLORATION:")
-    print(f"  - Best Energy: {results.best_energy:.2f} kcal/mol")
     
-    if results.best_rmsd is not None and results.best_rmsd != float('inf'):
-        quality = results.validation_quality or "N/A"
-        print(f"  - RMSD: {results.best_rmsd:.2f} Å ({quality.upper()})")
+    # Get energy from metrics
+    energy = getattr(results.metrics, 'energy_total', None)
+    if energy is not None:
+        print(f"  - Best Energy: {energy:.2f} kcal/mol")
+    else:
+        print(f"  - Best Energy: N/A")
+    
+    # Get RMSD from metrics
+    rmsd = getattr(results.metrics, 'rmsd', None)
+    if rmsd is not None and rmsd != float('inf'):
+        quality = "good" if rmsd < 5.0 else "moderate" if rmsd < 10.0 else "fair"
+        print(f"  - RMSD: {rmsd:.2f} Å ({quality.upper()})")
     else:
         print(f"  - RMSD: Not available (no native structure)")
     
-    if results.gdt_ts_score is not None:
-        print(f"  - GDT-TS: {results.gdt_ts_score:.1f}")
-    if results.tm_score is not None:
-        print(f"  - TM-score: {results.tm_score:.3f}")
+    gdt_ts = getattr(results.metrics, 'gdt_ts', None)
+    if gdt_ts is not None:
+        print(f"  - GDT-TS: {gdt_ts:.1f}")
     
-    print(f"  - Conformations: {results.conformations_explored:,}")
-    print(f"  - Time: {results.exploration_time_seconds:.1f}s")
-    print(f"  - Throughput: {results.throughput_conf_per_sec:.1f} conf/s")
+    tm_score = getattr(results.metrics, 'tm_score', None)
+    if tm_score is not None:
+        print(f"  - TM-score: {tm_score:.3f}")
     
-    # QCPP Integration
-    print(f"\n📊 QCPP INTEGRATION:")
-    print(f"  - Total Analyses: {results.qcpp_total_analyses:,}")
-    print(f"  - Cache Hit Rate: {results.qcpp_cache_hit_rate:.1f}%")
-    print(f"  - Avg Analysis Time: {results.qcpp_avg_time_ms:.2f}ms")
+    # Get exploration stats from metadata
+    conf_explored = results.metadata.get('conformations_explored', len(results.trajectory))
+    print(f"  - Conformations: {conf_explored:,}")
+    print(f"  - Time: {results.runtime_seconds:.1f}s")
     
-    # Quantum refinement
-    if results.refinement_applied:
-        print(f"\n⚛️ QUANTUM REFINEMENT:")
-        print(f"  - Initial RMSD: {results.refinement_initial_rmsd:.2f} Å")
-        print(f"  - Final RMSD: {results.refinement_final_rmsd:.2f} Å")
-        improvement = results.refinement_improvement_percent or 0
-        print(f"  - RMSD Improvement: {improvement:.1f}%")
-        if results.refinement_time_seconds:
-            print(f"  - Refinement Time: {results.refinement_time_seconds:.1f}s")
+    throughput = conf_explored / max(results.runtime_seconds, 0.1)
+    print(f"  - Throughput: {throughput:.1f} conf/s")
     
-    # Geometric analysis
-    if results.geometric_analysis:
-        geo = results.geometric_analysis
+    # QCPP Integration (from metadata if available)
+    qcpp_stats = results.metadata.get('qcpp_stats', {})
+    if qcpp_stats:
+        print(f"\n📊 QCPP INTEGRATION:")
+        print(f"  - Total Analyses: {qcpp_stats.get('total_analyses', 0):,}")
+        print(f"  - Cache Hit Rate: {qcpp_stats.get('cache_hit_rate', 0):.1f}%")
+        print(f"  - Avg Analysis Time: {qcpp_stats.get('avg_time_ms', 0):.2f}ms")
+    
+    # Geometric analysis (from metadata if available)
+    geo = results.metadata.get('geometric_analysis', {})
+    if geo:
         print(f"\n🔬 GEOMETRIC ATTRACTOR ANALYSIS:")
         
         if 'golden_ratio_percentage' in geo:
@@ -387,47 +403,44 @@ def print_results_summary(results: PredictionResults, exp_data: Optional[dict], 
         elif phi_pct > 10:
             print(f"  ⚡ HYPOTHESIS SUPPORT: Moderate geometric patterns present")
     
-    # Mediator statistics
-    if results.mediator_stats:
-        ms = results.mediator_stats
+    # Mediator statistics (from metadata if available)
+    mediator_stats = results.metadata.get('mediator_stats', {})
+    if mediator_stats:
         print(f"\n🔍 MEDIATOR AGENT ANALYSIS:")
-        print(f"  - Active Mediators: {ms.get('mediator_count', 0)}")
-        print(f"  - Total Patterns Detected: {ms.get('total_detections', 0)}")
+        print(f"  - Active Mediators: {mediator_stats.get('mediator_count', 0)}")
+        print(f"  - Total Patterns Detected: {mediator_stats.get('total_detections', 0)}")
     
-    # Hierarchical folding statistics
-    if results.hierarchical_folding_stats:
-        hf = results.hierarchical_folding_stats
+    # Hierarchical folding statistics (from metadata if available)
+    hf_stats = results.metadata.get('hierarchical_folding_stats', {})
+    if hf_stats:
         print(f"\n🔗 HIERARCHICAL FOLDING:")
-        if 'anchoring' in hf:
-            anchor_pct = hf['anchoring'].get('anchoring_percentage', 0)
+        if 'anchoring' in hf_stats:
+            anchor_pct = hf_stats['anchoring'].get('anchoring_percentage', 0)
             print(f"  - Anchoring: {anchor_pct:.1f}%")
     
     print(f"\n" + "="*70)
     
-    # Overall assessment
-    if results.best_rmsd is not None and results.best_rmsd != float('inf'):
-        if results.best_rmsd < 4.0:
+    # Overall assessment using metrics
+    rmsd = getattr(results.metrics, 'rmsd', None)
+    energy = getattr(results.metrics, 'energy_total', None)
+    
+    if rmsd is not None and rmsd != float('inf'):
+        if rmsd < 4.0:
             print("✅ TEST SUCCESSFUL!")
             print("   Structure prediction shows promising results")
-        elif results.best_rmsd < 8.0:
+        elif rmsd < 8.0:
             print("⚠️  Results show moderate accuracy")
             print("   Consider: longer iterations, quantum refinement")
         else:
             print("⚠️  Results show room for improvement")
             print("   Consider: longer iterations, more agents, quantum refinement")
     else:
-        if results.best_energy < 0:
+        if energy is not None and energy < 0:
             print("✅ Energy minimization successful (no native structure for RMSD)")
         else:
             print("⚠️  Exploration may need more iterations")
     
     print("="*70)
-    
-    # Save to benchmark file if requested
-    if save_to_benchmark and pdb_id:
-        save_to_benchmark_file(pdb_id, results, config)
-    
-    return None  # No return value needed
 
 
 def save_to_benchmark_file(pdb_id: str, results: PredictionResults, config: PredictionConfig):
@@ -490,14 +503,21 @@ def save_results(results: PredictionResults, pdb_id: Optional[str],
     results_dir = Path("results/test_results")
     results_dir.mkdir(parents=True, exist_ok=True)
     
+    # Get metrics
+    rmsd = getattr(results.metrics, 'rmsd', None)
+    energy = getattr(results.metrics, 'energy_total', None)
+    gdt_ts = getattr(results.metrics, 'gdt_ts', None)
+    tm_score = getattr(results.metrics, 'tm_score', None)
+    seq_len = len(results.sequence)
+    
     # Determine RMSD quality
     rmsd_quality = "N/A"
-    if results.best_rmsd is not None and results.best_rmsd != float('inf'):
-        if results.best_rmsd < 2.0:
+    if rmsd is not None and rmsd != float('inf'):
+        if rmsd < 2.0:
             rmsd_quality = "EXCELLENT"
-        elif results.best_rmsd < 4.0:
+        elif rmsd < 4.0:
             rmsd_quality = "GOOD"
-        elif results.best_rmsd < 6.0:
+        elif rmsd < 6.0:
             rmsd_quality = "FAIR"
         else:
             rmsd_quality = "NEEDS IMPROVEMENT"
@@ -506,51 +526,41 @@ def save_results(results: PredictionResults, pdb_id: Optional[str],
     output = {
         'protein_info': {
             'pdb_id': pdb_id,
-            'sequence_length': results.sequence_length,
-            'category': "Small" if results.sequence_length < 50 else "Medium" if results.sequence_length < 150 else "Large"
+            'sequence_length': seq_len,
+            'category': "Small" if seq_len < 50 else "Medium" if seq_len < 150 else "Large"
         },
         'test_config': {
             'num_agents': config.agents,
             'iterations_per_agent': config.iterations,
             'total_conformations': (config.agents or 0) * (config.iterations or 0),
-            'mediators_enabled': config.enable_mediators,
-            'mediator_count': config.mediator_count if config.enable_mediators else 0,
-            'quantum_refinement_enabled': config.enable_refinement,
-            'hierarchical_folding_enabled': config.enable_hierarchical_folding,
-            'target_geometry': config.target_geometry,
-            'using_prediction_runner': True  # Mark as using unified code path
+            'mediators_enabled': getattr(config, 'enable_mediators', False),
+            'mediator_count': getattr(config, 'mediator_count', 0),
+            'quantum_refinement_enabled': getattr(config, 'enable_refinement', False),
+            'hierarchical_folding_enabled': getattr(config, 'enable_hierarchical_folding', False),
+            'target_geometry': getattr(config, 'target_geometry', 'none'),
+            'using_prediction_runner': True,  # Mark as using unified code path
+            # Archive features
+            'use_log_energy': getattr(config, 'use_log_energy', True),
+            'independent_agents_ratio': getattr(config, 'independent_agents_ratio', 0.3),
         },
         'exploration_results': {
-            'best_energy': results.best_energy,
-            'estimated_rmsd': results.best_rmsd,
+            'best_energy': energy,
+            'estimated_rmsd': rmsd,
             'rmsd_quality': rmsd_quality,
-            'exploration_time_s': results.exploration_time_seconds,
-            'throughput_conf_per_s': results.throughput_conf_per_sec
+            'exploration_time_s': results.runtime_seconds,
+            'throughput_conf_per_s': len(results.trajectory) / max(results.runtime_seconds, 0.1) if results.trajectory else 0
         },
         'rmsd_validation': {
-            'rmsd': results.best_rmsd,
-            'gdt_ts': results.gdt_ts_score,
-            'tm_score': results.tm_score,
-            'n_atoms': results.sequence_length,
-            'aligned': True if results.best_rmsd else False,
-            'calculation_method': results.rmsd_calculation_method
-        } if results.best_rmsd else None,
-        'quantum_refinement': {
-            'initial_rmsd': results.refinement_initial_rmsd,
-            'final_rmsd': results.refinement_final_rmsd,
-            'rmsd_improvement': (results.refinement_initial_rmsd - results.refinement_final_rmsd) 
-                               if results.refinement_initial_rmsd and results.refinement_final_rmsd else None,
-            'improvement_percent': results.refinement_improvement_percent,
-            'refinement_time_seconds': results.refinement_time_seconds
-        } if results.refinement_applied else None,
-        'qcpp_integration': {
-            'total_analyses': results.qcpp_total_analyses,
-            'cache_hit_rate': results.qcpp_cache_hit_rate,
-            'avg_calculation_time_ms': results.qcpp_avg_time_ms
-        },
-        'geometric_attractor_analysis': results.geometric_analysis,
-        'mediator_statistics': results.mediator_stats,
-        'hierarchical_folding_statistics': results.hierarchical_folding_stats,
+            'rmsd': rmsd,
+            'gdt_ts': gdt_ts,
+            'tm_score': tm_score,
+            'n_atoms': seq_len,
+            'aligned': True if rmsd else False,
+        } if rmsd else None,
+        'qcpp_integration': results.metadata.get('qcpp_stats', {}),
+        'geometric_attractor_analysis': results.metadata.get('geometric_analysis', {}),
+        'mediator_statistics': results.metadata.get('mediator_stats', {}),
+        'hierarchical_folding_statistics': results.metadata.get('hierarchical_folding_stats', {}),
         'prediction_runner_version': '2.0',  # Mark version
         'timestamp': datetime.now().isoformat()
     }
@@ -562,22 +572,30 @@ def save_results(results: PredictionResults, pdb_id: Optional[str],
     print(f"\n✓ Results saved to: {output_file}")
     
     # Also save PDB structure if we have coordinates
-    if results.best_conformation_coords:
+    if results.pdb_string:
         pdb_dir = Path("results/predicted_structures")
         pdb_dir.mkdir(parents=True, exist_ok=True)
         
+        target_geom = getattr(config, 'target_geometry', 'none')
         pdb_filename = f"{pdb_id or 'custom'}_predicted.pdb"
-        if config.target_geometry != 'none':
-            pdb_filename = f"{pdb_id or 'custom'}_predicted_{config.target_geometry}.pdb"
+        if target_geom != 'none':
+            pdb_filename = f"{pdb_id or 'custom'}_predicted_{target_geom}.pdb"
         
         pdb_path = pdb_dir / pdb_filename
-        save_conformation_as_pdb(
-            sequence=results.sequence,
-            coordinates=results.best_conformation_coords,
-            energy=results.best_energy,
-            output_file=pdb_path,
-            pdb_id=pdb_id
-        )
+        
+        # Use pdb_string directly if available, else generate from coordinates
+        if results.pdb_string:
+            with open(pdb_path, 'w') as f:
+                f.write(results.pdb_string)
+            print(f"✓ Structure saved to: {pdb_path}")
+        elif results.coordinates:
+            save_conformation_as_pdb(
+                sequence=results.sequence,
+                coordinates=results.coordinates,
+                energy=energy or 0.0,
+                output_file=pdb_path,
+                pdb_id=pdb_id
+            )
     
     return output
 
@@ -680,7 +698,19 @@ NOTE: This CLI uses PredictionRunner, the SAME code path as the website backend.
     parser.add_argument('--benchmark', action='store_true',
                         help='Save results to 50-protein benchmark file (benchmark_results/50_protein_benchmark.json)')
     
+    # Archive-inspired features (from crypto attack research)
+    parser.add_argument('--use-log-energy', action='store_true', default=True,
+                        help='Use logarithmic energy landscape for scale-invariant stuck detection (default: True)')
+    parser.add_argument('--no-log-energy', action='store_true',
+                        help='Disable logarithmic energy (use linear energy)')
+    parser.add_argument('--independent-agents-ratio', type=float, default=0.3,
+                        help='Fraction of agents that explore independently (default: 0.3)')
+    
     args = parser.parse_args()
+    
+    # Handle --no-log-energy flag
+    if args.no_log_energy:
+        args.use_log_energy = False
     
     # Show available proteins
     if args.list:
@@ -693,9 +723,9 @@ NOTE: This CLI uses PredictionRunner, the SAME code path as the website backend.
         args.pdb = '1VII'
         quick_settings = get_quick_test_settings(35)
         if not args.agents:
-            args.agents = quick_settings['agents']
+            args.agents = quick_settings.agents
         if not args.iterations:
-            args.iterations = quick_settings['iterations']
+            args.iterations = quick_settings.iterations
     
     # Validate input
     if not args.pdb and not args.sequence:
@@ -740,7 +770,9 @@ NOTE: This CLI uses PredictionRunner, the SAME code path as the website backend.
             mediator_count=args.mediator_count,
             enable_refinement=args.enable_refinement,
             enable_hierarchical=args.enable_hierarchical,
-            save_to_benchmark=args.benchmark
+            save_to_benchmark=args.benchmark,
+            use_log_energy=args.use_log_energy,
+            independent_agents_ratio=args.independent_agents_ratio,
         )
     
     # Test with custom sequence
@@ -756,7 +788,9 @@ NOTE: This CLI uses PredictionRunner, the SAME code path as the website backend.
             enable_mediators=args.enable_mediators,
             mediator_count=args.mediator_count,
             enable_refinement=args.enable_refinement,
-            enable_hierarchical=args.enable_hierarchical
+            enable_hierarchical=args.enable_hierarchical,
+            use_log_energy=args.use_log_energy,
+            independent_agents_ratio=args.independent_agents_ratio,
         )
 
 
