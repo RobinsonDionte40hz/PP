@@ -10,7 +10,7 @@ import time
 import random
 import math
 import logging
-from typing import Optional, Dict, List, Any, Tuple
+from typing import Optional, Dict, List, Any, Tuple, cast
 
 from .interfaces import IProteinAgent, IPhysicsCalculator
 from .models import (
@@ -78,7 +78,8 @@ class ProteinAgent(IProteinAgent):
                  coordinator: Optional[Any] = None,
                  target_geometry: str = 'none',
                  use_log_energy: bool = True,
-                 use_discrete_states: bool = True):
+                 use_discrete_states: bool = True,
+                 guidance_start_iteration: int = 50):
         """
         Initialize protein agent with consciousness coordinates and protein sequence.
 
@@ -98,6 +99,7 @@ class ProteinAgent(IProteinAgent):
             target_geometry: Target Platonic solid geometry for active agent guidance (default: 'none')
             use_log_energy: Use logarithmic energy landscape for scale-invariant stuck detection (default: True)
             use_discrete_states: Use discrete frequency states [4, 7, 10, 12, 15] Hz (archive insight, default: True)
+            guidance_start_iteration: Iteration to start applying secondary structure guidance (default: 50)
         """
         # Create adaptive config if not provided
         if adaptive_config is None:
@@ -120,6 +122,9 @@ class ProteinAgent(IProteinAgent):
             except ImportError:
                 logger.warning("discrete_states module not available - using continuous frequencies")
                 self._use_discrete_states = False
+        
+        # Store guidance start iteration for staged application
+        self._guidance_start_iteration = guidance_start_iteration
         
         # Initialize multi-channel evaluator (archive insight: V-I-R pattern)
         self._multi_channel_evaluator = None
@@ -258,7 +263,10 @@ class ProteinAgent(IProteinAgent):
 
         # Store initial conformation coordinates for folding distance tracking
         # This allows RMSD calculation even without a native structure
-        self._initial_coordinates = [tuple(coord) for coord in self._current_conformation.atom_coordinates]
+        self._initial_coordinates: List[Tuple[float, float, float]] = cast(
+            List[Tuple[float, float, float]], 
+            [tuple(coord) for coord in self._current_conformation.atom_coordinates]
+        )
         self._folding_rmsd = 0.0  # RMSD from initial state (measures how much structure changed)
 
         # Calculate RMSD for initial conformation if native structure is available
@@ -469,7 +477,7 @@ class ProteinAgent(IProteinAgent):
                     best_move, best_weight = max(move_weights, key=lambda x: x[1])
 
                     # Execute the move (simulate conformational change)
-                    new_conformation = self._execute_move(best_move)
+                    new_conformation, channel_guided = self._execute_move(best_move)
 
                     # CRITICAL FIX: Check if move was rejected (returned unchanged conformation)
                     # This happens when steric clashes prevent the move
@@ -507,7 +515,8 @@ class ProteinAgent(IProteinAgent):
                         accept_move = False
                     else:
                         # Accept if energy decreases OR with probability based on temperature
-                        accept_move = self._metropolis_accept(energy_change)
+                        # Boost acceptance for moves guided by secondary structure knowledge
+                        accept_move = self._metropolis_accept(energy_change, is_guided_move=channel_guided)
                     
                     if accept_move:
                         self._moves_accepted += 1
@@ -1125,9 +1134,9 @@ class ProteinAgent(IProteinAgent):
             logger.warning(f"Error retrieving pattern guidance: {e}")
             return 1.0
 
-    def _execute_move(self, move) -> Conformation:
+    def _execute_move(self, move) -> tuple[Conformation, bool]:
         """
-        Execute a conformational move and return new conformation.
+        Execute a conformational move and return new conformation and guidance status.
 
         Uses proper protein geometry moves that maintain bond lengths and angles.
 
@@ -1135,7 +1144,7 @@ class ProteinAgent(IProteinAgent):
             move: The move to execute
 
         Returns:
-            New conformation after move execution
+            Tuple of (new conformation after move execution, whether move was channel-guided)
         """
         # Calculate actual energy change (may differ from estimate)
         actual_energy_change = move.estimated_energy_change * (0.8 + random.random() * 0.4)  # ±20% variation
@@ -1156,7 +1165,8 @@ class ProteinAgent(IProteinAgent):
         
         # Try PERSISTENT channel-guided angle selection (cumulative structural blueprint)
         channel_guided = False
-        if self._persistent_channel_memory is not None:
+        if (self._persistent_channel_memory is not None and 
+            self._iterations_completed >= self._guidance_start_iteration):
             try:
                 # Get current consciousness state for coherence
                 current_coords = self._consciousness.get_coordinates()
@@ -1377,7 +1387,7 @@ class ProteinAgent(IProteinAgent):
                 new_conformation.gdt_ts_score = None
                 new_conformation.tm_score = None
 
-        return new_conformation
+        return new_conformation, channel_guided
 
     def _calculate_neighbor_counts(self, coords: List[Tuple[float, float, float]], 
                                    cutoff: float = 8.0) -> List[int]:
@@ -2432,15 +2442,17 @@ class ProteinAgent(IProteinAgent):
         improvement = ((initial_rmsd - best_rmsd) / initial_rmsd) * 100.0
         return min(100.0, max(0.0, improvement))  # Clamp to 0-100%
 
-    def _metropolis_accept(self, energy_change: float) -> bool:
+    def _metropolis_accept(self, energy_change: float, is_guided_move: bool = False) -> bool:
         """
         Metropolis-Hastings acceptance criterion for moves.
         
         Always accept if energy decreases (energy_change < 0).
         Accept uphill moves with probability exp(-ΔE / kT).
+        Guided moves get 50% higher acceptance probability.
         
         Args:
             energy_change: Energy change (new - current) in kcal/mol
+            is_guided_move: Whether this move was guided by secondary structure
             
         Returns:
             True if move should be accepted, False otherwise
@@ -2453,6 +2465,11 @@ class ProteinAgent(IProteinAgent):
         # P = exp(-ΔE / kT) where k is Boltzmann constant
         try:
             acceptance_probability = math.exp(-energy_change / (BOLTZMANN_CONSTANT * self._temperature))
+            
+            # Boost acceptance probability for guided moves (structural knowledge)
+            if is_guided_move:
+                acceptance_probability = min(1.0, acceptance_probability * 1.5)  # 50% boost, max 100%
+            
             return random.random() < acceptance_probability
         except OverflowError:
             # Energy change is too large, reject move

@@ -13,7 +13,7 @@ import math
 import os
 import urllib.request
 import gzip
-from typing import List, Tuple, Optional, Dict
+from typing import List, Tuple, Optional, Dict, Sequence
 from dataclasses import dataclass
 
 
@@ -53,8 +53,8 @@ class RMSDCalculator:
         self.align_structures = align_structures
     
     def calculate_rmsd(self,
-                      predicted_coords: List[Tuple[float, float, float]],
-                      native_coords: List[Tuple[float, float, float]],
+                      predicted_coords: Sequence[Tuple[float, float, float]],
+                      native_coords: Sequence[Tuple[float, float, float]],
                       calculate_metrics: bool = True) -> RMSDResult:
         """
         Calculate RMSD between predicted and native structures.

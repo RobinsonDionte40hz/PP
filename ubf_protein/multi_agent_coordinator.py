@@ -278,6 +278,7 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
                     coordinator=self,  # Pass coordinator for global QCPP registry access
                     target_geometry=self._target_geometry,  # NEW: Pass geometric target
                     use_log_energy=self._use_log_energy,  # Archive: logarithmic energy
+                    guidance_start_iteration=50,  # Start secondary structure guidance after initial exploration
                 )
                 
                 # Mark agent as independent if selected (ignores shared memory)

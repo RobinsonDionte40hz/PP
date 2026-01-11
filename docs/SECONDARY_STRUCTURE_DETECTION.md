@@ -155,6 +155,29 @@ region = blueprint.get_region_type(residue_idx)  # 'helix', 'sheet', or 'coil'
 bias = memory.get_move_bias(residue_idx, current_phi, current_psi)
 ```
 
+### Staged Application (Phase 3)
+
+**Problem**: Applying secondary structure guidance from the start can interfere with initial exploration, as agents may get stuck trying to reach incorrect or premature structural targets.
+
+**Solution**: Implement staged application where guidance only begins after initial exploration:
+
+```python
+# ProteinAgent parameter
+guidance_start_iteration: int = 50  # Start guidance after N iterations
+
+# In explore_step()
+if self._iterations_completed >= self._guidance_start_iteration:
+    # Apply persistent blueprint guidance
+    apply_secondary_structure_guidance()
+```
+
+**Benefits**:
+- Allows free exploration in early stages
+- Applies structural knowledge when agents are closer to native-like states
+- Reduces interference with energy-driven optimization
+
+**Current Status**: Implemented with default start at iteration 50 for medium proteins.
+
 ## Files Modified
 
 ### `ubf_protein/persistent_channel_memory.py`
@@ -197,6 +220,9 @@ print(f"Residue 10: target_ss={target.target_ss}, phi={target.target_phi}, psi={
 3. **Beta-sheet pairing**: Predict strand-strand interactions
 4. **Machine learning hybrid**: Use CF as features for a simple classifier
 5. **Homology hints**: If similar sequence known, use as bias
+6. **Staged Application**: Apply guidance only after initial exploration phase (IMPLEMENTED)
+7. **Stronger Guidance**: Increase bias strength or reduce random exploration
+8. **Acceptance Modification**: Accept guided moves with higher probability
 
 ## References
 
@@ -208,3 +234,4 @@ print(f"Residue 10: target_ss={target.target_ss}, phi={target.target_phi}, psi={
 | Date | Changes |
 |------|---------|
 | 2026-01-11 | Initial Chou-Fasman implementation with global bias and conflict resolution |
+| 2026-01-11 | Added staged application - guidance starts after initial exploration phase |
