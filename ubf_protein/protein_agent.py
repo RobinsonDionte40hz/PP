@@ -928,21 +928,41 @@ class ProteinAgent(IProteinAgent):
         phi_angles = [-60.0 + random.uniform(-30, 30) for _ in range(num_residues)]
         psi_angles = [-40.0 + random.uniform(-30, 30) for _ in range(num_residues)]
         
-        # Start with moderate energy (not too high, not too low)
-        initial_energy = random.uniform(200.0, 400.0)
-
-        return Conformation(
+        # Create conformation first with placeholder energy
+        conf = Conformation(
             conformation_id="initial_compact",
             sequence=self._protein_sequence,
             atom_coordinates=atom_coordinates,
-            energy=initial_energy,
-            rmsd_to_native=None,  # No native structure known
+            energy=0.0,  # Placeholder, will be calculated
+            rmsd_to_native=None,
             secondary_structure=secondary_structure,
             phi_angles=phi_angles,
             psi_angles=psi_angles,
             available_move_types=["backbone_rotation", "sidechain_adjust"],
             structural_constraints={}
         )
+        
+        # Calculate actual energy from structure
+        if self._energy_calculator:
+            initial_energy = self._energy_calculator.calculate(conf)
+        else:
+            # Fallback if no calculator (shouldn't happen)
+            initial_energy = 0.0
+        
+        conf = Conformation(
+            conformation_id=conf.conformation_id,
+            sequence=conf.sequence,
+            atom_coordinates=conf.atom_coordinates,
+            energy=initial_energy,
+            rmsd_to_native=conf.rmsd_to_native,
+            secondary_structure=conf.secondary_structure,
+            phi_angles=conf.phi_angles,
+            psi_angles=conf.psi_angles,
+            available_move_types=conf.available_move_types,
+            structural_constraints=conf.structural_constraints
+        )
+
+        return conf
 
     def _generate_extended_chain(self, num_residues: int, spacing: float = 3.8) -> List[Tuple[float, float, float]]:
         """Generate extended chain along x-axis with specified spacing."""
@@ -1156,7 +1176,7 @@ class ProteinAgent(IProteinAgent):
         if not self._check_steric_clashes(new_coords, min_distance=2.0):
             # Reject move that creates steric clashes
             logger.debug(f"Move {move.move_id} rejected due to steric clashes")
-            return self._current_conformation  # Return unchanged conformation
+            return self._current_conformation, False  # Return unchanged conformation, not guided
 
         # Update phi/psi angles for target residues
         # Use channel-action mapper if available (framework math: frequency -> structure)

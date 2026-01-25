@@ -550,6 +550,76 @@ def print_residue_profile(sequence: str):
 # =============================================================================
 # STRUCTURAL CONSTRAINTS (for energy function integration)
 # =============================================================================
+# =============================================================================
+# SEQUENCE-DEPENDENT TARGET DISTANCE CALCULATION
+# =============================================================================
+
+# Physical constants for chain geometry
+CA_CA_DISTANCE = 3.8  # Å - distance between adjacent CA atoms
+MIN_LOOP_DISTANCE = 4.5  # Å - minimum CA-CA distance for non-adjacent residues
+
+def calculate_sequence_dependent_target(seq_dist: int, ideal_contact_distance: float) -> Tuple[float, float, float]:
+    """
+    Calculate realistic target distance and strength based on sequence separation.
+    
+    For residues far apart in sequence, the minimum possible distance is limited
+    by the chain geometry. This function returns:
+    1. A target distance respecting physical constraints
+    2. A tolerance scaled to the extended chain distance
+    3. A strength factor that decreases with sequence distance
+    
+    Args:
+        seq_dist: Number of residues between the two positions (|i - j|)
+        ideal_contact_distance: The ideal CA-CA distance for this contact type (e.g., 7 Å for hydrophobic)
+    
+    Returns:
+        Tuple of (target_distance, tolerance, strength_scale)
+        
+    Physics:
+        - Extended chain: max distance ≈ seq_dist * 3.8 Å
+        - Compact fold: min distance depends on how chain can loop back
+        - Long-range contacts should have WEAK influence until chain folds
+        
+    CRITICAL: Strength is scaled inversely with sequence distance so that
+    long-range contacts provide gentle guidance without creating impossible forces.
+    """
+    # Maximum distance in extended chain
+    extended_distance = seq_dist * CA_CA_DISTANCE
+    
+    if seq_dist < 3:
+        # Very close in sequence - backbone geometry dominates
+        min_physical_distance = seq_dist * CA_CA_DISTANCE * 0.85
+        target = max(ideal_contact_distance, min_physical_distance)
+        tolerance = max(2.0, extended_distance - target)
+        strength_scale = 1.0  # Full strength for local contacts
+    elif seq_dist < 5:
+        # Short range - limited by backbone flexibility
+        min_physical_distance = seq_dist * 2.5
+        target = max(ideal_contact_distance, min_physical_distance)
+        tolerance = max(3.0, extended_distance - target)
+        strength_scale = 0.8  # Slightly reduced
+    elif seq_dist < 10:
+        # Medium range - can form hairpin/turn structures
+        min_physical_distance = MIN_LOOP_DISTANCE
+        target = max(ideal_contact_distance, min_physical_distance)
+        tolerance = max(4.0, (extended_distance - target) * 0.8)
+        strength_scale = 0.5  # Half strength
+    elif seq_dist < 20:
+        # Longer range - secondary structure contacts
+        min_physical_distance = MIN_LOOP_DISTANCE
+        target = max(ideal_contact_distance, min_physical_distance)
+        tolerance = max(5.0, (extended_distance - target) * 0.7)
+        strength_scale = 0.2  # Weak
+    else:
+        # Long range - tertiary contacts
+        # These should be VERY weak to avoid dominating the energy
+        min_physical_distance = MIN_LOOP_DISTANCE
+        target = max(ideal_contact_distance, min_physical_distance)
+        tolerance = max(10.0, (extended_distance - target) * 0.6)
+        # Strength falls off as 1/seq_dist for very long range
+        strength_scale = 0.1 * (20.0 / seq_dist)  # Gets weaker with distance
+    
+    return target, tolerance, strength_scale
 
 @dataclass
 class ImpedanceConstraint:
@@ -671,12 +741,17 @@ def predict_structural_constraints(sequence: str,
                 if strength > 0.5:
                     # Metal coordination geometry: 4-8 Å between coordinating atoms
                     # CA-CA distance is typically 6-10 Å for tetrahedral coordination
+                    # Use sequence-dependent target to respect chain geometry
+                    ideal_metal_distance = 8.0
+                    target_dist, tolerance, strength_scale = calculate_sequence_dependent_target(seq_dist, ideal_metal_distance)
+                    # Apply strength_scale to reduce influence of long-range contacts
+                    final_strength = strength * 2.0 * strength_scale
                     constraints.append(ImpedanceConstraint(
                         constraint_type='metal_site',
                         residue_indices=[pos_i, pos_j],
-                        target_distance=8.0,  # CA-CA for metal coordination
-                        tolerance=3.0,
-                        strength=strength * 2.0,  # Metal sites are important
+                        target_distance=target_dist,
+                        tolerance=tolerance,
+                        strength=final_strength,
                         description=f"Metal coord: {aa_i}{pos_i+1}-{aa_j}{pos_j+1} (R={strength:.2f})"
                     ))
                     n_metal += 1
@@ -714,12 +789,17 @@ def predict_structural_constraints(sequence: str,
                 # Only add significant constraints
                 if strength > 0.4:
                     aa_i, aa_j = sequence[pos_i], sequence[pos_j]
+                    # Use sequence-dependent target to respect chain geometry
+                    ideal_hydrophobic_distance = 7.0
+                    target_dist, tolerance, strength_scale = calculate_sequence_dependent_target(seq_dist, ideal_hydrophobic_distance)
+                    # Apply strength_scale to reduce influence of long-range contacts
+                    final_strength = strength * strength_scale
                     constraints.append(ImpedanceConstraint(
                         constraint_type='hydrophobic_core',
                         residue_indices=[pos_i, pos_j],
-                        target_distance=7.0,  # Typical core packing distance
-                        tolerance=4.0,  # More tolerance for hydrophobic packing
-                        strength=strength,
+                        target_distance=target_dist,
+                        tolerance=tolerance,
+                        strength=final_strength,
                         description=f"Hydrophobic: {aa_i}{pos_i+1}-{aa_j}{pos_j+1}"
                     ))
                     n_hydrophobic += 1
@@ -748,21 +828,25 @@ def predict_structural_constraints(sequence: str,
                 # Local salt bridges (i, i+3 or i+4) are common in helices
                 if 3 <= seq_dist <= 4:
                     strength = 1.2  # Strong - helix stabilization
-                    target = 6.0
+                    ideal_target = 6.0
                 elif seq_dist < 20:
                     strength = 0.7
-                    target = 8.0
+                    ideal_target = 8.0
                 else:
                     strength = 0.4
-                    target = 10.0
+                    ideal_target = 10.0
                 
                 if strength > 0.5:
+                    # Use sequence-dependent target to respect chain geometry
+                    target_dist, tolerance, strength_scale = calculate_sequence_dependent_target(seq_dist, ideal_target)
+                    # Apply strength_scale to reduce influence of long-range contacts
+                    final_strength = strength * strength_scale
                     constraints.append(ImpedanceConstraint(
                         constraint_type='salt_bridge',
                         residue_indices=[pos_i, pos_j],
-                        target_distance=target,
-                        tolerance=3.0,
-                        strength=strength,
+                        target_distance=target_dist,
+                        tolerance=tolerance,
+                        strength=final_strength,
                         description=f"Salt bridge: {aa_i}{pos_i+1}-{aa_j}{pos_j+1}"
                     ))
                     n_salt += 1
@@ -785,12 +869,28 @@ def predict_structural_constraints(sequence: str,
                     continue
                 
                 # Typical disulfide: CA-CA distance ~5.5 Å
+                # Use sequence-dependent target to respect chain geometry
+                ideal_disulfide_distance = 5.5
+                target_dist, tolerance, strength_scale = calculate_sequence_dependent_target(seq_dist, ideal_disulfide_distance)
+                
+                # Disulfides are strong constraints, but tolerance should still respect physics
+                # Use tighter tolerance only when physically achievable
+                if target_dist <= 7.0:  # Close enough for actual disulfide
+                    tolerance = min(tolerance, 2.0)  # Tighter tolerance
+                    strength = 2.0  # Strong - covalent bond
+                else:
+                    # Far in sequence - can't form disulfide yet, weaker constraint
+                    strength = 1.0
+                
+                # Apply strength_scale to reduce influence of long-range contacts
+                final_strength = strength * strength_scale
+                
                 constraints.append(ImpedanceConstraint(
                     constraint_type='disulfide',
                     residue_indices=[pos_i, pos_j],
-                    target_distance=5.5,
-                    tolerance=1.5,  # Tight constraint
-                    strength=2.0,   # Strong - covalent bond
+                    target_distance=target_dist,
+                    tolerance=tolerance,
+                    strength=final_strength,
                     description=f"Disulfide candidate: C{pos_i+1}-C{pos_j+1}"
                 ))
                 n_disulfide += 1

@@ -15,9 +15,21 @@ from dataclasses import dataclass
 try:
     from .interfaces import IPhysicsCalculator
     from .models import Conformation
+    from .framework_resonance import (
+        golden_distance_match, 
+        log_impedance_match,
+        PHI_HARMONIC_DISTANCES,
+        ResonanceAccumulator
+    )
 except ImportError:
     from ubf_protein.interfaces import IPhysicsCalculator
     from ubf_protein.models import Conformation
+    from ubf_protein.framework_resonance import (
+        golden_distance_match,
+        log_impedance_match,
+        PHI_HARMONIC_DISTANCES,
+        ResonanceAccumulator
+    )
 
 
 @dataclass
@@ -45,20 +57,27 @@ class MolecularMechanicsEnergy(IPhysicsCalculator):
     - Salt bridges (K/R with D/E)
     """
     
-    def __init__(self, force_field: str = "amber", impedance_constraints: Optional[Any] = None):
+    def __init__(self, force_field: str = "amber", impedance_constraints: Optional[Any] = None,
+                 enable_resonance_energy: bool = True):
         """
         Initialize energy calculator.
         
         Args:
             force_field: Force field type (default: "amber")
             impedance_constraints: Optional ImpedanceConstraintSet from residue_impedance module
+            enable_resonance_energy: Enable golden ratio resonance energy term (default: True)
         """
         self.force_field = force_field
         self.params = ForceFieldParameters()
         self._neighbor_list_cache: Optional[Dict[int, List[int]]] = None
         self._cache_valid = False
         self._impedance_constraints = impedance_constraints
-        self._impedance_scale = 5.0  # Scale factor for impedance energy
+        # Impedance constraints now use sequence-dependent target distances
+        # that respect physical chain geometry (see calculate_sequence_dependent_target)
+        self._impedance_scale = 1.0  # Re-enabled after fixing constraint generation
+        self._enable_resonance_energy = enable_resonance_energy
+        self._resonance_scale = 3.0  # Scale factor for resonance energy
+        self._resonance_accumulator = ResonanceAccumulator() if enable_resonance_energy else None
     
     def set_impedance_constraints(self, constraints: Any) -> None:
         """
@@ -88,7 +107,12 @@ class MolecularMechanicsEnergy(IPhysicsCalculator):
             if self._impedance_constraints is not None:
                 impedance_e = self._calculate_impedance_energy(conformation)
             
-            total = bond_e + angle_e + dihedral_e + vdw_e + elec_e + hbond_e + compact_e + impedance_e
+            # Add golden ratio resonance energy (framework physics)
+            resonance_e = 0.0
+            if self._enable_resonance_energy:
+                resonance_e = self._calculate_resonance_energy(conformation)
+            
+            total = bond_e + angle_e + dihedral_e + vdw_e + elec_e + hbond_e + compact_e + impedance_e + resonance_e
             
             if abs(total) > 10000:
                 print(f"Warning: Unusually high energy: {total:.2f} kcal/mol")
@@ -113,7 +137,12 @@ class MolecularMechanicsEnergy(IPhysicsCalculator):
         if self._impedance_constraints is not None:
             impedance_e = self._calculate_impedance_energy(conformation)
         
-        total = bond_e + angle_e + dihedral_e + vdw_e + elec_e + hbond_e + compact_e + impedance_e
+        # Add resonance energy
+        resonance_e = 0.0
+        if self._enable_resonance_energy:
+            resonance_e = self._calculate_resonance_energy(conformation)
+        
+        total = bond_e + angle_e + dihedral_e + vdw_e + elec_e + hbond_e + compact_e + impedance_e + resonance_e
         
         result = {
             'total': total,
@@ -128,6 +157,9 @@ class MolecularMechanicsEnergy(IPhysicsCalculator):
         
         if self._impedance_constraints is not None:
             result['impedance'] = impedance_e
+        
+        if self._enable_resonance_energy:
+            result['resonance'] = resonance_e
         
         return result
     
@@ -350,6 +382,79 @@ class MolecularMechanicsEnergy(IPhysicsCalculator):
         except Exception as e:
             # Graceful degradation - don't fail prediction if impedance fails
             return 0.0
+    
+    def _calculate_resonance_energy(self, conformation: Conformation) -> float:
+        """
+        Calculate energy from golden ratio resonance patterns.
+        
+        From AstroFolds framework: Stable configurations exhibit integer-ratio
+        frequency relationships. In proteins, distances that match φ-harmonics
+        (3.8 × φ^n Å) are energetically favorable.
+        
+        This guides folding toward structures with optimal φ-spacing:
+        - φ^0 = 3.8 Å (sequential CA-CA)
+        - φ^1 = 6.15 Å (i, i+2 contacts)
+        - φ^2 = 9.94 Å (helix turn)
+        - φ^3 = 16.09 Å (secondary structure contacts)
+        - φ^4 = 26.02 Å (domain contacts)
+        
+        Returns negative energy (favorable) for φ-matching distances.
+        """
+        if not self._enable_resonance_energy:
+            return 0.0
+        
+        coords = conformation.atom_coordinates
+        n = len(coords)
+        
+        if n < 4:
+            return 0.0
+        
+        total_energy = 0.0
+        n_contacts = 0
+        total_lock_strength = 0.0
+        
+        # Sample non-sequential distances (every 3rd pair for efficiency)
+        for i in range(0, n - 3, 2):
+            for j in range(i + 3, min(i + 25, n), 3):  # Focus on local/medium range
+                d = self._distance(coords[i], coords[j])
+                
+                if d < 4.0 or d > 30.0:
+                    continue  # Skip clashes and very long distances
+                
+                # Check if distance matches a φ-harmonic
+                harmonic_n, match_quality = golden_distance_match(d)
+                
+                if harmonic_n >= 0 and match_quality > 0.5:
+                    # Reward φ-harmonic distances
+                    # Scale by sequence separation (longer-range = more valuable)
+                    seq_sep = j - i
+                    sep_bonus = min(1.0 + seq_sep / 15.0, 2.0)
+                    
+                    # Secondary structure bonus: contacts in helices/sheets more valuable
+                    ss_i = conformation.secondary_structure[i] if i < len(conformation.secondary_structure) else 'C'
+                    ss_j = conformation.secondary_structure[j] if j < len(conformation.secondary_structure) else 'C'
+                    ss_bonus = 1.5 if ss_i in 'HE' and ss_j in 'HE' else 1.0
+                    
+                    # Energy reward (negative = favorable)
+                    contact_energy = -self._resonance_scale * match_quality * sep_bonus * ss_bonus
+                    total_energy += contact_energy
+                    total_lock_strength += match_quality
+                    n_contacts += 1
+        
+        # Update resonance accumulator for time evolution
+        if self._resonance_accumulator is not None and n_contacts > 0:
+            avg_lock = total_lock_strength / n_contacts
+            maintenance = self._resonance_accumulator.update(avg_lock)
+            # Apply maintenance factor (builds up coherence over time)
+            total_energy *= (0.5 + 0.5 * maintenance)
+        
+        # Normalize by sequence length
+        return total_energy / max(1, n / 10)
+    
+    def reset_resonance_accumulator(self) -> None:
+        """Reset the resonance accumulator for a new prediction run."""
+        if self._resonance_accumulator is not None:
+            self._resonance_accumulator.reset()
     
     def _validate_geometry(self, conformation: Conformation) -> bool:
         """Validate reasonable geometry."""
