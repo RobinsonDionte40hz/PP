@@ -3,10 +3,13 @@ Molecular Mechanics Energy Function for UBF Protein System.
 
 This module implements a physically accurate energy function using simplified
 AMBER-like force field parameters. Expected energies: -200 to -50 kcal/mol for folded proteins.
+
+Includes optional impedance-derived constraint energy from the Computational Alchemy
+framework for metal coordination, hydrophobic core, and salt bridge restraints.
 """
 
 import math
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Tuple, Optional, Any
 from dataclasses import dataclass
 
 try:
@@ -32,15 +35,39 @@ class MolecularMechanicsEnergy(IPhysicsCalculator):
     """
     Molecular mechanics energy calculator using simplified AMBER-like force field.
     
-    Energy = E_bond + E_angle + E_dihedral + E_vdw + E_electrostatic + E_hbond
+    Energy = E_bond + E_angle + E_dihedral + E_vdw + E_electrostatic + E_hbond + E_impedance
     Expected: -200 to -50 kcal/mol for folded proteins
+    
+    The optional impedance constraints add physics-based restraints derived from
+    atomic impedance matching (Computational Alchemy framework):
+    - Metal coordination sites (C, H clustering)
+    - Hydrophobic core packing (similar-Z residues)
+    - Salt bridges (K/R with D/E)
     """
     
-    def __init__(self, force_field: str = "amber"):
+    def __init__(self, force_field: str = "amber", impedance_constraints: Optional[Any] = None):
+        """
+        Initialize energy calculator.
+        
+        Args:
+            force_field: Force field type (default: "amber")
+            impedance_constraints: Optional ImpedanceConstraintSet from residue_impedance module
+        """
         self.force_field = force_field
         self.params = ForceFieldParameters()
         self._neighbor_list_cache: Optional[Dict[int, List[int]]] = None
         self._cache_valid = False
+        self._impedance_constraints = impedance_constraints
+        self._impedance_scale = 5.0  # Scale factor for impedance energy
+    
+    def set_impedance_constraints(self, constraints: Any) -> None:
+        """
+        Set impedance constraints for energy calculation.
+        
+        Args:
+            constraints: ImpedanceConstraintSet from predict_all_constraints()
+        """
+        self._impedance_constraints = constraints
     
     def calculate(self, conformation: Conformation) -> float:
         """Calculate total molecular mechanics energy in kcal/mol."""
@@ -56,7 +83,12 @@ class MolecularMechanicsEnergy(IPhysicsCalculator):
             hbond_e = self.calculate_hbond_energy(conformation)
             compact_e = self._calculate_compactness_bonus(conformation)
             
-            total = bond_e + angle_e + dihedral_e + vdw_e + elec_e + hbond_e + compact_e
+            # Add impedance constraint energy if constraints are set
+            impedance_e = 0.0
+            if self._impedance_constraints is not None:
+                impedance_e = self._calculate_impedance_energy(conformation)
+            
+            total = bond_e + angle_e + dihedral_e + vdw_e + elec_e + hbond_e + compact_e + impedance_e
             
             if abs(total) > 10000:
                 print(f"Warning: Unusually high energy: {total:.2f} kcal/mol")
@@ -76,8 +108,15 @@ class MolecularMechanicsEnergy(IPhysicsCalculator):
         hbond_e = self.calculate_hbond_energy(conformation)
         compact_e = self._calculate_compactness_bonus(conformation)
         
-        return {
-            'total': bond_e + angle_e + dihedral_e + vdw_e + elec_e + hbond_e + compact_e,
+        # Add impedance if constraints are set
+        impedance_e = 0.0
+        if self._impedance_constraints is not None:
+            impedance_e = self._calculate_impedance_energy(conformation)
+        
+        total = bond_e + angle_e + dihedral_e + vdw_e + elec_e + hbond_e + compact_e + impedance_e
+        
+        result = {
+            'total': total,
             'bond': bond_e,
             'angle': angle_e,
             'dihedral': dihedral_e,
@@ -86,6 +125,11 @@ class MolecularMechanicsEnergy(IPhysicsCalculator):
             'hbond': hbond_e,
             'compactness': compact_e,
         }
+        
+        if self._impedance_constraints is not None:
+            result['impedance'] = impedance_e
+        
+        return result
     
     def calculate_bond_energy(self, conformation: Conformation) -> float:
         """E_bond = Σ k_b(r - r_0)²"""
@@ -276,6 +320,36 @@ class MolecularMechanicsEnergy(IPhysicsCalculator):
             # Example: Native (Rg=9Å, ratio=0.9) → -18 kcal/mol bonus
             bonus = -5.0 * n * (1.0 - rg_ratio)
             return bonus
+    
+    def _calculate_impedance_energy(self, conformation: Conformation) -> float:
+        """
+        Calculate energy from impedance-derived constraints.
+        
+        This uses the Computational Alchemy framework to add physics-based
+        restraints for:
+        - Metal coordination sites (Cys/His clustering)
+        - Hydrophobic core packing (similar-Z residues nearby)
+        - Salt bridges (oppositely charged residues)
+        
+        The energy is a harmonic penalty for violating predicted constraints.
+        """
+        if self._impedance_constraints is None:
+            return 0.0
+        
+        try:
+            from ubf_protein.residue_impedance import calculate_impedance_restraint_energy
+            
+            coords = conformation.atom_coordinates
+            energy, _ = calculate_impedance_restraint_energy(
+                constraints=self._impedance_constraints,
+                atom_coordinates=coords,
+                tolerance=1.5,  # Angstrom tolerance
+                scale_factor=self._impedance_scale
+            )
+            return energy
+        except Exception as e:
+            # Graceful degradation - don't fail prediction if impedance fails
+            return 0.0
     
     def _validate_geometry(self, conformation: Conformation) -> bool:
         """Validate reasonable geometry."""

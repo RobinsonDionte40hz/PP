@@ -105,6 +105,10 @@ class PredictionConfig:
     use_log_energy: bool = True  # Logarithmic energy landscape for scale-invariant stuck detection
     independent_agents_ratio: float = 0.3  # Fraction of agents ignoring shared memory (30%)
     
+    # Impedance-derived constraints (from Computational Alchemy framework)
+    use_impedance_constraints: bool = True  # Use impedance analysis to guide folding
+    impedance_constraint_scale: float = 5.0  # Energy weight for constraint violations
+    
     # Checkpointing
     enable_checkpointing: bool = True
     checkpoint_dir: Optional[str] = None
@@ -374,13 +378,13 @@ class PredictionRunner:
         
         # Step 5: Apply quantum refinement (if enabled)
         refinement_result = None
-        logger.info(f"Refinement check: enable_refinement={self.config.enable_refinement}, native_structure={self.native_structure is not None}")
+        logger.debug(f"Refinement check: enable_refinement={self.config.enable_refinement}, native_structure={self.native_structure is not None}")
         if self.config.enable_refinement and self.native_structure:
             self._emit_progress(progress_callback, 100, self.config.iterations or 0, "refinement", 
                               "Applying quantum refinement...")
             refinement_result = self._run_refinement(exploration_results)
         elif self.config.enable_refinement and not self.native_structure:
-            logger.warning("Refinement enabled but no native structure loaded - skipping refinement")
+            logger.debug("Refinement enabled but no native structure loaded - skipping refinement")
         
         # Step 6: Calculate final metrics
         self._emit_progress(progress_callback, 100, self.config.iterations or 0, "analysis", 
@@ -433,10 +437,10 @@ class PredictionRunner:
                 final_energy = best_energy
             elif is_valid_energy(hierarchical_energy):
                 final_energy = hierarchical_energy
-                logger.warning(f"Using hierarchical controller energy ({hierarchical_energy:.2f}) as fallback")
+                logger.debug(f"Using hierarchical controller energy ({hierarchical_energy:.2f}) as fallback")
             else:
                 final_energy = best_energy
-                logger.error(f"No valid energy source! exploration={best_energy}, hierarchical={hierarchical_energy}")
+                logger.debug(f"No valid energy source! exploration={best_energy}, hierarchical={hierarchical_energy}")
         
         # Calculate real RMSD if native structure available
         rmsd_result = None
@@ -690,6 +694,20 @@ class PredictionRunner:
             # Use default checkpoint directory
             checkpoint_dir = str(Path.cwd() / "checkpoints")
         
+        # Predict impedance constraints if enabled
+        impedance_constraints = None
+        if getattr(self.config, 'use_impedance_constraints', True):
+            try:
+                from .residue_impedance import predict_structural_constraints
+                impedance_constraints = predict_structural_constraints(self.config.sequence)
+                logger.info(f"Predicted {len(impedance_constraints)} impedance constraints: "
+                           f"{impedance_constraints.n_metal_sites} metal, "
+                           f"{impedance_constraints.n_hydrophobic_cores} hydrophobic, "
+                           f"{impedance_constraints.n_salt_bridges} salt bridges, "
+                           f"{impedance_constraints.n_disulfide_candidates} disulfide")
+            except Exception as e:
+                logger.warning(f"Could not predict impedance constraints: {e}")
+        
         self.coordinator = MultiAgentCoordinator(
             protein_sequence=self.config.sequence,
             qcpp_integration=self.qcpp_adapter,
@@ -703,6 +721,9 @@ class PredictionRunner:
             # Archive-inspired features
             independent_agents_ratio=getattr(self.config, 'independent_agents_ratio', 0.3),
             use_log_energy=getattr(self.config, 'use_log_energy', True),
+            # Impedance-derived constraints
+            impedance_constraints=impedance_constraints,
+            impedance_constraint_scale=getattr(self.config, 'impedance_constraint_scale', 5.0),
         )
         
         # Initialize agents
@@ -897,13 +918,13 @@ class PredictionRunner:
             
             result = analyzer.analyze_conformation(conformation_data, sequence=self.config.sequence)
             
-            logger.info(f"Geometric analysis: φ={result.golden_ratio_percentage:.1f}%, "
-                       f"icosahedron={result.icosahedron_similarity:.3f}")
+            logger.debug(f"Geometric analysis: φ={result.golden_ratio_percentage:.1f}%, "
+                        f"icosahedron={result.icosahedron_similarity:.3f}")
             
             return result.to_dict()
             
         except Exception as e:
-            logger.warning(f"Geometric analysis failed: {e}")
+            logger.debug(f"Geometric analysis failed: {e}")
             return None
     
     def _save_outputs(self, results: PredictionResults, conformation: Any):

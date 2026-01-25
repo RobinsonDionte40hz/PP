@@ -188,41 +188,58 @@ def load_experimental_data(pdb_id: str) -> Optional[dict]:
 def create_cli_progress_callback():
     """Create a progress callback for CLI output."""
     last_update_time = [time.time()]
+    shown_100_percent = [False]
     
     def callback(update):
-        # Only print every 2 seconds to avoid spam
-        current_time = time.time()
-        if current_time - last_update_time[0] < 2.0 and update.progress_percentage < 100:
-            return
-        last_update_time[0] = current_time
-        
-        # Format progress bar
-        bar_width = 30
-        filled = int(bar_width * update.progress_percentage / 100)
-        bar = '█' * filled + '░' * (bar_width - filled)
-        
-        # Build status line
-        status = f"\r[{bar}] {update.progress_percentage:5.1f}%"
-        
-        if update.stage == "exploration":
-            status += f" | Energy: {update.best_energy:8.1f}"
-            if update.best_rmsd is not None and update.best_rmsd != float('inf'):
-                status += f" | RMSD: {update.best_rmsd:5.2f}Å"
-            status += f" | Conf: {update.conformations_explored:,}"
-        elif update.stage == "refinement":
-            status += " | 🔬 Quantum Refinement..."
-        elif update.stage == "analysis":
-            status += " | 📊 Analyzing..."
-        elif update.stage == "complete":
-            status += " | ✅ Complete!"
-        
-        if update.message and update.stage in ["initialization", "complete"]:
-            print(f"\n{update.message}")
-        else:
+        # Handle both ProgressUpdate objects and dict-like updates
+        try:
+            progress_pct = getattr(update, 'progress_percentage', None)
+            if progress_pct is None:
+                progress_pct = getattr(update, 'percentage', 0.0)
+            
+            stage = getattr(update, 'stage', 'exploration')
+            message = getattr(update, 'message', None)
+            
+            # For initialization/analysis/refinement/complete stages, only show messages
+            if stage in ["initialization", "analysis", "refinement", "complete"]:
+                if message:
+                    print(f"\n{message}")
+                return
+            
+            # Only show 100% progress bar once
+            if progress_pct >= 100:
+                if shown_100_percent[0]:
+                    return
+                shown_100_percent[0] = True
+            
+            # Only print exploration progress every 2 seconds to avoid spam
+            current_time = time.time()
+            if current_time - last_update_time[0] < 2.0 and progress_pct < 100:
+                return
+            last_update_time[0] = current_time
+            
+            # Format progress bar
+            bar_width = 30
+            filled = int(bar_width * progress_pct / 100)
+            bar = '█' * filled + '░' * (bar_width - filled)
+            
+            # Build status line for exploration
+            best_energy = getattr(update, 'best_energy', 0.0)
+            best_rmsd = getattr(update, 'best_rmsd', None)
+            conf_explored = getattr(update, 'conformations_explored', 0)
+            
+            status = f"\r[{bar}] {progress_pct:5.1f}%"
+            status += f" | Energy: {best_energy:8.1f}"
+            if best_rmsd is not None and best_rmsd != float('inf'):
+                status += f" | RMSD: {best_rmsd:5.2f}Å"
+            status += f" | Conf: {conf_explored:,}"
+            
             print(status, end='', flush=True)
-        
-        if update.progress_percentage >= 100:
-            print()  # New line at end
+            
+            if progress_pct >= 100:
+                print()  # New line at end
+        except Exception:
+            pass  # Silently ignore callback errors
     
     return callback
 
@@ -232,7 +249,8 @@ def run_protein_test(sequence: str, pdb_file: Optional[Path] = None, pdb_id: Opt
                      target_geometry: str = 'none', enable_mediators: bool = False, 
                      mediator_count: int = 2, enable_refinement: bool = False,
                      enable_hierarchical: bool = False, save_to_benchmark: bool = False,
-                     use_log_energy: bool = True, independent_agents_ratio: float = 0.3) -> dict:
+                     use_log_energy: bool = True, independent_agents_ratio: float = 0.3,
+                     use_impedance_constraints: bool = True) -> dict:
     """
     Run complete protein test using unified PredictionRunner.
     
@@ -243,6 +261,7 @@ def run_protein_test(sequence: str, pdb_file: Optional[Path] = None, pdb_id: Opt
         save_to_benchmark: If True, save results to benchmark_results/50_protein_benchmark.json
         use_log_energy: Use logarithmic energy landscape for scale-invariant stuck detection
         independent_agents_ratio: Fraction of agents that explore independently (crypto attack insight)
+        use_impedance_constraints: Use impedance-derived constraints to guide folding (default: True)
     """
     
     print("\n" + "="*70)
@@ -282,6 +301,7 @@ def run_protein_test(sequence: str, pdb_file: Optional[Path] = None, pdb_id: Opt
     # Archive-inspired features
     print(f"  - 📐 Log Energy Landscape: {'ENABLED' if use_log_energy else 'DISABLED'}")
     print(f"  - 🔓 Independent Agents: {independent_agents_ratio*100:.0f}% ({int(num_agents * independent_agents_ratio)} agents)")
+    print(f"  - ⚡ Impedance Constraints: {'ENABLED' if use_impedance_constraints else 'DISABLED'}")
     
     # Load experimental data if available
     exp_data = None
@@ -306,6 +326,8 @@ def run_protein_test(sequence: str, pdb_file: Optional[Path] = None, pdb_id: Opt
         # Archive-inspired features
         use_log_energy=use_log_energy,
         independent_agents_ratio=independent_agents_ratio,
+        # Impedance-derived constraints (default: enabled)
+        use_impedance_constraints=use_impedance_constraints,
     )
     
     print(f"\n🚀 Starting prediction (PredictionRunner)...")
@@ -681,6 +703,22 @@ NOTE: This CLI uses PredictionRunner, the SAME code path as the website backend.
     parser.add_argument('--sequence', type=str, help='Custom amino acid sequence')
     parser.add_argument('--agents', type=int, help='Number of agents (optional, auto-configured)')
     parser.add_argument('--iterations', type=int, help='Iterations per agent (optional, auto-configured)')
+    
+    # Framework-derived impedance analysis
+    parser.add_argument('--impedance', action='store_true',
+                        help='Show residue impedance analysis before prediction')
+    parser.add_argument('--impedance-only', action='store_true',
+                        help='Run impedance analysis only (no structure prediction)')
+    parser.add_argument('--impedance-table', action='store_true',
+                        help='Print amino acid impedance reference table and exit')
+    parser.add_argument('--metal-analysis', action='store_true',
+                        help='Include metal coordination analysis based on impedance matching')
+    parser.add_argument('--constraints', action='store_true',
+                        help='Show impedance-derived structural constraints before prediction')
+    parser.add_argument('--constraints-only', action='store_true',
+                        help='Run constraint analysis only (no structure prediction)')
+    parser.add_argument('--no-constraints', action='store_true',
+                        help='Disable impedance constraints during prediction (default: enabled)')
     parser.add_argument('--target-geometry', 
                         choices=['none', 'octahedron', 'icosahedron', 'dodecahedron', 'tetrahedron', 'cube'],
                         default='none',
@@ -717,6 +755,12 @@ NOTE: This CLI uses PredictionRunner, the SAME code path as the website backend.
         list_available_proteins()
         return
     
+    # Impedance reference table
+    if args.impedance_table:
+        from ubf_protein.residue_impedance import print_impedance_table
+        print_impedance_table()
+        return
+    
     # Quick test
     if args.quick:
         print("🚀 Quick Test Mode: Using Villin (1VII, 35 residues, reduced iterations)")
@@ -733,7 +777,77 @@ NOTE: This CLI uses PredictionRunner, the SAME code path as the website backend.
         print("\n❌ Error: Provide either --pdb or --sequence")
         print("   Example: python test_protein.py --pdb 1UBQ")
         print("   Or use: python test_protein.py --list")
+        print("   Or use: python test_protein.py --impedance-table")
         sys.exit(1)
+    
+    # Handle impedance-only analysis (no prediction needed)
+    if args.impedance_only:
+        from ubf_protein.residue_impedance import (
+            analyze_sequence_impedance, print_sequence_analysis, 
+            print_residue_profile, analyze_metal_coordination, AA_NAMES
+        )
+        
+        # Get sequence
+        if args.pdb:
+            pdb_file = download_pdb(args.pdb.upper())
+            if pdb_file:
+                sequence = load_sequence_from_pdb(pdb_file)
+            else:
+                print("❌ Could not load PDB file")
+                sys.exit(1)
+        else:
+            sequence = args.sequence.upper()
+        
+        # Run impedance analysis
+        analysis = analyze_sequence_impedance(sequence)
+        print_sequence_analysis(analysis)
+        print_residue_profile(sequence)
+        
+        # Metal coordination if requested
+        if args.metal_analysis:
+            print("\n🔬 METAL COORDINATION ANALYSIS (Impedance Matching):")
+            print("="*70)
+            metal_matches = analyze_metal_coordination(sequence)
+            for metal, matches in metal_matches.items():
+                print(f"\n  {metal} (potential binding sites):")
+                for pos, aa, quality in matches[:8]:
+                    name = AA_NAMES.get(aa, aa)
+                    stars = '★' * int(quality * 5) + '☆' * (5 - int(quality * 5))
+                    print(f"    Position {pos:4d}: {aa} ({name:<12}) R = {quality:.3f} {stars}")
+            print("\n" + "="*70)
+        
+        return
+    
+    # Handle constraints-only analysis (no prediction needed)
+    if args.constraints_only:
+        from ubf_protein.residue_impedance import (
+            predict_structural_constraints, print_constraint_analysis,
+            analyze_sequence_impedance, print_sequence_analysis
+        )
+        
+        # Get sequence
+        if args.pdb:
+            pdb_file = download_pdb(args.pdb.upper())
+            if pdb_file:
+                sequence = load_sequence_from_pdb(pdb_file)
+            else:
+                print("❌ Could not load PDB file")
+                sys.exit(1)
+        else:
+            sequence = args.sequence.upper()
+        
+        print(f"\n🧬 Analyzing structural constraints for: {args.pdb or 'custom sequence'}")
+        print(f"   Sequence length: {len(sequence)} residues")
+        
+        # Run constraint prediction
+        constraints = predict_structural_constraints(sequence)
+        print_constraint_analysis(constraints)
+        
+        # Also show brief impedance summary
+        analysis = analyze_sequence_impedance(sequence)
+        print(f"\n📊 Impedance Summary: Mean Z = {analysis.mean_z:.2f} ± {analysis.std_z:.2f}")
+        
+        return
     
     # Test with PDB ID
     if args.pdb:
@@ -773,6 +887,7 @@ NOTE: This CLI uses PredictionRunner, the SAME code path as the website backend.
             save_to_benchmark=args.benchmark,
             use_log_energy=args.use_log_energy,
             independent_agents_ratio=args.independent_agents_ratio,
+            use_impedance_constraints=not getattr(args, 'no_constraints', False),
         )
     
     # Test with custom sequence
@@ -791,6 +906,7 @@ NOTE: This CLI uses PredictionRunner, the SAME code path as the website backend.
             enable_hierarchical=args.enable_hierarchical,
             use_log_energy=args.use_log_energy,
             independent_agents_ratio=args.independent_agents_ratio,
+            use_impedance_constraints=not getattr(args, 'no_constraints', False),
         )
 
 

@@ -278,10 +278,10 @@ class QCPPIntegrationAdapter:
             if total_time_ms > self.max_calculation_time_ms:
                 self.max_calculation_time_ms = total_time_ms
             
-            # Task 12: Log warning if exceeds threshold (only for non-cached calls)
+            # Task 12: Log debug if exceeds threshold (only for non-cached calls)
             if not is_cache_hit and total_time_ms > self.performance_warning_threshold_ms:
                 self.slow_analyses_count += 1
-                logger.warning(
+                logger.debug(
                     f"QCPP analysis exceeded {self.performance_warning_threshold_ms}ms threshold: "
                     f"{total_time_ms:.2f}ms (analysis #{self.analysis_count})"
                 )

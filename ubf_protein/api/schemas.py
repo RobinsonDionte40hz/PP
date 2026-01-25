@@ -140,6 +140,11 @@ class PredictionConfig:
     use_log_energy: bool = True  # Logarithmic energy landscape (scale-invariant stuck detection)
     independent_agents_ratio: float = 0.3  # Fraction of agents ignoring shared memory (30%)
     
+    # Impedance-derived constraints (from Computational Alchemy framework)
+    # Uses atomic impedance (Z = √(E_ion × χ) / r) to predict structural constraints
+    use_impedance_constraints: bool = True  # Use impedance analysis to guide folding
+    impedance_constraint_scale: float = 5.0  # Energy weight for constraint violations
+    
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for serialization."""
         return asdict(self)

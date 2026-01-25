@@ -69,7 +69,9 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
                  enable_hierarchical_folding: bool = False,
                  hierarchical_config: Optional[Any] = None,
                  independent_agents_ratio: float = 0.3,
-                 use_log_energy: bool = True):
+                 use_log_energy: bool = True,
+                 impedance_constraints: Optional[Any] = None,
+                 impedance_constraint_scale: float = 5.0):
         """
         Initialize multi-agent coordinator with protein sequence.
 
@@ -93,6 +95,8 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
             hierarchical_config: Optional HierarchicalFoldingConfig instance (uses default if None)
             independent_agents_ratio: Fraction of agents ignoring shared memory (default: 0.3 = 30%)
             use_log_energy: Use logarithmic energy landscape for scale-invariant stuck detection (default: True)
+            impedance_constraints: Optional ImpedanceConstraintSet from residue_impedance.predict_structural_constraints()
+            impedance_constraint_scale: Energy weight for impedance constraint violations (default: 5.0)
         """
         self._protein_sequence = protein_sequence
         self._agents: List[IProteinAgent] = []
@@ -101,6 +105,10 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
         # Archive-inspired parameters
         self._independent_agents_ratio = independent_agents_ratio
         self._use_log_energy = use_log_energy
+        
+        # Impedance-derived constraints (from Computational Alchemy framework)
+        self._impedance_constraints = impedance_constraints
+        self._impedance_constraint_scale = impedance_constraint_scale
         
         # Mediator Agent configuration (Task 10.1)
         self._enable_mediators = enable_mediators
@@ -182,6 +190,10 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
                     from .rmsd_calculator import RMSDCalculator
                     
                     energy_calculator = MolecularMechanicsEnergy()
+                    # Apply impedance constraints to refinement energy calculator
+                    if self._impedance_constraints is not None:
+                        energy_calculator.set_impedance_constraints(self._impedance_constraints)
+                        energy_calculator._impedance_scale = self._impedance_constraint_scale
                     rmsd_calculator = RMSDCalculator()
                     
                     self._refinement_engine = QuantumRefinementEngine(
@@ -281,6 +293,11 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
                     guidance_start_iteration=50,  # Start secondary structure guidance after initial exploration
                 )
                 
+                # Apply impedance constraints to agent's energy calculator
+                if self._impedance_constraints is not None and agent._energy_calculator is not None:
+                    agent._energy_calculator.set_impedance_constraints(self._impedance_constraints)
+                    agent._energy_calculator._impedance_scale = self._impedance_constraint_scale
+                
                 # Mark agent as independent if selected (ignores shared memory)
                 agent._use_shared_memory = not is_independent
                 if is_independent:
@@ -289,7 +306,12 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
                 self._agents.append(agent)
                 agent_index += 1
 
+        # Log impedance constraint status
+        if self._impedance_constraints is not None:
+            logger.info(f"Applied {len(self._impedance_constraints)} impedance constraints to all agents")
+        
         logger.info(f"Initialized {len(self._agents)} agents ({num_independent} independent, {len(self._agents) - num_independent} collaborative)")
+        return self._agents
         return self._agents
     
     def initialize_hierarchical_folding(self) -> 'Any':
@@ -634,9 +656,9 @@ class MultiAgentCoordinator(IMultiAgentCoordinator):
                     # Log but don't crash - checkpointing is non-critical
                     logger.warning(f"Checkpoint auto-save failed: {e}")
 
-            # Optional: Log progress every 10 iterations
+            # Optional: Log progress every 10 iterations (debug only)
             if (iteration + 1) % 10 == 0:
-                print(f"Completed iteration {iteration + 1}/{iterations}")
+                logger.debug(f"Completed iteration {iteration + 1}/{iterations}")
             
             # Sync shared memories to agents every 20 iterations
             if (iteration + 1) % 20 == 0:

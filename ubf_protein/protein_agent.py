@@ -1311,7 +1311,7 @@ class ProteinAgent(IProteinAgent):
 
                 # Validate energy is physically reasonable
                 if abs(new_conformation.energy) > ENERGY_VALIDATION_THRESHOLD:
-                    logger.warning(
+                    logger.debug(
                         f"Unrealistic energy detected: {new_conformation.energy:.2f} kcal/mol "
                         f"(threshold: {ENERGY_VALIDATION_THRESHOLD})"
                     )
